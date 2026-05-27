@@ -1,0 +1,88 @@
+# .venv가 만들어 지기 위해 필요한 패키지와 패키지들을 어떻게 쓸 지 적어놓는 파일
+[project]
+name = "slgi-backend"
+version = "0.1.0"
+description = "슬기로운 자취생활 — Django 백엔드"
+readme = "README.md"
+requires-python = ">=3.11"
+
+dependencies = [
+    "django>=5.0,<5.2",
+    "djangorestframework>=3.15",
+    "django-cors-headers>=4.3",
+    "django-environ>=0.11",
+    "psycopg[binary]>=3.1",
+    "django-allauth[socialaccount]>=0.61",
+    "django-redis>=5.4",
+    "scipy>=1.11",
+    "openpyxl>=3.1",
+    "gunicorn>=21.2",
+    "drf-spectacular>=0.27",
+    "django-prometheus>=2.3",
+    # AI Agent: Text-to-SQL orchestration, OpenAI chat models, and SQL schema loading.
+    "langchain>=0.3",
+    "langchain-community>=0.3",
+    "langchain-openai>=0.2",
+    "pyyaml>=6.0",
+    "sqlalchemy>=2.0",
+    # OpenTelemetry: automatic instrumentation and Tempo trace export.
+    "opentelemetry-distro>=0.49b0",
+    "opentelemetry-exporter-otlp>=1.28",
+    "opentelemetry-instrumentation-django>=0.49b0",
+    "opentelemetry-instrumentation-psycopg>=0.49b0",
+    "opentelemetry-instrumentation-redis>=0.49b0",
+    "opentelemetry-instrumentation-requests>=0.49b0",
+    "opentelemetry-instrumentation-logging>=0.49b0",
+]
+# 개발 환경을 위한 도와주는 의존성들
+[project.optional-dependencies]
+dev = [
+    "black>=24.3",
+    "isort>=5.13",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "django-stubs>=5.0",
+    "pytest>=8.2",
+    "pytest-django>=4.8",
+    "debugpy>=1.8",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# placeholder package list — Django apps are not installed via setuptools
+packages = []
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_django = ["django"]
+sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]  # line length is handled by black
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.local"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.local"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
