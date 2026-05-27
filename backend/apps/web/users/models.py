@@ -3,12 +3,12 @@
 
 SPEC 6.6 마이페이지 — 프로필(학교/학년) + 찜한 동네 리스트.
 
-UserPreference는 SPEC 10에서 apps/preference/models.py에 두기로 했지만,
 Favorite는 사용자 도메인이 더 강하므로 users 앱 안에 둔다 (학부 프로젝트
 규모상 community 앱을 별도로 만들 필요 없음).
 """
 
 from django.conf import settings
+from django.contrib.gis.db import models as gis_models
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -39,6 +39,14 @@ class User(AbstractUser):
             "직접 입력. 빈 값이면 username을 그대로 노출."
         ),
     )
+    address = models.CharField(max_length=255, blank=True, default="")
+    home_location = gis_models.PointField(srid=4326, null=True, blank=True)
+    address_geocode_status = models.CharField(
+        max_length=20,
+        blank=True,
+        default="not_provided",
+    )
+    address_geocode_error = models.CharField(max_length=255, blank=True, default="")
 
     class Meta:
         db_table = "users"

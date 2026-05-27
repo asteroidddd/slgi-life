@@ -33,6 +33,8 @@ from django.db import models
 # housing_type 한글 5종 (CHECK ck_rent_deal_housing_type, schema.dbml line 161).
 HOUSING_TYPE_CHOICES = [
     ("아파트", "아파트"),
+    ("연립", "연립"),
+    ("다세대", "다세대"),
     ("연립다세대", "연립다세대"),
     ("다가구", "다가구"),
     ("단독", "단독"),
@@ -44,7 +46,9 @@ HOUSING_TYPE_CHOICES = [
 HOUSING_TYPE_TO_DEAL_TYPE: dict[str, str] = {
     "아파트": "apt",
     "오피스텔": "officetel",
-    "연립다세대": "villa",
+    "연립": "yeonlip",
+    "다세대": "dasedae",
+    "연립다세대": "yeonlip_dasedae",
     "다가구": "dagagu",
     "단독": "danok",
 }
@@ -53,6 +57,7 @@ HOUSING_TYPE_TO_DEAL_TYPE: dict[str, str] = {
 DEAL_TYPE_TO_HOUSING_TYPE: dict[str, str] = {
     v: k for k, v in HOUSING_TYPE_TO_DEAL_TYPE.items()
 }
+DEAL_TYPE_TO_HOUSING_TYPE["villa"] = "연립다세대"
 
 
 class RentDeal(models.Model):

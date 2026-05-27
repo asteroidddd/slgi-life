@@ -14,7 +14,7 @@ from _django import setup  # noqa: E402
 setup()
 
 from apps.service.amenities.updater import rebuild_amenities  # noqa: E402
-from apps.service.scoring.updater import recompute_current_scores  # noqa: E402
+from apps.service.heatmap.updater import recompute_current_scores  # noqa: E402
 
 
 TARGET_ORDER = ("amenity", "current")

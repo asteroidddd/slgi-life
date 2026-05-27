@@ -93,4 +93,4 @@ class RentDealPinSerializer(serializers.ModelSerializer):
 
     def get_converted_rent(self, obj: RentDeal) -> int:
         """환산월세 (만원, 정수). 보증금 환산 계수 0.005/월 (연 6%)."""
-        return round(convert_to_monthly(obj.deposit, obj.monthly_rent))
+        return convert_to_monthly(obj.deposit, obj.monthly_rent)

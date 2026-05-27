@@ -170,15 +170,15 @@ def get_filtered_schema_context(table_names: list[str]) -> str:
         return get_schema_context()
 
 
-def get_llm(model_key: str, temperature: float = 0) -> ChatOpenAI:
+def get_llm(model_key: str, temperature: float = 0, credentials: dict | None = None) -> ChatOpenAI:
     cfg = get_config()
     models = cfg.get("models", {"fast": "gpt-5.4-nano", "smart": "gpt-5.4"})
     sql_cfg = cfg.get("sql", {})
 
     return ChatOpenAI(
         model=models.get(model_key, models.get("smart", "gpt-5.4")),
-        api_key=os.environ.get("AI_AGENT_OPENAI_API_KEY"),
-        base_url=os.environ.get("AI_AGENT_OPENAI_BASE_URL"),
+        api_key=(credentials or {}).get("api_key") or os.environ.get("AI_AGENT_OPENAI_API_KEY"),
+        base_url=(credentials or {}).get("base_url") or os.environ.get("AI_AGENT_OPENAI_BASE_URL"),
         temperature=temperature,
         timeout=sql_cfg.get("timeout", 60),
         max_retries=sql_cfg.get("max_retries", 6),

@@ -60,6 +60,22 @@ def _label(props: dict[str, Any]) -> str:
     return str(props.get("LABEL") or props.get("ID") or "").strip()
 
 
+def _normalize_name(label: str, category: str) -> str:
+    text = re.sub(r"<\s*시공원\s*>", "", label).strip()
+    text = re.sub(r"\(\s*시공원\s*\)", "", text).strip()
+    text = re.sub(r"\s+", " ", text)
+    nested = re.search(r"\(([^()]+)\)", text)
+    if nested:
+        candidate = re.sub(r"\s+", " ", nested.group(1)).strip()
+        if candidate and candidate != category:
+            text = candidate
+    if category and text.startswith(category):
+        text = text[len(category):].strip()
+    text = re.sub(r"[()<>]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text or label.strip()
+
+
 def _category(label: str, props: dict[str, Any]) -> str:
     match = re.match(r"\s*([^()]+)", label)
     if match and match.group(1).strip():
@@ -95,23 +111,25 @@ def _build_records(features: list[dict[str, Any]], options: ParksUpdateOptions) 
         try:
             park_id = _park_id(props)
             source_ids.add(park_id)
-            name = _label(props)
+            raw_name = _label(props)
             geom = _geometry(feature)
         except (KeyError, TypeError, ValueError):
             skipped += 1
             skip_reasons["bad_geometry"] += 1
             continue
-        if not name:
+        if not raw_name:
             skipped += 1
             skip_reasons["missing_required"] += 1
             continue
+        category = _category(raw_name, props)
+        name = _normalize_name(raw_name, category)
 
         records.append(
             {
                 "id": park_id,
                 "defaults": {
                     "name": name[:200],
-                    "category": _category(name, props),
+                    "category": category,
                     "area_m2": _area_m2(geom),
                     "boundary": geom,
                     "location": geom.point_on_surface,

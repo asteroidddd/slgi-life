@@ -376,6 +376,9 @@ def _build_deal(
     options: RentDealsUpdateOptions,
     geocode_cache: dict[str, tuple[Point | None, str | None]],
 ) -> tuple[dict[str, Any] | None, str | None]:
+    source_housing_type = str(_get(row, "houseType", "주택유형") or housing_type).strip()
+    if source_housing_type in {"연립", "다세대", "연립다세대"}:
+        housing_type = source_housing_type
     try:
         contract_date = _contract_date(row)
     except (TypeError, ValueError):

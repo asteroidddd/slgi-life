@@ -13,7 +13,6 @@ from .views import (
     LoginView,
     LogoutView,
     MeView,
-    PreferenceView,
     RegisterView,
 )
 
@@ -26,11 +25,6 @@ urlpatterns = [
     path("auth/logout", LogoutView.as_view(), name="auth-logout"),
     # 마이페이지
     path("users/me", MeView.as_view(), name="me"),
-    path(
-        "users/me/preference",
-        PreferenceView.as_view(),
-        name="me-preference",
-    ),
     path(
         "users/me/favorites",
         FavoritesView.as_view(),

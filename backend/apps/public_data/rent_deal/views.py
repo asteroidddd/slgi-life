@@ -58,7 +58,17 @@ MAX_LIMIT = 500
 TOTAL_COUNT_CAP_MULTIPLIER = 5
 
 # deal_type 화이트리스트 (응답/요청 영문 enum 5종 + "all"). lock 1.
-ALLOWED_DEAL_TYPES = {"apt", "officetel", "villa", "dagagu", "danok", "all"}
+ALLOWED_DEAL_TYPES = {
+    "apt",
+    "officetel",
+    "yeonlip",
+    "dasedae",
+    "yeonlip_dasedae",
+    "villa",
+    "dagagu",
+    "danok",
+    "all",
+}
 
 # 캐시 TTL (SPEC 14.3: API 응답 5분 캐싱).
 CACHE_TTL_SECONDS = 300
@@ -235,9 +245,12 @@ class TransactionsBboxView(APIView):
         )
         if deal_type != "all":
             # 응답 영문 enum (lock 1) → 한글 raw로 변환해서 DB 필터.
-            housing_type_kr = DEAL_TYPE_TO_HOUSING_TYPE.get(deal_type)
-            if housing_type_kr is not None:
-                qs = qs.filter(housing_type=housing_type_kr)
+            if deal_type == "villa":
+                qs = qs.filter(housing_type__in=["연립", "다세대", "연립다세대"])
+            else:
+                housing_type_kr = DEAL_TYPE_TO_HOUSING_TYPE.get(deal_type)
+                if housing_type_kr is not None:
+                    qs = qs.filter(housing_type=housing_type_kr)
         if date_from is not None:
             qs = qs.filter(contract_date__gte=date_from)
         if date_to is not None:

@@ -11,17 +11,19 @@ from typing import Any, Iterable
 
 from django.db import connection, transaction
 from django.db.models import Count
+from django.utils import timezone
 
 from apps.public_data.bus.models import BusStop
+from apps.public_data.metrics.models import GuMetric
 from apps.public_data.regions.models import Adong, Gu, Ldong, Seoul
 from apps.public_data.rent_deal.models import RentDeal
+from apps.public_data.rent_deal.utils import get_monthly_conversion_rate
 from apps.public_data.subway.models import NearestSubwayAdong, NearestSubwayLdong
 from apps.service.amenities.models import Amenity, AmenityAdong, AmenityLdong
-from apps.service.scoring.models import CurrentAdong, CurrentGu, CurrentLdong, CurrentSeoul
+from apps.service.heatmap.models import CurrentAdong, CurrentGu, CurrentLdong, CurrentSeoul
 
 
 RENT_LOOKBACK_DAYS = 365
-RENT_CONVERSION_RATE = 0.005
 RENT_TRIM_RATIO = 0.05
 RENT_MIN_DEALS = 3
 SUBWAY_WEIGHT = 0.60
@@ -36,10 +38,14 @@ LIFE_CATEGORIES = {
     "mart",
     "restaurant",
     "cafe",
-    "studycafe",
+    "nightlife",
     "laundry",
+    "pet",
+    "beauty",
     "oliveyoung",
     "gym",
+    "book_stationery",
+    "pc_room",
     "etc",
     "library",
     "university",
@@ -60,6 +66,13 @@ class ScoreRow:
     score_rent: float | None
     score_amenity: float
     score_transit: float
+    score_safety: float
+    score_total: float
+    rank_rent: int | None = None
+    rank_amenity: int | None = None
+    rank_transit: int | None = None
+    rank_safety: int | None = None
+    rank_total: int | None = None
 
 
 def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
@@ -168,7 +181,7 @@ def _rent_raw_scores(
         area = float(area_m2 or 0.0)
         if area <= 0:
             continue
-        value = (float(monthly_rent) + float(deposit) * RENT_CONVERSION_RATE) / area
+        value = (float(monthly_rent) + float(deposit) * get_monthly_conversion_rate()) / area
         for seoul_code in seouls:
             values["seoul"][seoul_code].append(value)
         if ldong_gu_id:
@@ -441,29 +454,111 @@ def _rows(
     rent: dict[str, float | None],
     amenity: dict[str, float],
     transit: dict[str, float],
+    safety: dict[str, float],
 ) -> list[ScoreRow]:
-    return [
+    rows = [
         ScoreRow(
             code=code,
             score_rent=None if rent.get(code) is None else round(float(rent[code]), 1),
             score_amenity=round(amenity.get(code, 0.0), 1),
             score_transit=round(transit.get(code, 0.0), 1),
+            score_safety=round(safety.get(code, 0.0), 1),
+            score_total=round(
+                (((float(rent[code]) if rent.get(code) is not None else 0.0)
+                  + amenity.get(code, 0.0)
+                  + transit.get(code, 0.0)
+                  + safety.get(code, 0.0)) / 4.0),
+                1,
+            ),
         )
         for code in units
     ]
+    _assign_ranks(rows)
+    return rows
+
+
+def _assign_ranks(rows: list[ScoreRow]) -> None:
+    for score_attr, rank_attr, include_nulls in (
+        ("score_rent", "rank_rent", False),
+        ("score_amenity", "rank_amenity", True),
+        ("score_transit", "rank_transit", True),
+        ("score_safety", "rank_safety", True),
+        ("score_total", "rank_total", True),
+    ):
+        ranked = [
+            row for row in rows
+            if include_nulls or getattr(row, score_attr) is not None
+        ]
+        ranked.sort(key=lambda row: float(getattr(row, score_attr) or 0.0), reverse=True)
+        current_rank = 0
+        last_value = None
+        for index, row in enumerate(ranked, start=1):
+            value = getattr(row, score_attr)
+            if value != last_value:
+                current_rank = index
+                last_value = value
+            object.__setattr__(row, rank_attr, current_rank)
+
+
+def _safety_scores(
+    seouls: dict[str, Unit],
+    gus: dict[str, Unit],
+    ldongs: dict[str, Unit],
+    adongs: dict[str, Unit],
+) -> tuple[dict[str, float], dict[str, float], dict[str, float], dict[str, float]]:
+    raw_by_gu: dict[str, float] = {}
+    for row in (
+        GuMetric.objects.filter(metric_id="SAFETY_GRADE_MEAN")
+        .order_by("gu_id", "-date")
+        .distinct("gu_id")
+        .values("gu_id", "value")
+    ):
+        raw_by_gu[row["gu_id"]] = float(row["value"])
+
+    values = list(raw_by_gu.values())
+    if values:
+        min_grade = min(values)
+        max_grade = max(values)
+    else:
+        min_grade = max_grade = 0.0
+
+    def convert(gu_code: str | None) -> float:
+        if not gu_code or gu_code not in raw_by_gu:
+            return 0.0
+        grade = raw_by_gu[gu_code]
+        if max_grade <= min_grade:
+            return 100.0
+        return _clamp((max_grade - grade) / (max_grade - min_grade) * 100.0)
+
+    gu_scores = {code: convert(code) for code in gus}
+    ldong_scores = {code: convert(unit.parent_code) for code, unit in ldongs.items()}
+    adong_scores = {code: convert(unit.parent_code) for code, unit in adongs.items()}
+    seoul_value = statistics.fmean(gu_scores.values()) if gu_scores else 0.0
+    seoul_scores = {code: seoul_value for code in seouls}
+    return seoul_scores, gu_scores, ldong_scores, adong_scores
 
 
 def _write_current(rows: Iterable[ScoreRow], model: type, fk_name: str) -> int:
     count = 0
+    now = timezone.now()
     for row in rows:
-        model.objects.update_or_create(
-            **{f"{fk_name}_id": row.code},
-            defaults={
-                "score_rent": row.score_rent,
-                "score_amenity": row.score_amenity,
-                "score_transit": row.score_transit,
-            },
-        )
+        defaults = {
+            "score_rent": row.score_rent,
+            "score_amenity": row.score_amenity,
+            "score_transit": row.score_transit,
+            "score_safety": row.score_safety,
+            "score_total": row.score_total,
+            "updated_at": now,
+        }
+        if fk_name != "seoul":
+            defaults |= {
+                "rank_rent": row.rank_rent,
+                "rank_amenity": row.rank_amenity,
+                "rank_transit": row.rank_transit,
+                "rank_safety": row.rank_safety,
+                "rank_total": row.rank_total,
+            }
+        model.objects.update_or_create(**{f"{fk_name}_id": row.code}, defaults=defaults)
         count += 1
     return count
 
@@ -482,12 +577,15 @@ def recompute_current_scores(*, dry_run: bool = False, today: date | None = None
     transit_seoul, transit_gu, transit_ldong, transit_adong = _transit_scores(
         seouls, gus, ldongs, adongs
     )
+    safety_seoul, safety_gu, safety_ldong, safety_adong = _safety_scores(
+        seouls, gus, ldongs, adongs
+    )
 
     current_rows = {
-        "seoul": _rows(seouls, rent_seoul, amenity_seoul, transit_seoul),
-        "gu": _rows(gus, rent_gu, amenity_gu, transit_gu),
-        "ldong": _rows(ldongs, rent_ldong, amenity_ldong, transit_ldong),
-        "adong": _rows(adongs, rent_adong, amenity_adong, transit_adong),
+        "seoul": _rows(seouls, rent_seoul, amenity_seoul, transit_seoul, safety_seoul),
+        "gu": _rows(gus, rent_gu, amenity_gu, transit_gu, safety_gu),
+        "ldong": _rows(ldongs, rent_ldong, amenity_ldong, transit_ldong, safety_ldong),
+        "adong": _rows(adongs, rent_adong, amenity_adong, transit_adong, safety_adong),
     }
     stats = {
         "dry_run": dry_run,

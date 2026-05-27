@@ -27,6 +27,7 @@ def run_text_to_sql(
     join_hint: str,
     sql_plans: list = None,
     max_retry: int | None = None,
+    llm_credentials: dict | None = None,
 ) -> dict:
     cfg = get_config()
     sql_cfg = cfg.get("sql", {})
@@ -36,7 +37,7 @@ def run_text_to_sql(
         max_retry = sql_cfg.get("max_retry", 3)
 
     model_key = get_stage_model("sql_generation")
-    llm = get_llm(model_key)
+    llm = get_llm(model_key, credentials=llm_credentials)
     db = get_db()
     filtered_schema = get_filtered_schema_context(needed_tables)
     yaml_hints = get_join_hints(needed_tables)

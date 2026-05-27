@@ -36,7 +36,7 @@ urlpatterns = [
     # API 라우트
     path("api/", include("apps.service.neighborhoods.urls")),
     path("api/", include("apps.service.map.urls")),
-    path("api/", include("apps.service.preference.urls")),
+    path("api/", include("apps.service.heatmap.urls")),
     # AI Agent endpoint: POST /api/agent/query
     path("api/", include("apps.ai_agent.urls")),
     path("api/", include("apps.web.users.urls")),

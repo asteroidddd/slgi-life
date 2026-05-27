@@ -79,7 +79,8 @@ AMENITY_DISPLAY: list[tuple[str, list[str], float]] = [
     ("음식점", ["restaurant"], 1.40),
     ("마트", ["mart"], 0.30),
     ("병원·약국", ["hospital", "pharmacy"], 0.55),
-    ("스터디카페", ["studycafe"], 0.25),
+    ("서점/문구", ["book_stationery"], 0.15),
+    ("PC방", ["pc_room"], 0.10),
     ("세탁소", ["laundry"], 0.20),
     ("올리브영", ["oliveyoung"], 0.15),
 ]

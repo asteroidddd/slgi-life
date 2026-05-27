@@ -30,7 +30,7 @@ from .sql_guard import validate_read_only_sql
 from .prompts import CLASSIFICATION_PROMPT, SELECTION_PROMPT, INFO_ANSWER_PROMPT
 
 
-def run_agent(question: str) -> dict:
+def run_agent(question: str, llm_credentials: dict | None = None) -> dict:
     """
     파이프라인:
       1단계: 질문 분류  — route / query_type / needed_tables / join_hint
@@ -50,7 +50,7 @@ def run_agent(question: str) -> dict:
 
     # ── 1단계: 질문 분류 ──────────────────────────────────────────────────────
     print("\n[1단계] 질문 분류 중...")
-    llm_cls = get_llm(get_stage_model("classification"))
+    llm_cls = get_llm(get_stage_model("classification"), credentials=llm_credentials)
     classification = llm_cls.with_structured_output(
         ClassificationOutput, method="function_calling"
     ).invoke([
@@ -89,6 +89,7 @@ def run_agent(question: str) -> dict:
         needed_tables=classification.needed_tables,
         join_hint=classification.join_hint,
         sql_plans=[p.model_dump() for p in classification.sql_plans],
+        llm_credentials=llm_credentials,
     )
 
     # ── 3단계: query_type별 분기 ──────────────────────────────────────────────
@@ -98,7 +99,7 @@ def run_agent(question: str) -> dict:
 
     if "info_answer" in steps:
         print("\n[3단계] 정보 조회 답변 생성 중...")
-        llm_info = get_llm(get_stage_model("info_answer"))
+        llm_info = get_llm(get_stage_model("info_answer"), credentials=llm_credentials)
 
         info_result = llm_info.with_structured_output(
             InfoOutput, method="function_calling"
@@ -131,7 +132,7 @@ def run_agent(question: str) -> dict:
 
     if "selection" in steps:
         print("\n[3단계] 동네 선정 중...")
-        llm_sel = get_llm(get_stage_model("selection"))
+        llm_sel = get_llm(get_stage_model("selection"), credentials=llm_credentials)
 
         selection = llm_sel.with_structured_output(
             SelectionOutput, method="function_calling"

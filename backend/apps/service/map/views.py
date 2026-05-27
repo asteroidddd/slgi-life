@@ -145,3 +145,18 @@ class SearchView(APIView):
         data = {"items": _search_vworld(query, limit=8)}
         cache.set(cache_key, data, timeout=60 * 10)
         return Response(data, status=status.HTTP_200_OK)
+
+
+@extend_schema(tags=["map"], summary="Transit route placeholder")
+class TransitRouteView(APIView):
+    def get(self, request: Request) -> Response:
+        return Response(
+            {
+                "status": "unavailable",
+                "reason": "PUBLIC_TRANSIT_ROUTE_NOT_IMPLEMENTED",
+                "items": [],
+                "polyline": None,
+                "duration_minutes": None,
+            },
+            status=status.HTTP_200_OK,
+        )

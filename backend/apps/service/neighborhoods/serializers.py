@@ -19,7 +19,7 @@ from datetime import date, timedelta
 from rest_framework import serializers
 
 from apps.public_data.rent_deal.models import DEAL_TYPE_TO_HOUSING_TYPE, RentDeal
-from apps.public_data.rent_deal.utils import MONTHLY_CONVERSION_RATE
+from apps.public_data.rent_deal.utils import get_monthly_conversion_rate
 from apps.public_data.subway.models import NearestSubwayAdong, SubwayStation
 
 from .adong_surface import composite_score as _composite_score
@@ -145,7 +145,7 @@ class AdongSummarySerializer(serializers.Serializer):
             area = float(area_m2 or 0.0)
             if area <= 0:
                 continue
-            values.append((float(monthly_rent) + float(deposit) * MONTHLY_CONVERSION_RATE) / area)
+            values.append((float(monthly_rent) + float(deposit) * get_monthly_conversion_rate()) / area)
         if not values:
             return None
         return round(sum(values) / len(values), 2)
