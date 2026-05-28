@@ -22,6 +22,7 @@ const SAMPLE: AdongScore[] = [
     score_rent: 70,
     score_amenity: 90,
     score_transit: 75,
+    score_safety: 80,
   },
   {
     slug: 'jongno-jongno1',
@@ -34,6 +35,7 @@ const SAMPLE: AdongScore[] = [
     score_rent: 55,
     score_amenity: 65,
     score_transit: 60,
+    score_safety: 50,
   },
 ];
 
@@ -58,5 +60,6 @@ describe('pickScore', () => {
     expect(pickScore(d, 'rent')).toBe(70);
     expect(pickScore(d, 'amenity')).toBe(90);
     expect(pickScore(d, 'transit')).toBe(75);
+    expect(pickScore(d, 'safety')).toBe(80);
   });
 });

@@ -8,7 +8,7 @@ export type SeoulMaskFeatureCollection = FeatureCollection<
 
 export const SEOUL_MASK_GEOJSON_QUERY_KEY = ['api', 'geojson', 'seoul-mask'] as const;
 
-const GEOJSON_URL = '/api/geojson/seoul-mask';
+const GEOJSON_URL = '/api/map/geojson/seoul-mask';
 
 export async function fetchSeoulMaskGeoJson(): Promise<SeoulMaskFeatureCollection> {
   const res = await fetch(GEOJSON_URL);

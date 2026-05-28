@@ -5,7 +5,7 @@ API는 /api/ 하위. 도메인별 URL은 각 앱의 urls.py에 위임.
 
 9단계: 사용자 명시로 allauth/카카오 비활성화. 표준 Django username/password
 세션 인증만 사용. /api/auth/{register,login,logout} 및 /api/users/me 등은
-apps.web.users.urls에서 한꺼번에 제공한다.
+apps.accounts.urls에서 한꺼번에 제공한다.
 """
 
 from django.contrib import admin
@@ -34,11 +34,12 @@ urlpatterns = [
         name="redoc",
     ),
     # API 라우트
-    path("api/", include("apps.service.neighborhoods.urls")),
     path("api/", include("apps.service.map.urls")),
+    path("api/", include("apps.service.rent_deal.urls")),
+    path("api/", include("apps.service.amenities.urls")),
     path("api/", include("apps.service.heatmap.urls")),
     # AI Agent endpoint: POST /api/agent/query
     path("api/", include("apps.ai_agent.urls")),
-    path("api/", include("apps.web.users.urls")),
+    path("api/", include("apps.accounts.urls")),
     path("api/", include("apps.public_data.rent_deal.urls")),
 ]

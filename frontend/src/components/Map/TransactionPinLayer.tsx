@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { Marker, useMap, useMapEvents } from 'react-leaflet';
 
-import type { Bbox, RentDealPin } from '@/types/api';
+import type { Bbox, RentDealCachePin, RentDealPin } from '@/types/api';
 
 const MIN_ZOOM_FOR_PINS = 13;
 
@@ -34,16 +34,25 @@ export interface MapState {
 }
 
 export interface TransactionPinLayerProps {
-  pins: RentDealPin[];
+  pins: RentDealMapPin[];
   selectedJibun: string | null;
-  onPinClick: (jibunKey: string, pin: RentDealPin) => void;
+  onPinClick: (jibunKey: string, pin: RentDealMapPin) => void;
   onMapStateChange: (state: MapState) => void;
   suppressTooltips?: boolean;
 }
 
-function jibunKeyOf(p: RentDealPin): string {
+export type RentDealMapPin = RentDealPin | RentDealCachePin;
+
+function hasAddress(p: RentDealMapPin): p is RentDealPin {
+  return 'gu' in p && 'dong_name' in p && 'jibun' in p;
+}
+
+function pinKeyOf(p: RentDealMapPin): string {
+  if (!hasAddress(p)) return `${p.lng.toFixed(5)}|${p.lat.toFixed(5)}`;
   return `${p.gu}|${p.dong_name}|${p.jibun}`;
 }
+
+const jibunKeyOf = pinKeyOf;
 
 function roundMan(v: number): number {
   return Math.round(v);
@@ -146,7 +155,7 @@ export default function TransactionPinLayer({
   const groups = useMemo(() => {
     interface Group {
       key: string;
-      pin: RentDealPin;
+      pin: RentDealMapPin;
       count: number;
       convertedSum: number;
       convertedSamples: number;

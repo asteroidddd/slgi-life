@@ -1,10 +1,10 @@
 # Capston
 
-서울에서 자취를 준비하는 사용자가 동네별 주거비, 생활 편의, 교통 조건을 함께 비교할 수 있도록 돕는 공공데이터 기반 동네 탐색 서비스입니다.
+서울에서 자취를 준비하는 사용자가 지도 위에서 주거비, 생활 편의, 교통 조건을 함께 확인할 수 있도록 돕는 공공데이터 기반 동네 탐색 서비스입니다.
 
-## 서비스 개요
+## 현재 서비스 범위
 
-Capston은 서울 행정동을 기본 단위로 다룹니다. 사용자는 지도와 상세 화면에서 동네별 점수를 확인하고, 여러 동네를 비교하며, 자신의 선호에 맞는 자취 후보지를 찾을 수 있습니다.
+현재 코드는 지도 탐색, 히트맵, 실거래 필터링, 대시보드, 계정 기능, AI 질의 보조를 중심으로 구성되어 있습니다. 과거 상세 페이지와 비교 페이지 코드는 제거되었고, 해당 프론트엔드 경로는 홈 화면으로 리다이렉트됩니다.
 
 핵심 판단 축은 다음 세 가지입니다.
 
@@ -16,31 +16,33 @@ Capston은 서울 행정동을 기본 단위로 다룹니다. 사용자는 지�
 
 ## 주요 기능
 
-- 행정동 지도 기반 동네 탐색
-- 동네별 rent, amenity, transit 점수와 종합 점수 제공
-- 동네 상세 화면에서 월세, 편의시설, 교통, 인구, 구 단위 지표 제공
-- 여러 동네 비교
-- 사용자 선호 기반 가중치 적용
-- 로그인 사용자의 선호 설정과 즐겨찾기 관리
-- AI Agent를 통한 자연어 질의 보조
+- 서울 행정동/법정동 지도 기반 탐색
+- 행정동/법정동 점수 히트맵
+- 지도 영역 내 전월세 실거래 핀 조회
+- 조건 기반 전월세 매물 매칭 개수 조회
+- 선택 지역 대시보드
+- 회원가입, 로그인, 마이페이지, 즐겨찾기
+- AI Agent 자연어 질의와 사용자별 API 키 관리
 
 ## 주요 화면
 
-| 화면 | 목적 |
+| 경로 | 현재 동작 |
 |---|---|
-| `/` | 지도 기반 동네 탐색 |
-| `/dashboard` | 선택 동네의 지표형 대시보드 |
-| `/dong/:slug` | 동네 상세 정보 |
-| `/dong/:slug/explore` | 조건 기반 탐색 |
-| `/compare` | 동네 비교 |
-| `/login`, `/register`, `/mypage` | 사용자 계정과 개인화 |
+| `/` | 메인 지도 탐색 화면 |
+| `/dashboard` | 지도/거래/지표 기반 대시보드 |
+| `/login` | 로그인 |
+| `/register` | 회원가입 |
+| `/mypage` | 내 정보와 즐겨찾기 |
 | `/design-system` | 개발/디자인 확인용 화면 |
+| `/adong/:slug` | 현재 `/`로 리다이렉트 |
+| `/adong/:slug/explore` | 현재 `/`로 리다이렉트 |
+| `/compare` | 현재 `/`로 리다이렉트 |
 
 ## 기술 스택
 
 | 영역 | 내용 |
 |---|---|
-| Backend | Django, DRF, GeoDjango |
+| Backend | Django, Django REST Framework, GeoDjango |
 | Frontend | React 18, Vite, TypeScript |
 | Styling | Tailwind CSS v4 |
 | Map | Leaflet, react-leaflet, VWorld tile |
@@ -57,27 +59,27 @@ Capston은 서울 행정동을 기본 단위로 다룹니다. 사용자는 지�
 capston/
 ├── backend/
 │   ├── apps/
-│   │   ├── public_data/      # 공공데이터 원천 테이블과 업데이터
-│   │   ├── service/          # 화면 응답, 점수, 편의시설, 선호 기능
-│   │   ├── ai_agent/         # 자연어 질의 보조
-│   │   └── web/              # 사용자/인증
-│   ├── data/                 # 파일 기반 원천 데이터
-│   └── scripts/
-│       ├── update/           # 데이터 업데이트 실행기
-│       └── db/               # DB 운영 보조 스크립트
+│   │   ├── accounts/          # 사용자, 인증, 즐겨찾기
+│   │   ├── ai_agent/          # 자연어 질의 보조와 BYOK API 키 관리
+│   │   ├── legacy/            # 과거 neighborhoods 모델 보존
+│   │   ├── public_data/       # 공공데이터 원천 테이블과 업데이터
+│   │   └── service/           # 지도, 히트맵, 편의시설, 전월세 서비스 API
+│   ├── config/                # Django 설정과 URL 라우팅
+│   ├── data/                  # 파일 기반 원천 데이터
+│   └── scripts/               # 데이터 업데이트/검증 스크립트
 ├── frontend/
-│   ├── src/
-│   │   ├── routes/           # 페이지 라우트
-│   │   ├── components/       # 화면/도메인/UI 컴포넌트
-│   │   ├── hooks/            # API 호출과 화면 상태 hook
-│   │   ├── lib/              # API client, 유틸, 계산 보조
-│   │   ├── contexts/         # 인증/전역 상태
-│   │   ├── styles/           # 전역 스타일과 디자인 토큰
-│   │   └── types/            # 프론트엔드 타입
-│   ├── package.json
-│   └── vite.config.ts
+│   ├── public/                # 정적 파일
+│   └── src/
+│       ├── components/        # 화면/도메인/UI 컴포넌트
+│       ├── contexts/          # 인증/전역 상태
+│       ├── hooks/             # API 호출과 화면 상태 hook
+│       ├── lib/               # API client, 지도/계산 유틸
+│       ├── routes/            # 페이지 라우트
+│       ├── styles/            # 전역 스타일
+│       └── types/             # 프론트엔드 타입
 ├── docker-compose.yml
-├── initial_setup.sh          # 최초 수동 세팅 진입점
+├── initial_setup.sh
+├── scripts/
 └── DATA_SOURCES.md
 ```
 
@@ -89,8 +91,9 @@ capston/
 |---|---|
 | `backend/.env` | Django, DB, Redis, 외부 API 키, AI Agent 설정 |
 | `frontend/.env` | 프론트엔드 API 주소와 지도 키 |
+| `secrets/postgres_password.txt` | Docker Compose PostgreSQL 비밀번호 secret |
 
-루트 `.env`는 사용하지 않습니다.
+루트 `.env`는 애플리케이션 런타임에서 사용하지 않습니다. 로컬 작업 자동화나 EC2 접속 보조용으로만 둘 수 있습니다.
 
 Backend에 필요한 외부 API 키 이름은 `backend/.env.example`과 `DATA_SOURCES.md`를 기준으로 맞춥니다.
 
@@ -102,7 +105,7 @@ Frontend 주요 환경변수:
 | `VITE_VWORLD_API_KEY` | VWorld 지도 타일 키 |
 | `VITE_KAKAO_JS_KEY` | Kakao JavaScript SDK 키 |
 
-Vite는 `VITE_` prefix가 붙은 값만 클라이언트 번들에 노출합니다.
+Vite는 `VITE_` prefix가 붙은 값만 클라이언트 번들에 노출합니다. 비밀값은 절대 `VITE_` 환경변수에 넣지 않습니다.
 
 ## 초기 세팅
 
@@ -122,7 +125,7 @@ cd /home/ubuntu/capston
 5. Backend 컨테이너 기동
 6. 컨테이너 상태 출력
 
-초기 세팅 전에는 `backend/.env`, `frontend/.env`, `docker-compose.yml`이 현재 서버 환경에 맞는지 확인해야 합니다.
+초기 세팅 전에는 `backend/.env`, `frontend/.env`, `docker-compose.yml`, `secrets/postgres_password.txt`가 현재 서버 환경에 맞는지 확인해야 합니다.
 
 ## Backend
 
@@ -132,13 +135,16 @@ Backend는 Django/DRF/GeoDjango 기반입니다. 공공데이터 원천 테이�
 
 | 앱 | 역할 |
 |---|---|
-| `apps.public_data` | 공공데이터 API와 파일에서 가져온 원천 데이터 |
-| `apps.service.amenities` | 화면 응답에 쓰기 쉬운 통합 편의시설 데이터 |
-| `apps.service.scoring` | 현재 점수 테이블과 재계산 로직 |
-| `apps.service.neighborhoods` | 동네 점수, 상세, 비교 API |
-| `apps.service.preference` | 사용자 선호 학습과 가중치 관리 |
-| `apps.ai_agent` | 자연어 질의 기반 보조 기능 |
-| `apps.web.users` | 인증, 사용자, 즐겨찾기 |
+| `apps.accounts` | 사용자, 세션 인증, 마이페이지, 즐겨찾기 |
+| `apps.ai_agent` | 자연어 질의 기반 보조 기능과 BYOK API 키 관리 |
+| `apps.public_data.regions` | 서울 행정구역 코드와 경계 |
+| `apps.public_data.rent_deal` | 국토부 전월세 실거래 원천 데이터 |
+| `apps.public_data.*` | 인구, 지표, 상권, 교통, 공원, 도서관, 대학 원천 데이터 |
+| `apps.service.map` | 검색, 서울 마스크 GeoJSON, 교통 경로 |
+| `apps.service.heatmap` | 행정동/법정동 GeoJSON과 점수 API |
+| `apps.service.rent_deal` | 전월세 캐시, 조건 매칭, 환산율, 상세 조회 |
+| `apps.service.amenities` | 지도 영역 내 편의시설 조회 |
+| `apps.legacy.neighborhoods` | 과거 neighborhoods 모델 보존용 |
 
 로컬 개발 예시:
 
@@ -155,21 +161,21 @@ GeoDjango는 GDAL/GEOS/PROJ 시스템 라이브러리가 필요합니다. 운영
 
 ## Frontend
 
-Frontend는 React/Vite/TypeScript 기반 SPA입니다. 지도, 동네 상세, 대시보드, 비교, 로그인/마이페이지 화면을 제공합니다.
+Frontend는 React/Vite/TypeScript 기반 SPA입니다. 지도, 대시보드, 로그인/마이페이지 화면을 제공합니다.
 
 주요 폴더:
 
 | 경로 | 역할 |
 |---|---|
-| `frontend/src/routes` | `MainMap`, `Dashboard`, `AdongDetail`, `AdongExplore`, `Compare`, 계정 화면 |
-| `frontend/src/components/Map` | 지도, 히트맵, 사이드 패널, 범례 |
-| `frontend/src/components/Dashboard` | 대시보드 위젯과 섹션 |
-| `frontend/src/components/Detail` | 동네 상세 화면 섹션 |
+| `frontend/src/routes` | `MainMap`, `Dashboard`, 계정 화면, NotFound |
+| `frontend/src/components/Map` | 지도, 히트맵, 거래 핀 레이어 |
+| `frontend/src/components/Dashboard` | 대시보드 미니맵과 관련 UI |
+| `frontend/src/components/Layout` | AI 사이드 패널 등 레이아웃 요소 |
 | `frontend/src/components/ui` | 공통 UI 컴포넌트 |
 | `frontend/src/hooks` | TanStack Query 기반 API hook |
 | `frontend/src/lib` | API client, 지도/점수/계산 유틸 |
-| `frontend/src/contexts` | 인증 등 전역 context |
-| `frontend/src/styles` | 전역 스타일과 토큰 |
+| `frontend/src/contexts` | 인증, AI 패널, 페이지 제목 context |
+| `frontend/src/styles` | 전역 스타일 |
 
 로컬 개발 예시:
 
@@ -192,20 +198,37 @@ npm run test
 npm run preview
 ```
 
-프론트엔드 API 연결은 `VITE_API_BASE_URL`을 기준으로 합니다. 운영 배포에서는 프론트엔드가 접근 가능한 백엔드 API 주소로 설정해야 합니다.
+## 주요 API
 
-## 점수 체계
+현재 Django URL 라우팅에 등록된 주요 API입니다.
 
-서비스 점수는 `service.scoring`의 `current_*` 테이블을 기준으로 제공합니다.
-
-| 점수 | 기준 데이터 | 의미 |
-|---|---|---|
-| `score_rent` | `rent_deal` | 환산 월세가 낮을수록 높은 점수 |
-| `score_amenity` | `amenity`, `park` 등 | 생활/의료/공원 접근성이 좋을수록 높은 점수 |
-| `score_transit` | `nearest_subway_*`, `bus_stop` | 지하철과 버스 접근성이 좋을수록 높은 점수 |
-| composite score | 세 점수의 가중합 | 사용자 가중치가 반영된 종합 점수 |
-
-`current_seoul`, `current_gu`, `current_ldong`, `current_adong`은 같은 산식을 서로 다른 행정 단위에 적용한 파생 데이터입니다.
+| API | 용도 |
+|---|---|
+| `GET /api/search` | 지역/키워드 검색 |
+| `GET /api/map/geojson/seoul-mask` | 서울 외곽 마스크 GeoJSON |
+| `GET /api/map/transit-route` | 교통 경로 조회 |
+| `GET /api/heatmap/geojson/adongs` | 행정동 히트맵 GeoJSON |
+| `GET /api/heatmap/geojson/ldongs` | 법정동 히트맵 GeoJSON |
+| `GET /api/heatmap/adongs/scores` | 행정동 점수 |
+| `GET /api/heatmap/ldongs/scores` | 법정동 점수 |
+| `GET /api/transactions/bbox` | 지도 영역 내 전월세 거래 |
+| `GET /api/rent-deals/cache` | 전월세 캐시 조회/생성 |
+| `GET /api/rent-deals/match-counts` | 조건별 전월세 매칭 개수 |
+| `GET /api/rent-deals/conversion-rate` | 보증금-월세 환산율 |
+| `GET /api/rent-deals/<deal_id>` | 전월세 거래 상세 |
+| `GET /api/amenities/bbox` | 지도 영역 내 편의시설 |
+| `POST /api/agent/query` | AI Agent 질의 |
+| `DELETE /api/agent/conversation/<conversation_id>` | AI Agent 대화 초기화 |
+| `GET/POST /api/agent/api-keys` | AI API 키 상태 조회/저장 |
+| `POST /api/agent/api-keys/unlock` | 저장된 AI API 키 잠금 해제 |
+| `DELETE /api/agent/api-keys/<provider>` | AI API 키 삭제 |
+| `POST /api/auth/register` | 회원가입 |
+| `POST /api/auth/login` | 로그인 |
+| `POST /api/auth/logout` | 로그아웃 |
+| `GET/PATCH /api/users/me` | 내 정보 조회/수정 |
+| `GET /api/users/universities` | 학교 선택지 |
+| `GET/POST /api/users/me/favorites` | 즐겨찾기 조회/추가 |
+| `DELETE /api/users/me/favorites/<slug>` | 즐겨찾기 삭제 |
 
 ## 데이터 업데이트
 
@@ -233,19 +256,19 @@ python scripts/update/update_all.py --write
 
 업데이트 상태 JSON은 `backend/apps/public_data/.state` 아래에 저장됩니다.
 
-운영 자동화는 별도 스케줄러에서 `update_all.py --write`를 호출하는 방식으로 구성합니다. 장시간 실행 방지, 실패 시 다음 실행에서 이어받기, API 호출 제한 대응은 각 업데이터와 전체 실행기에서 관리합니다.
-
 ## 주요 문서
 
 | 문서 | 용도 |
 |---|---|
-| `DATA_SOURCES.md` | 원천 데이터, 업데이트 정책, 프론트엔드 제공 API |
+| `DATA_SOURCES.md` | 원천 데이터, 업데이트 정책, 현재 제공 API |
+| `backend/README.md` | 백엔드 개발과 API 요약 |
 | `backend/data/DATA_SOURCES.md` | 파일 기반 데이터의 세부 출처 |
 | `backend/scripts/README.md` | 업데이트 스크립트 개요 |
 
 ## 운영 주의
 
-- `.env` 값은 문서나 Git에 기록하지 않습니다.
+- `.env` 값, DB 비밀번호, 개인 키는 문서나 Git에 기록하지 않습니다.
+- `backend/.env`, `frontend/.env`, `secrets/`, `TEMP/`, `node_modules/`, `dist/`, `*.tsbuildinfo`는 Git에 포함하지 않습니다.
 - 마이그레이션 적용 후 데이터 업데이트를 수행합니다.
 - 공공데이터 API 호출 제한이 발생하면 해당 실행에서 중단하고 다음 실행에서 이어받습니다.
 - 삭제가 필요한 스냅샷성 데이터는 전체 적재 성공 후에만 삭제 반영합니다.

@@ -1,14 +1,9 @@
-// PageTitleContext — lets a route page publish its current page title to
-// the global TopNav center zone without TopNav re-fetching the data itself.
+// PageTitleContext — lets a route page publish its current page title.
 //
 // Why not React Router `handle` metadata? The codebase uses the JSX router
 // (`<Routes><Route .../></Routes>`), not the data-router `createBrowserRouter`
 // API — `useMatches()` returns no handle for the JSX form. So we use a
-// tiny context: each page calls `usePageTitle(name)` once data is loaded;
-// TopNav reads it via `usePageTitleValue()`.
-//
-// Loading/error fallback: pages can pass `undefined` (or omit the call)
-// and TopNav will render a fallback (e.g., the URL slug for /adong/:slug).
+// tiny context: each page calls `usePageTitle(name)` once data is loaded.
 //
 // Lifetime: the title resets when the page unmounts. No persistence across
 // route changes — each page is responsible for its own title publication.
@@ -41,7 +36,7 @@ export function PageTitleProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** Read-only access — used by TopNav. */
+/** Read-only access for route-level title consumers. */
 export function usePageTitleValue(): string | undefined {
   const ctx = useContext(PageTitleContext);
   return ctx?.title;

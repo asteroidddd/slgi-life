@@ -21,6 +21,7 @@ from urllib.request import Request, urlopen
 from django.contrib.gis.geos import Point
 from django.db import transaction
 
+from apps.public_data.api_keys import env_key_ring, with_rate_limit_fallback
 from apps.public_data.exceptions import RateLimitedError, is_rate_limited_code, is_rate_limited_text
 from apps.public_data.regions.models import Adong, Ldong
 from apps.public_data.rent_deal.models import RentDeal, RentDealLdongAdongMap
@@ -282,6 +283,20 @@ def _fetch_rows(
         page += 1
 
 
+def _fetch_rows_with_fallback(
+    *,
+    api_keys: tuple[str, ...],
+    path: str,
+    lawd: str,
+    ym: str,
+    options: RentDealsUpdateOptions,
+) -> list[dict[str, str]]:
+    return with_rate_limit_fallback(
+        api_keys,
+        lambda api_key: _fetch_rows(api_key=api_key, path=path, lawd=lawd, ym=ym, options=options),
+    )
+
+
 def _resolve_ldong(lawd: str, row: dict[str, str], name_lookup: dict[tuple[str, str], str]) -> str | None:
     code = str(_get(row, "법정동시군구코드", "sggCd") or "") + str(_get(row, "법정동읍면동코드", "umdCd") or "")
     if len(code) == 10:
@@ -440,7 +455,7 @@ def _build_deal(
 def _fetch_month_deals(
     *,
     ym: str,
-    api_key: str,
+    api_keys: tuple[str, ...],
     vworld_key: str | None,
     lawds: list[str],
     ldong_by_id: dict[str, Ldong],
@@ -460,7 +475,7 @@ def _fetch_month_deals(
 
     for lawd in lawds:
         for housing_type, path in RENT_ENDPOINTS.items():
-            rows = _fetch_rows(api_key=api_key, path=path, lawd=lawd, ym=ym, options=options)
+            rows = _fetch_rows_with_fallback(api_keys=api_keys, path=path, lawd=lawd, ym=ym, options=options)
             for row in rows:
                 if options.limit is not None and checked_start + checked >= options.limit:
                     return {
@@ -554,7 +569,7 @@ def update_rent_deals(options: RentDealsUpdateOptions) -> dict[str, Any]:
             },
         }
 
-    api_key = _require_env("PUBLIC_DATA_API_KEY")
+    api_keys = env_key_ring("PUBLIC_DATA_API_KEY")
     vworld_key = _optional_env("V_WORLD_API_KEY")
     ldongs = list(Ldong.objects.select_related("gu").all())
     ldong_by_id = {ldong.ldong_code: ldong for ldong in ldongs}
@@ -571,7 +586,7 @@ def update_rent_deals(options: RentDealsUpdateOptions) -> dict[str, Any]:
         try:
             fetched = _fetch_month_deals(
                 ym=ym,
-                api_key=api_key,
+                api_keys=api_keys,
                 vworld_key=vworld_key,
                 lawds=lawds,
                 ldong_by_id=ldong_by_id,
@@ -652,6 +667,7 @@ def update_rent_deals(options: RentDealsUpdateOptions) -> dict[str, Any]:
         "loaded_start": min(month_results) if month_results else None,
         "loaded_end": max(month_results) if month_results else None,
         "vworld_enabled": bool(vworld_key),
+        "public_data_key_count": len(api_keys),
     }
     return {
         "status": "success" if completed else "partial",

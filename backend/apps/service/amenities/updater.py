@@ -64,6 +64,13 @@ def _clean_name(value: Any, fallback: str) -> str:
     return text[:200] if text else fallback
 
 
+def _park_amenity_name(park: Park) -> str:
+    name = str(park.name or "").strip()
+    category = str(park.category or "").strip()
+    text = " ".join(part for part in (name, category) if part)
+    return _clean_name(text, park.id)
+
+
 def _store_category(store: Store) -> str:
     haystack = " ".join(
         str(value or "")
@@ -114,7 +121,7 @@ def _iter_park_rows() -> Iterator[AmenitySourceRow]:
     for park in Park.objects.filter(location__isnull=False).iterator(chunk_size=BATCH_SIZE):
         yield AmenitySourceRow(
             category="park",
-            name=_clean_name(park.name, park.id),
+            name=_park_amenity_name(park),
             location=park.location,
             source_table="park",
             source_id=str(park.id),

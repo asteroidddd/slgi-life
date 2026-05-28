@@ -1,13 +1,13 @@
 // Leaflet 기반 행정동 히트맵 (SPEC 6.1) — VWorld 타일.
 //
 // 카카오맵 SDK 통합이 폴리곤 렌더링에서 일관성 문제를 일으켜 다시 Leaflet으로
-// 복원. 타일은 VWorld(국토교통부) — 한국어 지명·도로·지하철이 OSM보다 풍부.
+// 복원. 타일은 VWorld(국토교통부)만 사용한다.
 //
 // /seoul_dongs.geojson 정적 파일에서 425개 행정동 경계를 1회 로드하고
 // feature.properties.adm_cd2 (10자리 행정동 코드) === adong.code 로 score 데이터와 조인.
 //
 // VWorld 키: frontend/.env 의 VITE_VWORLD_API_KEY.
-//   - 키 없으면 CartoDB Voyager 타일로 폴백 (시각적으로 무난, 그러나 한국어 라벨 약함).
+//   - fallback 타일은 쓰지 않는다. 키가 없으면 V-World 요청이 실패하므로 환경값을 먼저 고친다.
 //   - 키 발급: https://www.vworld.kr/ (회원가입 → 인증키 신청 → localhost 도메인 등록)
 
 import { useMemo } from 'react';
@@ -17,7 +17,7 @@ import type { Layer, LeafletMouseEvent } from 'leaflet';
 import type { Feature, Geometry } from 'geojson';
 import { GeoJSON, MapContainer, TileLayer, ZoomControl } from 'react-leaflet';
 
-import { useAdongGeoJson } from '@/hooks/useAdongGeoJson';
+import { useAdongGeoJson, useLdongGeoJson } from '@/hooks/useAdongGeoJson';
 import { useSeoulMaskGeoJson } from '@/hooks/useSeoulMaskGeoJson';
 import type { AdongFeatureProps } from '@/hooks/useAdongGeoJson';
 import { HEATMAP_NO_DATA, MAP_POLYGON_STROKE, scoreToHeatmapColor } from '@/lib/colors';
@@ -43,22 +43,15 @@ function cssColorToken(name: string): string {
 const VWORLD_KEY = import.meta.env.VITE_VWORLD_API_KEY as string | undefined;
 
 // VWorld WMTS Base 타일 (한국 지명·지하철·도로 풍부).
-const VWORLD_TILE_URL =
-  VWORLD_KEY && VWORLD_KEY.length > 0
-    ? `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Base/{z}/{y}/{x}.png`
-    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-
-const VWORLD_ATTRIBUTION =
-  VWORLD_KEY && VWORLD_KEY.length > 0
-    ? '&copy; <a href="https://www.vworld.kr/">V-World</a> 국토교통부'
-    : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const VWORLD_TILE_URL = `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY ?? ''}/Base/{z}/{y}/{x}.png`;
+const VWORLD_ATTRIBUTION = '&copy; <a href="https://www.vworld.kr/">V-World</a> 국토교통부';
 
 /** 레이어 탭 — 색상의 기준이 되는 점수 축. score 모드 전용.
  *  Phase 5 cleanup 이후 호출측 (MainMap) 은 항상 'composite' 로 고정 사용 —
  *  단일 축 (rent/amenity/transit) 보기는 WEIGHTS 100/0/0 프리셋 칩으로 흡수.
  *  rent/amenity/transit 키는 pickScore unit test 와 잠재적 상세 화면 재사용을
  *  위해 type 에 그대로 보존. */
-export type ScoreLayerKey = 'composite' | 'rent' | 'amenity' | 'transit';
+export type ScoreLayerKey = 'composite' | 'rent' | 'amenity' | 'transit' | 'safety';
 
 /** 히트맵 색칠 모드.
  *  - 'score': activeLayer 의 점수 (composite/rent/amenity/transit) 기반.
@@ -81,9 +74,14 @@ export interface HeatMapProps {
   /** 추가 레이어를 MapContainer 내부에 렌더링. react-leaflet 컴포넌트만 (e.g.,
    *  CircleMarker, useMap 사용 컴포넌트). 일반 DOM 노드는 작동 안 함. */
   children?: ReactNode;
+  regionLevel?: 'adong' | 'ldong';
 }
 
-export function pickScore(d: AdongScore, layer: ScoreLayerKey): number {
+function isFiniteScore(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+export function pickScore(d: AdongScore, layer: ScoreLayerKey): number | null {
   switch (layer) {
     case 'rent':
       return d.score_rent;
@@ -91,6 +89,8 @@ export function pickScore(d: AdongScore, layer: ScoreLayerKey): number {
       return d.score_amenity;
     case 'transit':
       return d.score_transit;
+    case 'safety':
+      return d.score_safety;
     case 'composite':
     default:
       return d.score;
@@ -120,9 +120,13 @@ export default function HeatMap({
   mode = 'match',
   matchCounts,
   children,
+  regionLevel = 'adong',
 }: HeatMapProps) {
-  const { data: geojson, isLoading: geoLoading } = useAdongGeoJson();
+  const adongGeo = useAdongGeoJson();
+  const ldongGeo = useLdongGeoJson();
   const { data: seoulMaskGeojson, isLoading: maskLoading } = useSeoulMaskGeoJson();
+  const geojson = regionLevel === 'ldong' ? ldongGeo.data : adongGeo.data;
+  const geoLoading = regionLevel === 'ldong' ? ldongGeo.isLoading : adongGeo.isLoading;
 
   // GeoJSON 의 adm_cd2 (10자리 행정동 코드) 와 매칭하기 위해 code 키로 인덱싱.
   // (구버전은 adm_cd 7자리 ↔ slug 매칭이었으나 RDS 통합 후 한글 slug 라 깨짐.)
@@ -141,7 +145,7 @@ export default function HeatMap({
   const layerKey = useMemo(() => {
     let acc = 0;
     if (mode === 'score') {
-      for (const d of adongs) acc = (acc + Math.round(pickScore(d, activeLayer) * 100)) | 0;
+      for (const d of adongs) acc = (acc + Math.round((pickScore(d, activeLayer) ?? 0) * 100)) | 0;
       return `score-${activeLayer}-${adongs.length}-${acc}`;
     }
     // match — ratio 기반 키 (정수 부분만 충분).
@@ -151,8 +155,8 @@ export default function HeatMap({
     for (const item of matchCounts ?? []) {
       acc = (acc + Math.round(item.ratio * 10)) | 0;
     }
-    return `match-${adongs.length}-${matchCounts?.length ?? 0}-${acc}`;
-  }, [adongs, activeLayer, mode, matchCounts]);
+    return `match-${regionLevel}-${adongs.length}-${matchCounts?.length ?? 0}-${acc}`;
+  }, [adongs, activeLayer, mode, matchCounts, regionLevel]);
 
   // match 모드 fillOpacity — 0.85 (eng-review #15 모드 시각 차이).
   const matchFillOpacity = 0.85;
@@ -180,12 +184,13 @@ export default function HeatMap({
 
     const adong = dongByCode[code];
     const score = adong ? pickScore(adong, activeLayer) : null;
+    const hasScore = isFiniteScore(score);
     return {
       color: MAP_POLYGON_STROKE.default.color,
       weight: MAP_POLYGON_STROKE.default.weight,
       opacity: MAP_POLYGON_STROKE.default.opacity,
-      fillColor: score !== null ? scoreToHeatmapColor(score) : HEATMAP_NO_DATA,
-      fillOpacity: score !== null ? scoreFillOpacity : 0.15,
+      fillColor: hasScore ? scoreToHeatmapColor(score) : HEATMAP_NO_DATA,
+      fillOpacity: hasScore ? scoreFillOpacity : 0.15,
     };
   };
 
@@ -205,6 +210,7 @@ export default function HeatMap({
     rent: '전월세 점수',
     amenity: '생활시설 점수',
     transit: '교통 점수',
+    safety: '안전 지수',
   };
 
   const onEachFeature = (
@@ -228,18 +234,20 @@ export default function HeatMap({
       );
     } else {
       const shownScore = pickScore(adong, activeLayer);
+      const scoreText = isFiniteScore(shownScore) ? shownScore.toFixed(1) : '데이터 없음';
       layer.bindTooltip(
         `<div class="map-tooltip__name">${adong.gu} · ${adong.name}</div>` +
-          `<div class="map-tooltip__score tabular">${layerLabel[activeLayer]} ${shownScore.toFixed(1)}</div>`,
+          `<div class="map-tooltip__score tabular">${layerLabel[activeLayer]} ${scoreText}</div>`,
         { sticky: true, direction: 'top', offset: [0, -4], opacity: 1 },
       );
     }
 
     const item = matchByCode[code];
     const hasMatchColor = item != null && item.has_data && item.ratio > 0;
+    const scoreForOpacity = pickScore(adong, activeLayer);
     const restingFillOpacity = mode === 'match'
       ? hasMatchColor ? matchFillOpacity : 0.7 * 0.5
-      : scoreFillOpacity;
+      : isFiniteScore(scoreForOpacity) ? scoreFillOpacity : 0.15;
 
     layer.on({
       click: (e: LeafletMouseEvent) => {

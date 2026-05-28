@@ -139,7 +139,7 @@ class Ldong(models.Model):
 class Adong(models.Model):
     """행정동. RDS `adong` 테이블 (schema.dbml line 119~127).
 
-    sub-plan 2J 신설. legacy `apps.service.neighborhoods.Dong`(=행정동) 모델·테이블은
+    sub-plan 2J 신설. legacy `apps.legacy.neighborhoods.Dong`(=행정동) 모델·테이블은
     sub-plan 7G-C(결정 5A)에서 완전 폐기되어 Adong이 단일 행정동 마스터다.
     Adong 모델은 sub-plan 2K/2L에서 score current_*/score_history adong-level
     참조용으로 신설되었으며, 7G-C 이후 행정동 표면 객체이기도 하다.

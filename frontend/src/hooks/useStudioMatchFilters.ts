@@ -13,19 +13,20 @@ import { useSearchParams } from 'react-router-dom';
 
 import type { ExploreDealType, ExplorePeriod, MatchFilters } from '@/types/api';
 
-const ALL_DEAL_TYPES: ExploreDealType[] = ['villa', 'dagagu', 'danok', 'officetel', 'apt'];
+const ALL_DEAL_TYPES: ExploreDealType[] = ['yeonlip', 'dasedae', 'yeonlip_dasedae', 'dagagu', 'danok', 'officetel', 'apt'];
 const PERIOD_VALUES: ExplorePeriod[] = ['3m', '6m', '12m', '24m', 'all'];
 
 /** 첫 진입 default — 자취 평균값으로 좁힘 (eng-review #1).
  *
- * - 거래유형: villa·dagagu·officetel — 단독은 1:1 통째 임대 형태가 아니라 자취
+ * - 거래유형: yeonlip·dasedae·dagagu·officetel — 단독은 1:1 통째 임대 형태가 아니라 자취
  *   탐색에 노이즈. apt 는 아예 다른 시장.
  * - 기간: 6개월 — 너무 옛 데이터 X, 너무 짧은 표본 X.
  * - 보증금 0~5,000만원 / 월세 30~80만원 / 면적 15~40m² — 자취 시장 90 percentile.
  */
 export const DEFAULT_STUDIO_MATCH_FILTERS: MatchFilters = {
-  deal_types: ['villa', 'dagagu', 'officetel'],
+  deal_types: ['yeonlip', 'dasedae', 'dagagu', 'officetel'],
   period: '6m',
+  filter_mode: 'converted',
   deposit_min: 0,
   deposit_max: 5_000,
   monthly_min: 30,
@@ -56,6 +57,7 @@ function parseDealTypes(raw: string | null): ExploreDealType[] {
   const items = raw
     .split(',')
     .map((s) => s.trim())
+    .map((s) => (s === 'villa' ? 'yeonlip_dasedae' : s))
     .filter((s): s is ExploreDealType => (ALL_DEAL_TYPES as string[]).includes(s));
   return items.length > 0 ? items : DEFAULT_STUDIO_MATCH_FILTERS.deal_types;
 }
@@ -66,6 +68,7 @@ export function readMatchFiltersFromSearch(search: URLSearchParams): MatchFilter
   return {
     deal_types: parseDealTypes(search.get('deal_types')),
     period: parseEnum<ExplorePeriod>(search.get('period'), PERIOD_VALUES, d.period),
+    filter_mode: parseEnum(search.get('filter_mode'), ['converted', 'raw'], d.filter_mode),
     deposit_min: parseInt32(search.get('deposit_min'), d.deposit_min),
     deposit_max: parseInt32(search.get('deposit_max'), d.deposit_max),
     monthly_min: parseInt32(search.get('monthly_min'), d.monthly_min),
@@ -87,6 +90,7 @@ export function writeMatchFiltersToSearch(
   for (const k of [
     'deal_types',
     'period',
+    'filter_mode',
     'deposit_min',
     'deposit_max',
     'monthly_min',
@@ -103,6 +107,7 @@ export function writeMatchFiltersToSearch(
     sp.set('deal_types', f.deal_types.join(','));
   }
   if (f.period !== d.period) sp.set('period', f.period);
+  if (f.filter_mode !== d.filter_mode) sp.set('filter_mode', f.filter_mode);
   if (f.deposit_min !== d.deposit_min) sp.set('deposit_min', String(f.deposit_min));
   if (f.deposit_max !== d.deposit_max) sp.set('deposit_max', String(f.deposit_max));
   if (f.monthly_min !== d.monthly_min) sp.set('monthly_min', String(f.monthly_min));
@@ -120,6 +125,7 @@ export function isStudioMatchDirty(f: MatchFilters): boolean {
   return (
     f.deal_types.join(',') !== d.deal_types.join(',') ||
     f.period !== d.period ||
+    f.filter_mode !== d.filter_mode ||
     f.deposit_min !== d.deposit_min ||
     f.deposit_max !== d.deposit_max ||
     f.monthly_min !== d.monthly_min ||
@@ -162,6 +168,7 @@ export function useStudioMatchFilters(): UseStudioMatchFiltersReturn {
     for (const k of [
       'deal_types',
       'period',
+      'filter_mode',
       'deposit_min',
       'deposit_max',
       'monthly_min',

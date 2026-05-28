@@ -38,6 +38,7 @@ export function useAdongMatchCounts(
       'match-counts',
       debounced.deal_types.join(','),
       debounced.period,
+      debounced.filter_mode,
       debounced.deposit_min,
       debounced.deposit_max,
       debounced.monthly_min,

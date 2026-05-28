@@ -55,6 +55,7 @@ export default function AiSidePanel() {
     const text = input.trim();
     if (!text || isSending) return;
 
+
     const userMsg: Message = { id: nextId++, role: 'user', text };
     const pendingId = nextId++;
     const pendingMsg: Message = {

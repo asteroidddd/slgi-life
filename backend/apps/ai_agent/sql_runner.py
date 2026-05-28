@@ -7,7 +7,6 @@ import json
 import time
 from langchain_core.messages import SystemMessage, HumanMessage
 
-# Django 앱 패키지 안에서 실행되므로 ai_agent 내부 의존성은 상대 import를 사용한다.
 from .db import (
     get_config,
     get_db,

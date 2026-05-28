@@ -1,0 +1,74 @@
+from __future__ import annotations
+
+from django.contrib.gis.geos import Polygon
+from rest_framework import status
+from rest_framework.exceptions import ValidationError
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from .models import CATEGORY_CHOICES, Amenity
+from .serializers import AmenityBboxSerializer
+
+
+ALLOWED_CATEGORIES = tuple(key for key, _label in CATEGORY_CHOICES)
+MAX_LIMIT = 1000
+DEFAULT_LIMIT = 500
+
+
+def _parse_bbox(raw: str | None) -> tuple[float, float, float, float]:
+    if not raw:
+        raise ValidationError({"bbox": "bbox is required: minLng,minLat,maxLng,maxLat."})
+    try:
+        min_lng, min_lat, max_lng, max_lat = [float(part.strip()) for part in raw.split(",")]
+    except ValueError as exc:
+        raise ValidationError({"bbox": "bbox must be minLng,minLat,maxLng,maxLat."}) from exc
+    if min_lng >= max_lng or min_lat >= max_lat:
+        raise ValidationError({"bbox": "bbox min values must be smaller than max values."})
+    if not (-180 <= min_lng <= 180 and -180 <= max_lng <= 180 and -90 <= min_lat <= 90 and -90 <= max_lat <= 90):
+        raise ValidationError({"bbox": "bbox coordinates are out of range."})
+    return min_lng, min_lat, max_lng, max_lat
+
+
+def _parse_categories(raw: str | None) -> tuple[str, ...]:
+    if not raw:
+        return ()
+    items = tuple(dict.fromkeys(part.strip() for part in raw.split(",") if part.strip()))
+    invalid = [item for item in items if item not in ALLOWED_CATEGORIES]
+    if invalid:
+        raise ValidationError({"categories": f"unknown categories: {invalid}"})
+    return items
+
+
+def _parse_limit(raw: str | None) -> int:
+    if raw in (None, ""):
+        return DEFAULT_LIMIT
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValidationError({"limit": "limit must be an integer."}) from exc
+    return max(1, min(value, MAX_LIMIT))
+
+
+class AmenityBboxView(APIView):
+    def get(self, request: Request) -> Response:
+        min_lng, min_lat, max_lng, max_lat = _parse_bbox(request.query_params.get("bbox"))
+        categories = _parse_categories(request.query_params.get("categories"))
+        limit = _parse_limit(request.query_params.get("limit"))
+
+        bbox = Polygon.from_bbox((min_lng, min_lat, max_lng, max_lat))
+        qs = Amenity.objects.filter(location__within=bbox).order_by("category", "name", "id")
+        if categories:
+            qs = qs.filter(category__in=categories)
+
+        items = list(qs[:limit])
+        return Response(
+            {
+                "bbox": [min_lng, min_lat, max_lng, max_lat],
+                "categories": categories,
+                "limit": limit,
+                "count": len(items),
+                "items": AmenityBboxSerializer(items, many=True).data,
+            },
+            status=status.HTTP_200_OK,
+        )

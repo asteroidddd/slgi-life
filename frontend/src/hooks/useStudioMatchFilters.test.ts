@@ -18,9 +18,9 @@ describe('readMatchFiltersFromSearch', () => {
   });
 
   it('parses deal_types csv', () => {
-    const sp = new URLSearchParams('deal_types=villa,officetel');
+    const sp = new URLSearchParams('deal_types=yeonlip,dasedae,officetel');
     const f = readMatchFiltersFromSearch(sp);
-    expect(f.deal_types).toEqual(['villa', 'officetel']);
+    expect(f.deal_types).toEqual(['yeonlip', 'dasedae', 'officetel']);
   });
 
   it('falls back to default on invalid period', () => {
@@ -76,7 +76,7 @@ describe('isStudioMatchDirty', () => {
     expect(
       isStudioMatchDirty({
         ...DEFAULT_STUDIO_MATCH_FILTERS,
-        deal_types: ['officetel', 'villa', 'dagagu'],
+        deal_types: ['officetel', 'yeonlip', 'dagagu'],
       }),
     ).toBe(true);
   });

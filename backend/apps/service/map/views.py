@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 import math
 import os
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request as UrlRequest, urlopen
 
+from django.core.cache import cache
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
@@ -14,9 +16,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from django.core.cache import cache
 
-
+DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 VWORLD_SEARCH_URL = "https://api.vworld.kr/req/search"
 SEOUL_SEARCH_BBOX = "126.72,37.34,127.22,37.75"
 
@@ -125,6 +126,51 @@ def _search_vworld(query: str, limit: int) -> list[dict]:
     return items
 
 
+def _extract_exterior_rings(geometry: dict | None) -> list[list[list[float]]]:
+    if not geometry:
+        return []
+    geom_type = geometry.get("type")
+    coords = geometry.get("coordinates") or []
+    rings: list[list[list[float]]] = []
+    if geom_type == "Polygon":
+        if coords and coords[0]:
+            rings.append(coords[0])
+    elif geom_type == "MultiPolygon":
+        for polygon in coords:
+            if polygon and polygon[0]:
+                rings.append(polygon[0])
+    return rings
+
+
+def _load_seoul_mask_geojson_from_data() -> dict:
+    with (DATA_DIR / "gu_boundaries.geojson").open(encoding="utf-8") as f:
+        gu_geojson = json.load(f)
+
+    holes: list[list[list[float]]] = []
+    for feature in gu_geojson.get("features", []):
+        holes.extend(_extract_exterior_rings(feature.get("geometry")))
+
+    outer = [
+        [124.0, 33.0],
+        [130.5, 33.0],
+        [130.5, 39.5],
+        [124.0, 39.5],
+        [124.0, 33.0],
+    ]
+
+    return {
+        "type": "FeatureCollection",
+        "name": "seoul_outer_mask",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Polygon", "coordinates": [outer, *holes]},
+                "properties": {"name": "서울 외 지역 마스크"},
+            }
+        ],
+    }
+
+
 @extend_schema(
     tags=["map"],
     summary="지도 검색",
@@ -144,6 +190,17 @@ class SearchView(APIView):
 
         data = {"items": _search_vworld(query, limit=8)}
         cache.set(cache_key, data, timeout=60 * 10)
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class SeoulMaskGeoJsonView(APIView):
+    def get(self, request: Request) -> Response:
+        cache_key = "map:geojson:seoul-mask:v1"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached, status=status.HTTP_200_OK)
+        data = _load_seoul_mask_geojson_from_data()
+        cache.set(cache_key, data, timeout=60 * 60 * 24)
         return Response(data, status=status.HTTP_200_OK)
 
 

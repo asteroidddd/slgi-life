@@ -34,9 +34,13 @@
 // here is a manual smoke through every action — no automated tests in
 // this project (`.gstack/no-test-bootstrap`).
 
-import type { LatLng } from '@/hooks/useKernelScore';
 import type { Weights } from '@/types/api';
 import { DEFAULT_WEIGHTS } from '@/types/api';
+
+export interface LatLng {
+  lat: number;
+  lng: number;
+}
 
 export interface PanelState {
   // Right-side slide-in panels (mutually exclusive).

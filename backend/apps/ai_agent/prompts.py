@@ -18,6 +18,12 @@ CLASSIFICATION_PROMPT = """
 당신은 서울 자취/동네 추천 서비스의 질문 분류 에이전트입니다.
 아래 DB 스키마를 보고 사용자 질문을 분석하세요.
 
+[이전 대화 기록]
+{conversation_history}
+
+※ 이전 대화가 있으면 "거기서", "그 동네", "거기" 같은 대명사를 위 기록의 추천 동네로 해석하세요.
+※ 이전 대화와 무관한 새로운 질문이면 이전 기록을 무시하세요.
+
 [판단 기준]
 - "db": 제공된 스키마로 답할 수 있는 질문
 - "direct": DB 없이 바로 답할 수 있는 질문
@@ -26,8 +32,10 @@ CLASSIFICATION_PROMPT = """
              또는 제공하면 안 되는 요청 (개인정보, 불법 행위 등)
 
 [query_type 판단 기준]
-- "recommendation": 동네 자체를 찾는 질문
-- "info": 특정 시설/정보를 조회하는 질문
+- "recommendation": 동네 자체를 찾는 질문 또는 동네 간 수치를 비교하는 질문
+                    예) "동네 추천해줘", "동네별 월세 비교해줘", "카페 많은 동네", "버스 많은 동네"
+- "info": 텍스트로 보여줘야 하는 시설/정보 조회 질문
+          예) "도서관 운영시간 알려줘", "편의점 목록 알려줘", "근처 카페 이름 알려줘"
 - route가 "direct" 또는 "blocked"이면 query_type은 "none"으로 설정
 
 [needed_tables 선택 기준]
@@ -36,8 +44,11 @@ CLASSIFICATION_PROMPT = """
 - 월세만: rent_deal, ldong, gu
 - 도서관: library, library_hours, adong, gu
 - 공원: park, park_adong, adong, gu
-- 상가/카페: store, adong, gu
+- 카페/편의점/헬스장/병원/약국 등 일반 시설 수: amenity, amenity_adong, adong, gu
+  (amenity.category 값: cafe/convenience/gym/hospital/pharmacy/laundry/studycafe/mart/restaurant)
+- 특정 업종 상세 조회(store 코드 필요 시): store, adong, gu
 - 지하철: subway_station, subway_congestion, adong, gu
+- 지하철 접근성/거리: nearest_subway_adong, adong, gu
 - 버스: bus_stop, bus_congestion, adong, gu
 - 안전: gu_metric, gu (metric_code: SAFETY_GRADE_MEAN 또는 SAFETY_GRADE_TRAFFIC 등)
 - 동네 추천 질문은 항상 gu 포함
@@ -74,6 +85,19 @@ CLASSIFICATION_PROMPT = """
 ▶ 버스 노선/정류장 수:
   bus_stop.adong_code = adong.adong_code → COUNT(DISTINCT bus_stop.id) GROUP BY adong.adong_code
   adong → gu: LEFT(adong_code, 5) = gu.gu_code
+
+▶ 카페/편의점/헬스장 등 일반 시설 수 (amenity 활용 — store보다 단순):
+  행정동 기준: amenity(WHERE category='cafe') → amenity_adong.amenity_id = amenity.id
+    → amenity_adong.adong_code = adong.adong_code → adong.gu_code = gu.gu_code
+  법정동 이름으로 필터링 시 (이전 추천 동네 후속 질문 등):
+    amenity → amenity_ldong.amenity_id = amenity.id
+    → amenity_ldong.ldong_code = ldong.ldong_code
+    → ldong.name으로 WHERE 조건 적용 → ldong.gu_code = gu.gu_code
+
+▶ 지하철 접근성 (nearest_subway_adong 활용):
+  nearest_subway_adong(WHERE rank=1) → nearest_subway_adong.adong_code = adong.adong_code
+  → adong.gu_code = gu.gu_code
+  (rank=1이 최근접역, distance_m으로 평균 거리 비교 가능)
 
 [DB 스키마]
 {schema_context}
@@ -115,20 +139,63 @@ SQL 쿼리 한 개만 출력하세요. 설명, 주석, 코드블록 기호 없�
 
 [필수 규칙]
 1. SELECT 쿼리만 작성하세요. INSERT, UPDATE, DELETE, DROP 절대 금지
-2. geometry, boundary, location 컬럼 SELECT 절대 금지
+2. geometry, boundary, location 컬럼 SELECT 절 직접 포함 금지
+   단, PostGIS 함수 인자로는 허용: ST_Distance(..., location::geography), ST_DWithin(..., location::geography, ...), ST_Y(location), ST_X(location)
 3. 대용량 테이블(rent_deal, bus_congestion)은 WHERE + LIMIT 필수
-4. 월세: monthly_rent > {monthly_rent_min} 조건 + AVG 사용
+4. 월세/전세 구분 — rent_deal에 별도 컬럼 없음. monthly_rent 값으로 구분:
+   - 월세 조회: monthly_rent > {monthly_rent_min} AND housing_type IN ('오피스텔', '연립다세대', '단독', '다가구')
+   - 전세 조회: monthly_rent = 0 AND deposit > 0 AND housing_type IN ('오피스텔', '연립다세대', '단독', '다가구')
+   - 질문에 월세/전세 언급 없으면 월세(monthly_rent > {monthly_rent_min})로 처리
+   자취생 대상 서비스이므로 housing_type 필터 필수 (아파트 제외 — 고가 아파트가 섞이면 평균 왜곡)
 5. 대학 이름: LIKE 사용, exact match(=) 금지
 6. 동네 추천: 반드시 LIMIT {result_limit} 이상으로 후보 충분히 반환. LIMIT 1 절대 금지
 7. rent_deal 조회 시 최근 1년 데이터만 사용: contract_date >= CURRENT_DATE - INTERVAL '1 year'
-8. 도서관 운영시간 조회 시 반드시 library_hours.day_type 컬럼을 포함하세요 
+   월세 비교/순위 질문은 ORDER BY avg_monthly_rent ASC (저렴한 순) 가 기본
+   단, "비싼 동네", "높은 순" 등 명시적으로 높은 순을 요청한 경우만 DESC 사용
+8. 도서관 운영시간 조회 시 library_hours.day_type 컬럼 포함 필수
+   day_type 값: MON/TUE/WED/THU/FRI/SAT/SUN  ← 한국어 요일 절대 금지
 9. 목록 조회 시 LIMIT 10 이하로 제한하세요
+10. amenity 테이블로 시설 수를 조회할 때는 amenity_adong(또는 amenity_ldong)을 경유하세요
+    예: SELECT COUNT(*) FROM amenity a JOIN amenity_adong aa ON a.id = aa.amenity_id WHERE a.category = 'cafe'
+11. "동네별" 집계는 반드시 법정동(ldong) 기준으로 GROUP BY ldong.name, gu.name 사용
+    구(gu) 기준 단독 GROUP BY 금지
+12. rent_deal에서 개별 거래 건을 조회할 때는 반드시 아래 컬럼을 포함하세요:
+    SELECT CASE WHEN monthly_rent > 0 THEN '월세' ELSE '전세' END AS deal_type,
+           ldong.name AS 동네명, housing_type, deposit, monthly_rent,
+           house_name, floor, area_m2, contract_date
+    집계(AVG, COUNT 등) 쿼리에서는 불필요
+13. 시설 목록 조회 질문(카페, 편의점, 도서관, 지하철역 등)은
+    아래 테이블에서 반드시 ST_Y(별칭.location) AS lat, ST_X(별칭.location) AS lng 를 SELECT에 포함하세요:
+      amenity, store, library, subway_station, bus_stop (bus_stop은 WHERE location IS NOT NULL 필수)
+    예: SELECT s.name, s.branch_name, ST_Y(s.location) AS lat, ST_X(s.location) AS lng FROM store s ...
+    location 컬럼 raw SELECT 절대 금지 — 반드시 ST_Y/ST_X 함수로만 추출하세요
+    이 규칙은 선택이 아닌 필수입니다. lat/lng 없이 시설 목록 쿼리를 작성하면 안 됩니다
+14. "A와 B 사이", "A와 B 사이에 위치한" 같은 두 장소 사이 질문은 두 장소를 잇는 선분(ST_MakeLine) 근처 동네를 찾으세요:
+    WITH path AS (
+      SELECT ST_MakeLine(
+        (SELECT location FROM univ WHERE name LIKE '%A%' LIMIT 1),
+        (SELECT location FROM univ WHERE name LIKE '%B%' LIMIT 1)
+      ) AS line
+    )
+    SELECT l.name AS ldong_name, gu.name AS gu_name, ...,
+      ST_Distance(l.location::geography, p.line::geography) AS dist_to_path
+    FROM ldong l JOIN gu ON l.gu_code = gu.gu_code
+    CROSS JOIN path p
+    WHERE ST_DWithin(l.location::geography, p.line::geography, 2000)
+    ORDER BY dist_to_path ASC LIMIT {{result_limit}}
+    장소 종류에 따라 univ 대신 subway_station, bus_stop 등을 사용하세요
+    location 컬럼은 SELECT 절에 포함하지 말고 PostGIS 함수 인자로만 사용
 
 [코드 체계]
 - adong_code(행정동)와 ldong_code(법정동)는 서로 다른 코드 체계
+- adjacent_adong 컬럼: adong1_code, adong2_code (양방향 조인 필요)
+- adjacent_ldong 컬럼: ldong1_code, ldong2_code (양방향 조인 필요)
 - adjacent_adong.adong_code = rent_deal.ldong_code 직접 조인 절대 금지
-- adong 테이블에 ldong_code 컬럼 없음
-- LEFT(adong_code, 5) = gu_code 로 gu 바로 연결 가능
+- adong 테이블에 ldong_code 컬럼 없음. adong.gu_code = gu.gu_code 직접 조인 가능
+- LEFT(adong_code, 5) = gu_code 로 gu 바로 연결 가능 (adong.gu_code = gu.gu_code 와 동일)
+- 이전 대화에서 추천된 동네는 법정동(ldong) 이름입니다.
+  amenity 조회 시 반드시 amenity_ldong → ldong.name 경로로 필터링하세요.
+  adong.name으로 필터링하면 법정동·행정동 이름이 달라 결과가 없습니다.
 """
 
 # ── 3단계: 동네 선정 프롬프트 ────────────────────────────────────────────────
@@ -159,7 +226,8 @@ SQL 조회 결과를 분석해 사용자 질문에 가장 적합한 동네를 �
 
 [필수 규칙]
 1. SELECT 쿼리만 작성하세요. INSERT, UPDATE, DELETE, DROP 절대 금지
-2. geometry, boundary, location 컬럼 SELECT 절대 금지
+2. geometry, boundary, location 컬럼 SELECT 절 직접 포함 금지
+   단, PostGIS 함수 인자로는 허용: ST_Distance(..., location::geography), ST_DWithin(..., location::geography, ...)
 3. 대용량 테이블(rent_deal, bus_congestion)은 WHERE + LIMIT 필수
 
 [보강 쿼리 규칙]
@@ -167,6 +235,11 @@ SQL 조회 결과를 분석해 사용자 질문에 가장 적합한 동네를 �
 - 반드시 실제 존재하는 테이블만 사용
 - 서울 전체 평균 월세: SELECT AVG(monthly_rent) FROM rent_deal WHERE monthly_rent > 10
 - 안전 등급: SELECT gu_code, value FROM gu_metric WHERE metric_code = 'SAFETY_GRADE_MEAN'
+- 위치 기반 질문("A와 B 사이", "A 근처")에서 map 시각화를 선택했다면
+  additional_sql로 추천 동네 좌표를 조회하고 data에 lat/lng를 채우세요:
+  SELECT name, ST_Y(location) AS lat, ST_X(location) AS lng
+  FROM adong WHERE name IN ('동네1', '동네2')
+  (adong에 없으면 ldong 테이블로 시도)
 
 [시각화 데이터 작성 규칙]
 - 수치로 비교 가능한 조건만 차트로 만드세요
@@ -221,8 +294,11 @@ SQL 조회 결과를 분석해 사용자 질문에 가장 적합한 동네를 �
 ]
 
 [시각화 선택 기준]
-- "bar": 동네 간 수치 비교 (월세, 카페 수 등)
+- "bar": 월세·시설 수 등 수치를 동네끼리 비교하는 질문
 - "line": 시간에 따른 추이 (월별 월세 추이, 인구 변화 등)
+- "map": "A와 B 사이", "A 근처", "어디 위치한" 같은 위치/공간 기반 질문에만 사용
+          수치 비교(월세·카페 수 등)가 핵심인 질문에는 사용하지 않음
+          map 사용 시 additional_sql로 추천 동네 좌표를 반드시 조회
 - "none": 단순 텍스트로 충분한 경우
 
 [line 차트 데이터 형식]
@@ -258,8 +334,9 @@ SQL 조회 결과를 보고 사용자 질문에 맞는 답변을 한국어로 �
 응답 JSON:
 {
   "answer": "사용자에게 보여줄 자연어 답변",
-  "visualization_type": "table | bar | none",
+  "visualization_type": "table | bar | line | map | none",
   "visualization_title": "시각화 제목",
+  "visualization_unit": "수치 단위 (예: 만원, 개, %, km). 단위 없으면 빈 문자열",
   "visualization_data": [
     {
       "label": "항목 이름 (도서관명, 동네명, 시설명 등)",
@@ -272,17 +349,26 @@ SQL 조회 결과를 보고 사용자 질문에 맞는 답변을 한국어로 �
 }
 
 [시각화 타입 선택 기준]
-- "table": 도서관 운영시간, 시설 목록, 요일별 데이터 등 목록형
-- "bar": 동네별 수치 비교 (카페 수, 편의점 수 등)
-- "line": 시간에 따른 추이 (월별 월세 추이, 인구 변화 등) label은 "YYYY-MM" 형식
+- "map": SQL 결과에 lat/lng 컬럼이 있으면 최우선으로 선택. 시설 위치, 동네 위치 등 좌표 기반 질문에 사용
+         각 항목의 lat, lng 필드에 반드시 값을 채우세요
+- "table": 도서관 운영시간, 동네별 수치 목록 등 좌표 없이 텍스트/수치만 있는 목록형 데이터
+- "bar": 동네 간 수치 비교 (편의점 수, 카페 수, 월세 등 항목별 수치 비교)
+         bar 타입이면 각 항목의 value 필드에 반드시 수치를 채우세요
+- "line": 시간 순서가 있는 추이 데이터
 - "none": 단순 텍스트로 충분한 경우
 
 [작성 규칙]
 - answer는 핵심 요약 1~2문장만 작성하세요. 상세 목록은 visualization_data에 담으세요.
+- columns의 key에 단위를 포함하세요. 예: "월세(만원)", "면적(㎡)", "거래일"
 - visualization_data에 최대 10개까지만 담으세요.
 - 운영하지 않는 요일은 "-"로 표시
 - 시간 형식은 HH:MM-HH:MM으로 통일
-- 숫자와 텍스트 모두 가능합니다
 - 결과가 없으면 visualization_type을 "none"으로 설정
 - JSON 외의 설명은 쓰지 마세요
+- SQL 결과는 전체 데이터가 아닌 일부(LIMIT)일 수 있으므로 "가장 높다/낮다" 같은 절대적 표현 금지
+- 대신 "월세가 저렴한 순으로 보여드려요", "조회된 동네 중" 같은 표현 사용
+- SQL 결과에 deal_type 컬럼이 있으면 매물 유형에 따라 columns를 다르게 구성하세요:
+  - 월세: 동네, 유형, 건물유형, 건물명, 층, 면적(㎡), 보증금(만원), 월세(만원), 거래일 모두 포함
+  - 전세: 동네, 유형, 건물유형, 건물명, 층, 면적(㎡), 보증금(만원), 거래일 포함 (월세(만원) 제외)
+  - SQL에 없는 컬럼은 생략하고, 있는 컬럼은 모두 포함하세요
 """

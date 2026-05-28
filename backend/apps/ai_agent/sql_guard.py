@@ -60,8 +60,10 @@ def validate_read_only_sql(sql: str) -> str:
     select_clause = _first_select_clause(lowered)
     if _selects_all_columns(select_clause):
         raise UnsafeSQL("SELECT * 또는 table.* 조회는 허용하지 않습니다.")
+    geometry_check_clause = _remove_allowed_geometry_functions(select_clause)
     selected_geometry = sorted(
-        col for col in GEOMETRY_COLUMNS if re.search(rf"(\b|\.){col}\b", select_clause)
+        col for col in GEOMETRY_COLUMNS
+        if re.search(rf"(\b|\.){col}\b", geometry_check_clause)
     )
     if selected_geometry:
         raise UnsafeSQL(
@@ -100,6 +102,15 @@ def _selects_all_columns(select_clause: str) -> bool:
         or re.search(r",\s*\*", select_clause)
         or re.search(r"\b[a-z_][a-z0-9_]*\.\*", select_clause)
     )
+
+
+def _remove_allowed_geometry_functions(select_clause: str) -> str:
+    """Allow spatial columns only as arguments to safe value-returning PostGIS functions."""
+    allowed_functions = ("st_y", "st_x", "st_distance", "st_dwithin", "st_asgeojson")
+    cleaned = select_clause
+    for fn in allowed_functions:
+        cleaned = re.sub(rf"\b{fn}\s*\([^)]*\)", "", cleaned)
+    return cleaned
 
 
 def _validate_limits(lowered_sql: str) -> None:

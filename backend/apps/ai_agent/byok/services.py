@@ -7,12 +7,15 @@ import os
 from dataclasses import dataclass
 
 from django.core.cache import cache
+from django.db.models import Q
+from django.utils import timezone
 
 from apps.ai_agent.models import UserAIAPIKey
 
 
 UNLOCK_TTL_SECONDS = 30 * 60
 PROVIDERS = {UserAIAPIKey.PROVIDER_OPENAI, UserAIAPIKey.PROVIDER_MINDLOGIC}
+STALE_KEY_DAYS = 7
 
 
 class BYOKError(Exception):
@@ -159,3 +162,11 @@ def get_unlocked_credentials(user) -> list[ProviderCredential]:
     if not credentials:
         raise PassphraseRequired("No unlocked AI API key.")
     return credentials
+
+
+def purge_stale_user_keys(days: int = STALE_KEY_DAYS) -> int:
+    cutoff = timezone.now() - timezone.timedelta(days=days)
+    deleted, _ = UserAIAPIKey.objects.filter(
+        Q(user__last_login__isnull=True) | Q(user__last_login__lt=cutoff)
+    ).delete()
+    return int(deleted)

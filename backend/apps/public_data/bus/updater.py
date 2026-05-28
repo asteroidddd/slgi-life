@@ -17,6 +17,7 @@ from urllib.request import Request, urlopen
 from django.contrib.gis.geos import Point
 from django.db import transaction
 
+from apps.public_data.api_keys import env_key_ring, with_rate_limit_fallback
 from apps.public_data.bus.models import BusCongestion, BusStop
 from apps.public_data.exceptions import RateLimitedError, is_rate_limited_code, is_rate_limited_text
 from apps.public_data.regions.models import Adong, Gu, Ldong
@@ -139,6 +140,18 @@ def _response_items(payload: Any) -> tuple[int, list[dict[str, Any]]]:
     return int(body.get("totalCount") or len(rows) or 0), list(rows)
 
 
+def _public_data_items_with_fallback(
+    api_keys: tuple[str, ...],
+    path: str,
+    params: dict[str, str],
+    options: BusUpdateOptions,
+) -> tuple[int, list[dict[str, Any]]]:
+    return with_rate_limit_fallback(
+        api_keys,
+        lambda api_key: _response_items(_public_data_json(api_key, path, params, options)),
+    )
+
+
 def _find_region(point: Point) -> tuple[Ldong | None, Adong | None]:
     return (
         Ldong.objects.filter(boundary__covers=point).order_by("area_m2").first(),
@@ -247,7 +260,7 @@ def _congestion_window(options: BusUpdateOptions) -> tuple[date | None, date | N
 
 
 def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
-    api_key = _require_env("PUBLIC_DATA_API_KEY")
+    api_keys = env_key_ring("PUBLIC_DATA_API_KEY")
     start, end, window_meta = _congestion_window(options)
     if start is None or end is None:
         return {
@@ -296,8 +309,8 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
             for gu_code in gu_codes:
                 page = 1
                 while True:
-                    payload = _public_data_json(
-                        api_key,
+                    total, rows = _public_data_items_with_fallback(
+                        api_keys,
                         BUS_CONGESTION_PATH,
                         {
                             "pageNo": str(page),
@@ -309,7 +322,6 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
                         },
                         options,
                     )
-                    total, rows = _response_items(payload)
                     if not rows:
                         break
 
@@ -385,6 +397,7 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
             "window": window_meta | {"start": start.isoformat(), "end": end.isoformat()},
             "skip_reasons": skip_reasons,
             "error": str(exc),
+            "public_data_key_count": len(api_keys),
         }
 
     return {
@@ -400,6 +413,7 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
         "dry_run": options.dry_run,
         "window": window_meta | {"start": start.isoformat(), "end": end.isoformat()},
         "skip_reasons": skip_reasons,
+        "public_data_key_count": len(api_keys),
     }
 
 

@@ -82,9 +82,10 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
-    "apps.web.users",
-    "apps.service.neighborhoods",
+    "apps.accounts",
+    "apps.legacy.neighborhoods",
     "apps.service.map",
+    "apps.service.rent_deal",
     # LLM 질의 API. 현재 모델은 없지만 URL/DRF 뷰 등록을 위해 Django 앱으로 둔다.
     "apps.ai_agent",
     "apps.public_data.regions",
@@ -231,7 +232,7 @@ SPECTACULAR_SETTINGS = {
         {"name": "dongs", "description": "행정동 점수·요약·상세 (SPEC 6.1~6.3)"},
         {"name": "compare", "description": "동네 비교 (SPEC 6.4)"},
         {"name": "auth", "description": "회원가입 / 로그인 / 로그아웃"},
-        {"name": "users", "description": "마이페이지 — 프로필, 가중치, 찜, 리뷰 (SPEC 6.6)"},
+        {"name": "accounts", "description": "계정 — 인증, 프로필, 찜"},
     ],
     "CONTACT": {"name": "슬기로운 자취생활 (학부 캡스톤)"},
     "LICENSE": {"name": "Internal — academic project"},

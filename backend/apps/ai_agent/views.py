@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import uuid
+from threading import Lock
+
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
@@ -14,11 +17,17 @@ from .byok.services import (
     BYOKError,
     InvalidPassphrase,
     get_unlocked_credentials,
+    purge_stale_user_keys,
     save_user_key,
     status_for_user,
     unlock_user_keys,
 )
 from .models import UserAIAPIKey
+
+
+_conversation_store: dict[str, list[dict]] = {}
+_store_lock = Lock()
+MAX_HISTORY = 10
 
 
 class CsrfExemptSessionAuthentication(SessionAuthentication):
@@ -35,12 +44,18 @@ def _error(code: str, detail: str, http_status: int) -> Response:
     return Response({"error": code, "detail": detail}, status=http_status)
 
 
+def _conversation_key(user_id: int, conversation_id: str) -> str:
+    return f"{user_id}:{conversation_id}"
+
+
 @method_decorator(csrf_exempt, name="dispatch")
 class AIAPIKeyView(AgentAuthMixin, APIView):
     def get(self, request):
+        purge_stale_user_keys()
         return Response({"keys": status_for_user(request.user), "unlock_ttl_seconds": 1800})
 
     def post(self, request):
+        purge_stale_user_keys()
         provider = str(request.data.get("provider") or "").strip()
         api_key = str(request.data.get("api_key") or "").strip()
         passphrase = str(request.data.get("passphrase") or "")
@@ -67,6 +82,7 @@ class AIAPIKeyView(AgentAuthMixin, APIView):
 @method_decorator(csrf_exempt, name="dispatch")
 class AIAPIKeyUnlockView(AgentAuthMixin, APIView):
     def post(self, request):
+        purge_stale_user_keys()
         passphrase = str(request.data.get("passphrase") or "")
         if not passphrase:
             return _error("AI_KEY_PASSPHRASE_REQUIRED", "passphrase is required.", status.HTTP_400_BAD_REQUEST)
@@ -80,6 +96,7 @@ class AIAPIKeyUnlockView(AgentAuthMixin, APIView):
 @method_decorator(csrf_exempt, name="dispatch")
 class AIAPIKeyDetailView(AgentAuthMixin, APIView):
     def delete(self, request, provider: str):
+        purge_stale_user_keys()
         if provider not in {UserAIAPIKey.PROVIDER_OPENAI, UserAIAPIKey.PROVIDER_MINDLOGIC}:
             return _error("AI_PROVIDER_UNSUPPORTED", "Unsupported provider.", status.HTTP_400_BAD_REQUEST)
         UserAIAPIKey.objects.filter(user=request.user, provider=provider).delete()
@@ -90,11 +107,19 @@ class AIAPIKeyDetailView(AgentAuthMixin, APIView):
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def agent_query(request):
+    purge_stale_user_keys()
     question = str(request.data.get("question") or "").strip()
+    conversation_id = str(request.data.get("conversation_id") or "").strip()
     if not question:
         return _error("AI_QUESTION_REQUIRED", "question is required.", status.HTTP_400_BAD_REQUEST)
     if len(question) > 500:
         return _error("AI_QUESTION_TOO_LONG", "question must be 500 characters or fewer.", status.HTTP_400_BAD_REQUEST)
+    if not conversation_id:
+        conversation_id = str(uuid.uuid4())
+
+    store_key = _conversation_key(request.user.id, conversation_id)
+    with _store_lock:
+        history = list(_conversation_store.get(store_key, []))
 
     try:
         credentials = get_unlocked_credentials(request.user)
@@ -106,6 +131,7 @@ def agent_query(request):
         try:
             result = run_agent(
                 question,
+                history=history,
                 llm_credentials={
                     "provider": credential.provider,
                     "api_key": credential.api_key,
@@ -117,8 +143,20 @@ def agent_query(request):
                 viz = result.get("visualization", {})
                 if viz and viz.get("type", "none") != "none":
                     visualizations = [viz]
+
+            new_entry = {
+                "question": question,
+                "answer": result.get("answer", ""),
+                "neighborhoods": result.get("neighborhoods", []),
+            }
+            with _store_lock:
+                updated = list(_conversation_store.get(store_key, []))
+                updated.append(new_entry)
+                _conversation_store[store_key] = updated[-MAX_HISTORY:]
+
             return Response(
                 {
+                    "conversation_id": conversation_id,
                     "answer": result.get("answer", ""),
                     "query_type": result.get("query_type", "none"),
                     "route": result.get("route", "direct"),
@@ -144,3 +182,14 @@ def agent_query(request):
         },
         status=status.HTTP_502_BAD_GATEWAY,
     )
+
+
+@api_view(["DELETE"])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([IsAuthenticated])
+def clear_conversation(request, conversation_id: str):
+    store_key = _conversation_key(request.user.id, conversation_id)
+    with _store_lock:
+        existed = store_key in _conversation_store
+        _conversation_store.pop(store_key, None)
+    return Response({"cleared": existed, "conversation_id": conversation_id})

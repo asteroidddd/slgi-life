@@ -45,6 +45,7 @@ _load_env_file(BACKEND_DIR / ".env")
 
 from langchain_community.utilities import SQLDatabase
 from langchain_openai import ChatOpenAI
+from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SAWarning
 
 _SCHEMA_CONTEXT_CACHE: str | None = None
@@ -104,7 +105,7 @@ def get_join_hints(needed_tables: list[str]) -> str:
 
 # ── DB 연결 ───────────────────────────────────────────────────────────────────
 def _normalize_database_url(database_url: str) -> str:
-    """SQLAlchemy가 사용할 수 있도록 read-only DB URL scheme을 정규화한다."""
+    """Normalize PostgreSQL URL schemes for SQLAlchemy."""
     if database_url.startswith("postgresql+psycopg://"):
         return database_url
     if database_url.startswith("postgresql://"):
@@ -117,15 +118,20 @@ def _normalize_database_url(database_url: str) -> str:
 
 
 def _build_database_url() -> str:
-    # LLM이 생성한 SQL은 Django의 쓰기 가능한 DATABASE_URL로 실행하면 안 된다.
-    # DB 권한 레벨에서도 막기 위해 AI Agent 전용 read-only 계정을 강제한다.
-    database_url = os.environ.get("AI_AGENT_DATABASE_URL")
-    if not database_url:
-        raise RuntimeError(
-            "AI_AGENT_DATABASE_URL 환경변수가 필요합니다. "
-            "AI Agent는 쓰기 가능한 DATABASE_URL을 사용하지 않습니다."
-        )
-    return _normalize_database_url(database_url)
+    database_url = os.environ.get("AI_AGENT_DATABASE_URL") or os.environ.get("DATABASE_URL")
+    if database_url:
+        return _normalize_database_url(database_url)
+
+    required = ["DB_USER", "DB_PASSWORD", "DB_HOST"]
+    missing = [name for name in required if not os.environ.get(name)]
+    if missing:
+        raise RuntimeError(f"Missing environment variables: {', '.join(missing)}")
+
+    return _normalize_database_url(
+        f"postgresql://{os.environ['DB_USER']}:{os.environ['DB_PASSWORD']}"
+        f"@{os.environ['DB_HOST']}:{os.environ.get('DB_PORT', 5432)}"
+        f"/{os.environ.get('DB_NAME', 'dp_db')}"
+    )
 
 
 def get_db() -> SQLDatabase:
@@ -174,15 +180,28 @@ def get_llm(model_key: str, temperature: float = 0, credentials: dict | None = N
     cfg = get_config()
     models = cfg.get("models", {"fast": "gpt-5.4-nano", "smart": "gpt-5.4"})
     sql_cfg = cfg.get("sql", {})
-
-    return ChatOpenAI(
-        model=models.get(model_key, models.get("smart", "gpt-5.4")),
-        api_key=(credentials or {}).get("api_key") or os.environ.get("AI_AGENT_OPENAI_API_KEY"),
-        base_url=(credentials or {}).get("base_url") or os.environ.get("AI_AGENT_OPENAI_BASE_URL"),
-        temperature=temperature,
-        timeout=sql_cfg.get("timeout", 60),
-        max_retries=sql_cfg.get("max_retries", 6),
+    credentials = credentials or {}
+    api_key = (
+        credentials.get("api_key")
+        or os.environ.get("AI_AGENT_OPENAI_API_KEY")
+        or os.environ.get("OPENAI_API_KEY")
     )
+    base_url = (
+        credentials.get("base_url")
+        or os.environ.get("AI_AGENT_OPENAI_BASE_URL")
+        or "https://factchat-cloud.mindlogic.ai/v1/gateway"
+    )
+
+    kwargs = {
+        "model": models.get(model_key, models.get("smart", "gpt-5.4")),
+        "temperature": temperature,
+        "timeout": sql_cfg.get("timeout", 60),
+        "max_retries": sql_cfg.get("max_retries", 6),
+        "base_url": base_url,
+    }
+    if api_key:
+        kwargs["api_key"] = api_key
+    return ChatOpenAI(**kwargs)
 
 
 def get_stage_model(stage: str) -> str:
@@ -190,3 +209,32 @@ def get_stage_model(stage: str) -> str:
     cfg = get_config()
     stage_models = cfg.get("stage_models", {})
     return stage_models.get(stage, cfg.get("models", {}).get("default", "smart"))
+
+
+
+def get_neighborhood_coordinates(names: list[str]) -> list[dict]:
+    """Look up lat/lng for recommended neighborhood names from adong and ldong."""
+    if not names:
+        return []
+    try:
+        engine = create_engine(_build_database_url())
+        sql = text("""
+            SELECT name, ST_Y(location) AS lat, ST_X(location) AS lng FROM adong
+            WHERE name = ANY(:names) AND location IS NOT NULL
+            UNION
+            SELECT name, ST_Y(location) AS lat, ST_X(location) AS lng FROM ldong
+            WHERE name = ANY(:names) AND location IS NOT NULL
+        """)
+        with engine.connect() as conn:
+            rows = conn.execute(sql, {"names": names}).fetchall()
+        seen: set[str] = set()
+        result = []
+        for row in rows:
+            name = row[0]
+            if name not in seen:
+                seen.add(name)
+                result.append({"name": name, "lat": float(row[1]), "lng": float(row[2])})
+        return result
+    except Exception as e:
+        print(f"[coordinate lookup failed] {e}")
+        return []

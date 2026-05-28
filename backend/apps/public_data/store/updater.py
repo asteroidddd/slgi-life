@@ -18,6 +18,7 @@ from django.contrib.gis.geos import Point
 from django.db import transaction
 from openpyxl import load_workbook
 
+from apps.public_data.api_keys import env_key_ring, with_rate_limit_fallback
 from apps.public_data.exceptions import RateLimitedError, is_rate_limited_code, is_rate_limited_text
 from apps.public_data.regions.models import Adong, Ldong
 from apps.public_data.state import dataset_state, load_state, record_dataset_result, save_state
@@ -234,6 +235,10 @@ def _fetch_gu_rows(api_key: str, gu_code: str, options: StoresUpdateOptions) -> 
         page += 1
 
 
+def _fetch_gu_rows_with_fallback(api_keys: tuple[str, ...], gu_code: str, options: StoresUpdateOptions) -> list[dict[str, Any]]:
+    return with_rate_limit_fallback(api_keys, lambda api_key: _fetch_gu_rows(api_key, gu_code, options))
+
+
 def _normalize_adong_code(value: Any) -> str | None:
     text = str(value or "").strip()
     if not text:
@@ -306,7 +311,7 @@ def _build_store_record(
 
 
 def _fetch_and_build_stores(options: StoresUpdateOptions) -> dict[str, Any]:
-    api_key = _require_env("PUBLIC_DATA_API_KEY")
+    api_keys = env_key_ring("PUBLIC_DATA_API_KEY")
     gu_codes = list(Ldong.objects.values_list("gu_id", flat=True).distinct().order_by("gu_id"))
     category_ids = set(BusinessCategory.objects.values_list("subcategory_code", flat=True))
     ksci_ids = set(KsciCategory.objects.values_list("ksci_code", flat=True))
@@ -327,7 +332,7 @@ def _fetch_and_build_stores(options: StoresUpdateOptions) -> dict[str, Any]:
     completed = False
 
     for gu_code in gu_codes:
-        rows = _fetch_gu_rows(api_key, gu_code, options)
+        rows = _fetch_gu_rows_with_fallback(api_keys, gu_code, options)
         for row in rows:
             if options.limit is not None and checked >= options.limit:
                 return {
@@ -360,6 +365,7 @@ def _fetch_and_build_stores(options: StoresUpdateOptions) -> dict[str, Any]:
         "skipped": skipped,
         "skip_reasons": skip_reasons,
         "gu_count": len(gu_codes),
+        "public_data_key_count": len(api_keys),
     }
 
 

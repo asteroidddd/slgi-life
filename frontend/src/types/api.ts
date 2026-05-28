@@ -4,9 +4,9 @@
 //   - docs/handoff/20260502-step5a-backend-summary.md (AdongSummary, raw scores)
 // SPEC sections 9, 10.
 
-/** Single adong score row from GET /api/adongs/scores. */
+/** Single adong score row from GET /api/heatmap/adongs/scores. */
 export interface AdongScore {
-  /** URL-safe slug, used in /adong/:slug routes. */
+  /** URL-safe slug used by map selection. */
   slug: string;
   /** 행정동 코드 10자리 (행안부). seoul_dongs.geojson properties.adm_cd2 와 매칭. */
   code: string;
@@ -14,18 +14,21 @@ export interface AdongScore {
   name: string;
   /** 구 이름, e.g. "중구". */
   gu: string;
-  /** Composite weighted score 0~100, two decimals. */
+  /** Composite score 0~100. */
   score: number;
+  score_total?: number;
   /** centroid Y (latitude). */
   lat: number;
   /** centroid X (longitude). */
   lng: number;
   /** Raw 전월세 score 0~100 (added in step 5A — SPEC 14.3 client recompute). */
-  score_rent: number;
+  score_rent: number | null;
   /** Raw 생활시설 score 0~100. */
   score_amenity: number;
   /** Raw 교통 score 0~100. */
   score_transit: number;
+  /** 구 단위 안전 지표를 동에 매핑한 score 0~100. */
+  score_safety: number;
 }
 
 /** Nearest subway station shown in the adong panel (SPEC 6.2). */
@@ -359,7 +362,7 @@ export interface AdongParksResponse {
 // -------- Explore (Phase 4.8 — 자취 시세 BI 대시보드) --------------------
 // GET /api/adongs/:slug/explore?<filters>
 
-export type ExploreDealType = 'villa' | 'dagagu' | 'danok' | 'officetel' | 'apt';
+export type ExploreDealType = 'yeonlip' | 'dasedae' | 'yeonlip_dasedae' | 'dagagu' | 'danok' | 'officetel' | 'apt';
 
 export type ExplorePeriod = '3m' | '6m' | '12m' | '24m' | 'all';
 
@@ -367,6 +370,7 @@ export type ExplorePeriod = '3m' | '6m' | '12m' | '24m' | 'all';
 export interface BaseRentFilters {
   deal_types: ExploreDealType[];
   period: ExplorePeriod;
+  filter_mode: RentFilterMode;
   deposit_min: number;
   deposit_max: number;
   monthly_min: number;
@@ -374,6 +378,8 @@ export interface BaseRentFilters {
   area_min: number;
   area_max: number;
 }
+
+export type RentFilterMode = 'converted' | 'raw';
 
 export type ExploreSort =
   | 'date_desc'
@@ -490,6 +496,13 @@ export interface MatchCountsResponse {
   /** 표본이 이 미만인 동은 ratio=0 (eng-review #3). */
   min_sample: number;
   adongs: MatchCountItem[];
+}
+
+export interface RentConversionRateResponse {
+  annual_rate: number;
+  monthly_rate: number;
+  source: string;
+  unit: 'percent_per_year';
 }
 
 export interface MatchDetailResponse {
@@ -629,9 +642,13 @@ export interface User {
   year: number | null;
 }
 
-/** GET /api/users/me — adds the user's saved preference weights. */
+/** GET /api/users/me. */
 export interface MeResponse extends User {
-  preference: MePreference;
+  address: string;
+  home_lat: number | null;
+  home_lng: number | null;
+  address_geocode_status: string;
+  address_geocode_error: string;
 }
 
 /** POST /api/auth/register body. */
@@ -641,6 +658,8 @@ export interface RegisterPayload {
   school?: string;
   year?: number | null;
   nickname?: string;
+  address?: string;
+  terms_agreed: boolean;
 }
 
 /** POST /api/auth/login body. */
@@ -654,6 +673,7 @@ export interface MePatchPayload {
   school?: string;
   year?: number | null;
   nickname?: string;
+  address?: string;
 }
 
 /** Single row of GET /api/users/me/favorites and the POST response. */
@@ -690,14 +710,14 @@ export interface ApiErrorDetail {
 /** Backend whitelist for the `deal_type` query parameter.
  *  `all` is a sentinel meaning "no filter" — never appears in `RentDealPin.deal_type`.
  */
-export type TransactionDealType = 'apt' | 'officetel' | 'villa' | 'dagagu' | 'danok';
+export type TransactionDealType = 'apt' | 'officetel' | 'yeonlip' | 'dasedae' | 'yeonlip_dasedae' | 'villa' | 'dagagu' | 'danok';
 
 /** Same as `TransactionDealType` but with the `all` sentinel for filter UI. */
 export type TransactionDealTypeFilter = TransactionDealType | 'all';
 
 /** Single transaction pin row from GET /api/transactions/bbox. */
 export interface RentDealPin {
-  id: number;
+  id: string;
   /** 'YYYY-MM-DD'. */
   date: string;
   deal_type: TransactionDealType;
@@ -720,6 +740,40 @@ export interface RentDealPin {
   dong_name: string;
   /** 구 이름 (e.g., "중구"). */
   gu: string;
+}
+
+export type RentDealCacheTypeCode = 'A' | 'O' | 'Y' | 'D' | 'V' | 'M' | 'H';
+
+export type RentDealCacheRow = [
+  id: string,
+  t: RentDealCacheTypeCode,
+  d: number,
+  m: number,
+  c: number,
+  a: number | null,
+  lng: number | null,
+  lat: number | null,
+  dt: number,
+];
+
+export interface RentDealCacheResponse {
+  version: number;
+  ttl_seconds: number;
+  columns: ['id', 't', 'd', 'm', 'c', 'a', 'lng', 'lat', 'dt'];
+  type_map: Record<RentDealCacheTypeCode, ExploreDealType>;
+  rows: RentDealCacheRow[];
+}
+
+export interface RentDealCachePin {
+  id: string;
+  deal_type: ExploreDealType;
+  area_m2: number | null;
+  deposit: number;
+  monthly_rent: number;
+  converted_rent: number;
+  lat: number;
+  lng: number;
+  contract_ymd: number;
 }
 
 /** Response of GET /api/transactions/bbox. */
@@ -900,6 +954,21 @@ export interface AgentQueryResponse {
   elapsed_sec: number;
 }
 
+export type AIProvider = 'mindlogic' | 'openai';
+
+export interface AIAPIKeyStatus {
+  provider: AIProvider;
+  configured: boolean;
+  priority: number | null;
+  masked_key: string;
+  unlocked: boolean;
+}
+
+export interface AIAPIKeyStatusResponse {
+  keys: AIAPIKeyStatus[];
+  unlock_ttl_seconds: number;
+}
+
 // -------- Map search -------------------------------------------------------
 
 export interface MapSearchItem {
@@ -915,4 +984,22 @@ export interface MapSearchItem {
 
 export interface MapSearchResponse {
   items: MapSearchItem[];
+}
+
+export interface AmenityBboxItem {
+  id: number;
+  category: string;
+  name: string;
+  lat: number | null;
+  lng: number | null;
+  source_table: string;
+  source_id: string;
+}
+
+export interface AmenityBboxResponse {
+  bbox: [number, number, number, number];
+  categories: string[];
+  limit: number;
+  count: number;
+  items: AmenityBboxItem[];
 }
