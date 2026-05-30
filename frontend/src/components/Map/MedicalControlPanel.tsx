@@ -60,16 +60,16 @@ export default function MedicalControlPanel({
   };
 
   return (
-    <div className="pointer-events-auto relative z-[600] grid w-[152px] gap-1.5 rounded-card border border-border bg-white/95 p-2 shadow-lg backdrop-blur">
+    <div className="pointer-events-auto relative z-[600] grid w-[152px] gap-1.5 rounded-card border border-border bg-surface/95 p-2 shadow-lg backdrop-blur">
       <button
         type="button"
         onClick={onToggleOpenNow}
         aria-pressed={openNow}
-        className={`flex h-9 items-center justify-between rounded-[var(--map-control-radius)] border px-2.5 text-left text-[12px] font-semibold shadow-sm transition ${openNow ? 'border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]' : 'border-border bg-white text-text hover:bg-[var(--color-heatmap-1)] hover:text-[var(--color-heatmap-5)]'}`}
+        className={`flex h-9 items-center justify-between rounded-[var(--map-control-radius)] border px-2.5 text-left text-[12px] font-semibold shadow-sm transition ${openNow ? 'border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]' : 'border-border bg-surface text-text hover:bg-[var(--color-heatmap-1)] hover:text-[var(--color-heatmap-5)]'}`}
       >
         <span>지금 문 연 곳</span>
         <span className={`relative h-5 w-9 rounded-full transition ${openNow ? 'bg-[var(--color-heatmap-4)]' : 'bg-border'}`} aria-hidden="true">
-          <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition ${openNow ? 'left-[18px]' : 'left-0.5'}`} />
+          <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface shadow-sm transition ${openNow ? 'left-[18px]' : 'left-0.5'}`} />
         </span>
       </button>
 
@@ -82,7 +82,7 @@ export default function MedicalControlPanel({
                 key={key}
                 type="button"
                 onClick={() => onToggleCategory(key)}
-                className={`h-9 w-full rounded-[var(--map-control-radius)] border px-3 text-left text-[13px] font-semibold shadow-sm transition ${active ? 'border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]' : 'border-border bg-white/95 text-text hover:bg-[var(--color-heatmap-1)] hover:text-[var(--color-heatmap-5)]'}`}
+                className={`h-9 w-full rounded-[var(--map-control-radius)] border px-3 text-left text-[13px] font-semibold shadow-sm transition ${active ? 'border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]' : 'border-border bg-surface/95 text-text hover:bg-[var(--color-heatmap-1)] hover:text-[var(--color-heatmap-5)]'}`}
               >
                 <span className="inline-flex items-center gap-1.5">
                   <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">{MEDICAL_ICONS[key]}</span>
@@ -94,7 +94,7 @@ export default function MedicalControlPanel({
 
           return (
             <div key={key} className="relative">
-              <div className={`flex h-9 w-full min-w-0 items-center overflow-hidden rounded-[var(--map-control-radius)] border px-3 shadow-sm transition ${hospitalActive ? 'border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]' : 'border-border bg-white/95 text-text hover:bg-[var(--color-heatmap-1)] hover:text-[var(--color-heatmap-5)]'}`}>
+              <div className={`flex h-9 w-full min-w-0 items-center overflow-hidden rounded-[var(--map-control-radius)] border px-3 shadow-sm transition ${hospitalActive ? 'border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]' : 'border-border bg-surface/95 text-text hover:bg-[var(--color-heatmap-1)] hover:text-[var(--color-heatmap-5)]'}`}>
                 <button
                   type="button"
                   onClick={() => {
@@ -124,7 +124,7 @@ export default function MedicalControlPanel({
                 </button>
               </div>
               {specialtyOpen ? (
-                <div className="absolute left-[calc(100%+8px)] top-0 z-[720] grid w-[150px] gap-1 rounded-card border border-border bg-white/95 p-2 shadow-xl backdrop-blur">
+                <div className="absolute left-[calc(100%+8px)] top-0 z-[720] grid w-[150px] gap-1 rounded-card border border-border bg-surface/95 p-2 shadow-xl backdrop-blur">
                   {SPECIALTY_PREVIEW.map((name) => {
                     const selected = name === '전체' ? selectedSpecialties.size === 0 : selectedSpecialties.has(name);
                     return (

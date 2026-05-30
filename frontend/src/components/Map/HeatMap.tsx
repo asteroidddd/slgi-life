@@ -17,10 +17,12 @@ import type { Layer, LeafletMouseEvent } from 'leaflet';
 import type { Feature, Geometry } from 'geojson';
 import { GeoJSON, MapContainer, TileLayer, ZoomControl } from 'react-leaflet';
 
+import { useTheme } from '@/contexts/ThemeContext';
 import { useAdongGeoJson, useLdongGeoJson } from '@/hooks/useAdongGeoJson';
 import { useSeoulMaskGeoJson } from '@/hooks/useSeoulMaskGeoJson';
 import type { AdongFeatureProps } from '@/hooks/useAdongGeoJson';
 import { HEATMAP_NO_DATA, MAP_POLYGON_STROKE, scoreToHeatmapColor } from '@/lib/colors';
+import { VWORLD_ATTRIBUTION, getVWorldMaxNativeZoom, getVWorldTileUrl } from '@/lib/vworld';
 import type { AdongScore, MatchCountItem } from '@/types/api';
 
 import 'leaflet/dist/leaflet.css';
@@ -39,12 +41,6 @@ function cssNumberToken(name: string, fallback: number): number {
 function cssColorToken(name: string): string {
   return `var(${name})`;
 }
-
-const VWORLD_KEY = import.meta.env.VITE_VWORLD_API_KEY as string | undefined;
-
-// VWorld WMTS Base 타일 (한국 지명·지하철·도로 풍부).
-const VWORLD_TILE_URL = `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY ?? ''}/Base/{z}/{y}/{x}.png`;
-const VWORLD_ATTRIBUTION = '&copy; <a href="https://www.vworld.kr/">V-World</a> 국토교통부';
 
 /** 레이어 탭 — 색상의 기준이 되는 점수 축. score 모드 전용.
  *  Phase 5 cleanup 이후 호출측 (MainMap) 은 항상 'composite' 로 고정 사용 —
@@ -122,6 +118,7 @@ export default function HeatMap({
   children,
   regionLevel = 'adong',
 }: HeatMapProps) {
+  const { theme } = useTheme();
   const adongGeo = useAdongGeoJson();
   const ldongGeo = useLdongGeoJson();
   const { data: seoulMaskGeojson, isLoading: maskLoading } = useSeoulMaskGeoJson();
@@ -289,9 +286,13 @@ export default function HeatMap({
         scrollWheelZoom
         className="w-full h-full bg-surface-alt"
       >
-        {/* maxZoom 19까지 허용 — VWorld Base 타일이 z=19까지 응답 (서울 전역 OK).
-         *  타일 누락 시 Leaflet이 자동으로 z=18 타일을 stretch — 빈 영역 X. */}
-        <TileLayer attribution={VWORLD_ATTRIBUTION} url={VWORLD_TILE_URL} maxZoom={19} />
+        {/* Base는 z=19, midnight는 z=18까지 제공된다. Leaflet이 z=19에서 native z=18을 stretch한다. */}
+        <TileLayer
+          attribution={VWORLD_ATTRIBUTION}
+          url={getVWorldTileUrl(theme)}
+          maxZoom={19}
+          maxNativeZoom={getVWorldMaxNativeZoom(theme)}
+        />
         <ZoomControl position="topright" />
         <GeoJSON
           data={seoulMaskGeojson}

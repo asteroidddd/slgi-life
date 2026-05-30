@@ -5,6 +5,7 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 import AmenityLayer from '@/components/Map/AmenityLayer';
 import HeatMap from '@/components/Map/HeatMap';
 import type { ScoreLayerKey } from '@/components/Map/HeatMap';
+import ThemeToggle from '@/components/ThemeToggle';
 import TransactionPinLayer from '@/components/Map/TransactionPinLayer';
 import {
   ChoiceList,
@@ -678,7 +679,7 @@ export default function MainMap() {
 
       <section className="pointer-events-none absolute left-5 top-5 z-[500] grid justify-items-start gap-2" aria-label="지도 검색과 필터">
         <div className="pointer-events-auto relative">
-          <label className="flex h-11 w-[430px] items-center gap-3 rounded-card border border-border bg-white/95 px-3 shadow-lg backdrop-blur">
+          <label className="flex h-11 w-[430px] items-center gap-3 rounded-card border border-border bg-surface/95 px-3 shadow-lg backdrop-blur">
             <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center text-[18px] font-semibold text-text-muted" aria-hidden="true">⌕</span>
             <input
               value={searchText}
@@ -716,7 +717,7 @@ export default function MainMap() {
             ) : null}
           </label>
           {(searchLoading || searchResults.length > 0) ? (
-            <div className="absolute left-0 top-[calc(100%+6px)] z-[650] w-[430px] overflow-hidden rounded-card border border-border bg-white/95 shadow-xl backdrop-blur">
+            <div className="absolute left-0 top-[calc(100%+6px)] z-[650] w-[430px] overflow-hidden rounded-card border border-border bg-surface/95 shadow-xl backdrop-blur">
               {searchLoading ? <div className="px-3 py-2 text-[13px] font-semibold text-text-muted">검색 중...</div> : null}
               {searchResults.map((item) => (
                 <button key={item.id} type="button" onClick={() => { if (!hasValidCoordinate(item)) { flash('좌표가 없는 검색 결과입니다.'); return; } setSelectedSearchItem(item); setSelectedPlacePin({ lat: item.lat, lng: item.lng, label: item.name, source: 'search' }); setPopup({ type: 'search', item }); setSearchText(item.name); setSearchResults([]); }} className="block w-full border-t border-border/70 px-3 py-2 text-left transition first:border-t-0 hover:bg-[var(--color-heatmap-1)]">
@@ -731,7 +732,7 @@ export default function MainMap() {
           </div>
         </div>
 
-        <div className="pointer-events-auto grid w-[var(--map-control-width)] grid-cols-5 rounded-card border border-border bg-white/95 p-1 shadow-lg backdrop-blur" role="group" aria-label="지도 모드">
+        <div className="pointer-events-auto grid w-[var(--map-control-width)] grid-cols-5 rounded-card border border-border bg-surface/95 p-1 shadow-lg backdrop-blur" role="group" aria-label="지도 모드">
           <SegmentButton active={mapMode === 'plain'} onClick={() => handleModeChange('plain')}>지도</SegmentButton>
           <SegmentButton active={mapMode === 'heatmap'} onClick={() => handleModeChange('heatmap')}>히트맵</SegmentButton>
           <SegmentButton active={mapMode === 'realestate'} onClick={() => handleModeChange('realestate')}>부동산</SegmentButton>
@@ -741,8 +742,8 @@ export default function MainMap() {
 
 
         {mapMode === 'heatmap' ? (
-          <div className="pointer-events-auto relative z-[600] w-[152px] rounded-card border border-border bg-white/95 p-2 shadow-lg backdrop-blur">
-            <div className="mb-2 grid w-full grid-cols-2 rounded-[12px] border border-[var(--color-heatmap-2)] bg-white/80 p-1" role="group" aria-label="지역 단위">
+          <div className="pointer-events-auto relative z-[600] w-[152px] rounded-card border border-border bg-surface/95 p-2 shadow-lg backdrop-blur">
+            <div className="mb-2 grid w-full grid-cols-2 rounded-[12px] border border-[var(--color-heatmap-2)] bg-surface/80 p-1" role="group" aria-label="지역 단위">
               <button type="button" onClick={() => setRegionLevel('adong')} className={`h-8 rounded-[9px] px-3 text-[13px] font-semibold transition ${regionLevel === 'adong' ? 'bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)] shadow-sm' : 'text-text-muted hover:bg-[var(--color-heatmap-1)] hover:text-[var(--color-heatmap-5)]'}`}>행정동</button>
               <button type="button" onClick={() => setRegionLevel('ldong')} className={`h-8 rounded-[9px] px-3 text-[13px] font-semibold transition ${regionLevel === 'ldong' ? 'bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)] shadow-sm' : 'text-text-muted hover:bg-[var(--color-heatmap-1)] hover:text-[var(--color-heatmap-5)]'}`}>법정동</button>
             </div>
@@ -757,18 +758,18 @@ export default function MainMap() {
                     className={`relative flex h-9 w-full items-center rounded-[var(--map-control-radius)] border px-3 pr-7 text-left text-[13px] font-semibold shadow-sm transition ${
                       heatLayer === layer.key
                         ? 'border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]'
-                        : 'border-border bg-white/95 text-text hover:bg-[var(--color-heatmap-1)]'
+                        : 'border-border bg-surface/95 text-text hover:bg-[var(--color-heatmap-1)]'
                     }`}
                   >
                     <span>{layer.label}</span>
                     <span
                       aria-label={`${layer.label} 계산 방식`}
-                      className="absolute right-1.5 top-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full border border-border/80 bg-white/70 text-[9px] font-bold leading-none text-text-subtle"
+                      className="absolute right-1.5 top-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full border border-border/80 bg-surface/70 text-[9px] font-bold leading-none text-text-subtle"
                     >
                       i
                     </span>
                   </button>
-                  <div className="pointer-events-none absolute left-[calc(100%+8px)] top-0 z-[700] hidden w-[300px] whitespace-pre-line rounded-card border border-[var(--color-heatmap-2)] bg-white p-3 text-[12px] leading-5 text-text shadow-xl group-hover:block">
+                  <div className="pointer-events-none absolute left-[calc(100%+8px)] top-0 z-[700] hidden w-[300px] whitespace-pre-line rounded-card border border-[var(--color-heatmap-2)] bg-surface p-3 text-[12px] leading-5 text-text shadow-xl group-hover:block">
                     <strong className="mb-1 block text-[13px] text-[var(--color-heatmap-5)]">{layer.label}</strong>
                     {HEAT_LAYER_DESCRIPTIONS[layer.key]}
                   </div>
@@ -780,19 +781,19 @@ export default function MainMap() {
 
         {mapMode === 'realestate' ? (
           <div className="pointer-events-none flex items-start gap-2">
-            <div className="pointer-events-auto relative z-[600] grid w-[152px] min-w-[152px] max-w-[152px] gap-2 rounded-card border border-border bg-white/95 p-2 shadow-lg backdrop-blur">
+            <div className="pointer-events-auto relative z-[600] grid w-[152px] min-w-[152px] max-w-[152px] gap-2 rounded-card border border-border bg-surface/95 p-2 shadow-lg backdrop-blur">
             <div className="grid grid-cols-2 gap-1 rounded-[var(--map-control-radius)] border border-border bg-surface-alt p-1">
               <button
                 type="button"
                 onClick={() => patch({ filter_mode: 'converted' })}
-                className={`h-8 rounded-[6px] text-[12px] font-semibold ${filters.filter_mode === 'converted' ? 'bg-white text-text shadow-sm' : 'text-text-muted'}`}
+                className={`h-8 rounded-[6px] text-[12px] font-semibold ${filters.filter_mode === 'converted' ? 'bg-surface text-text shadow-sm' : 'text-text-muted'}`}
               >
                 환산
               </button>
               <button
                 type="button"
                 onClick={() => patch({ filter_mode: 'raw' })}
-                className={`h-8 rounded-[6px] text-[12px] font-semibold ${filters.filter_mode === 'raw' ? 'bg-white text-text shadow-sm' : 'text-text-muted'}`}
+                className={`h-8 rounded-[6px] text-[12px] font-semibold ${filters.filter_mode === 'raw' ? 'bg-surface text-text shadow-sm' : 'text-text-muted'}`}
               >
                 보증/월세
               </button>
@@ -879,7 +880,7 @@ export default function MainMap() {
         ) : null}
 
         {mapMode === 'facility' ? (
-          <div className="pointer-events-auto relative z-[600] grid w-[152px] justify-items-start gap-1 overflow-visible rounded-card border border-border bg-white/95 p-2 shadow-lg backdrop-blur">
+          <div className="pointer-events-auto relative z-[600] grid w-[152px] justify-items-start gap-1 overflow-visible rounded-card border border-border bg-surface/95 p-2 shadow-lg backdrop-blur">
             {nearbyFacilityBbox ? (
               <button
                 type="button"
@@ -918,12 +919,15 @@ export default function MainMap() {
       </section>
 
       <div className="fixed right-6 top-6 z-[1200] grid justify-items-end gap-1.5">
-        <Link
-          to={user ? '/mypage' : '/login'}
-          className="app-floating-button h-10 min-h-10"
-        >
-          {user ? '마이페이지' : '로그인'}
-        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Link
+            to={user ? '/mypage' : '/login'}
+            className="app-floating-button h-10 min-h-10"
+          >
+            {user ? '마이페이지' : '로그인'}
+          </Link>
+        </div>
         <div className="grid translate-x-[-10px] justify-items-end gap-0.5 text-[11px] font-semibold leading-4 text-text">
           <Link className="bg-transparent p-0 hover:text-text" to="/terms">이용약관</Link>
           <Link className="bg-transparent p-0 hover:text-text" to="/privacy">개인정보처리방침</Link>
@@ -945,7 +949,7 @@ export default function MainMap() {
           onClick={() => setLocateRequest((v) => v + 1)}
           aria-label="현재 위치로 이동"
           title="현재 위치로 이동"
-          className="map-icon-button border-border/60 bg-white/55 shadow-sm backdrop-blur hover:bg-white/80"
+          className="map-icon-button border-border/60 bg-surface/55 shadow-sm backdrop-blur hover:bg-surface/80"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="6.5" />
@@ -968,7 +972,7 @@ export default function MainMap() {
             }
             setHomeRequest((v) => v + 1);
           }}
-          className="map-icon-button border-border/60 bg-white/55 shadow-sm backdrop-blur hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white/55"
+          className="map-icon-button border-border/60 bg-surface/55 shadow-sm backdrop-blur hover:bg-surface/80 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-surface/55"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M4 10.75 12 4l8 6.75" />
@@ -1006,7 +1010,7 @@ export default function MainMap() {
         ) : null}
       </div>
       {mapMode === 'heatmap' ? (
-        <div className="absolute bottom-6 left-1/2 z-[440] flex -translate-x-1/2 items-center gap-3 rounded-card border border-border bg-white/95 px-4 py-2 text-[13px] font-semibold text-text shadow-lg backdrop-blur">
+        <div className="absolute bottom-6 left-1/2 z-[440] flex -translate-x-1/2 items-center gap-3 rounded-card border border-border bg-surface/95 px-4 py-2 text-[13px] font-semibold text-text shadow-lg backdrop-blur">
           <span>낮음</span>
           <div className="flex h-3 w-[180px] overflow-hidden rounded-full border border-border/50" aria-label="히트맵 5단계 범례">
             {HEATMAP_COLORS_ORDERED.map((color, index) => (
@@ -1019,14 +1023,14 @@ export default function MainMap() {
       ) : null}
 
       {mapMode !== 'heatmap' && selectedPlacePin ? (
-        <div className="absolute bottom-6 left-1/2 z-[520] flex -translate-x-1/2 items-center gap-2 rounded-card border border-border bg-white/95 p-2 shadow-lg backdrop-blur" aria-label={'\uc9c0\uc815 \ud540 \uc791\uc5c5'}>
+        <div className="absolute bottom-6 left-1/2 z-[520] flex -translate-x-1/2 items-center gap-2 rounded-card border border-border bg-surface/95 p-2 shadow-lg backdrop-blur" aria-label={'\uc9c0\uc815 \ud540 \uc791\uc5c5'}>
           <button
             type="button"
             onClick={() => {
               setSelectedPlacePin(null);
               setSelectedSearchItem(null);
             }}
-            className="h-9 rounded-[var(--map-control-radius)] border border-border bg-white px-3 text-[13px] font-semibold text-text-muted shadow-sm transition hover:bg-surface-alt hover:text-text"
+            className="h-9 rounded-[var(--map-control-radius)] border border-border bg-surface px-3 text-[13px] font-semibold text-text-muted shadow-sm transition hover:bg-surface-alt hover:text-text"
           >
             {'\ud540 \uc0ad\uc81c'}
           </button>

@@ -5,7 +5,7 @@
  * @theme block defines design tokens as CSS custom properties AND generates
  * Tailwind utility classes (bg-primary, text-muted, rounded-card, etc.).
  *
- * Light only. No dark mode.
+ * Light mode defaults plus dark mode overrides.
  */
 
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css');
@@ -333,6 +333,93 @@
   --z-modal-backdrop: 1000;
   --z-modal:          1010;
   --z-tooltip:        1100;
+
+  --surface-floating: rgba(255, 255, 255, 0.95);
+  --surface-floating-soft: rgba(255, 255, 255, 0.70);
+  --surface-icon-muted: rgba(243, 244, 246, 0.92);
+  --surface-icon-muted-hover: rgba(229, 231, 235, 0.96);
+  --shadow-floating: 0 1px 2px rgba(23, 23, 28, 0.04),
+                     0 4px 12px rgba(23, 23, 28, 0.06);
+  --shadow-map-control: 0 8px 24px rgba(16, 24, 40, 0.16);
+}
+
+html[data-theme='dark'] {
+  --color-primary:        #34d399;
+  --color-primary-hover:  #10b981;
+  --color-primary-soft:   #082f26;
+
+  --color-secondary:      #d1fae5;
+  --color-secondary-dark: #a7f3d0;
+
+  --color-bg:             #071310;
+  --color-surface:        #101b17;
+  --color-surface-alt:    #17231f;
+
+  --color-text:           #f3f7f4;
+  --color-text-muted:     #a7b2ac;
+  --color-text-subtle:    #7f8b85;
+
+  --color-border:         #2a3a34;
+  --color-divider:        #32443d;
+
+  --color-accent:         #ff8f73;
+  --color-link:           #93c5fd;
+
+  --color-danger:         #f87171;
+  --color-danger-soft:    #3a1619;
+  --color-warning:        #facc15;
+  --color-warning-soft:   #3a2f0b;
+  --color-warning-deep:   #f59e0b;
+  --color-success:        #34d399;
+  --color-success-soft:   #0b2f27;
+  --color-info:           #93c5fd;
+  --color-info-soft:      #172554;
+  --color-metric-4:       #334155;
+  --color-metric-5:       #93c5fd;
+
+  --color-disabled:       #64748b;
+  --color-focus-ring:     rgba(52, 211, 153, 0.45);
+  --color-backdrop:       rgba(0, 0, 0, 0.70);
+
+  --map-guide-bg: rgba(15, 23, 42, 0.70);
+  --map-mask-fill: #020617;
+  --map-mask-opacity: 0.36;
+  --map-status-bg: #0f172a;
+
+  --color-heatmap-1: #123a31;
+  --color-heatmap-2: #1f5a48;
+  --color-heatmap-3: #3b8069;
+  --color-heatmap-4: #6fb091;
+  --color-heatmap-5: #a7f3d0;
+
+  --color-hm-rent-1: #422006;
+  --color-hm-rent-2: #713f12;
+  --color-hm-rent-3: #a16207;
+  --color-hm-rent-4: #f59e0b;
+  --color-hm-rent-5: #fde68a;
+  --color-hm-activity-1: #500724;
+  --color-hm-activity-2: #831843;
+  --color-hm-activity-3: #be185d;
+  --color-hm-activity-4: #f472b6;
+  --color-hm-activity-5: #fce7f3;
+  --color-hm-youth-1: #2e1065;
+  --color-hm-youth-2: #4c1d95;
+  --color-hm-youth-3: #7c3aed;
+  --color-hm-youth-4: #a78bfa;
+  --color-hm-youth-5: #ede9fe;
+  --color-hm-studio-1: #042f2e;
+  --color-hm-studio-2: #115e59;
+  --color-hm-studio-3: #0f766e;
+  --color-hm-studio-4: #2dd4bf;
+  --color-hm-studio-5: #ccfbf1;
+
+  --surface-floating: rgba(16, 27, 23, 0.94);
+  --surface-floating-soft: rgba(16, 27, 23, 0.72);
+  --surface-icon-muted: rgba(23, 35, 31, 0.92);
+  --surface-icon-muted-hover: rgba(34, 52, 45, 0.96);
+  --shadow-floating: 0 1px 2px rgba(0, 0, 0, 0.22),
+                     0 10px 28px rgba(0, 0, 0, 0.28);
+  --shadow-map-control: 0 12px 30px rgba(0, 0, 0, 0.30);
 }
 
 /* ==========================================================================
@@ -688,8 +775,8 @@
   margin-top: -1px;
   padding: 2px 7px 3px;
   border-radius: 0 0 var(--radius-md) var(--radius-md);
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(23, 23, 28, 0.12);
+  background: var(--surface-floating);
+  border: 1px solid var(--color-border);
   border-top: 0;
   color: var(--color-text-muted);
   font-size: 9px;
@@ -822,7 +909,7 @@
   width: 100vw;
   height: 100vh;
   border: 2px solid var(--color-primary);
-  background: rgba(236,253,245,0.46);
+  background: color-mix(in srgb, var(--color-primary-soft) 64%, transparent);
   box-shadow: 0 24px 80px rgba(16, 24, 40, 0.22);
   will-change: left, top, width, height, opacity, border-radius;
 }
@@ -889,7 +976,7 @@
   min-height: 44px;
   border-radius: var(--radius-card);
   border: 1px solid var(--color-heatmap-2);
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--surface-floating);
   color: var(--color-text);
   padding: 0 16px;
   font-size: 14px;
@@ -919,6 +1006,42 @@
   background: var(--color-danger);
   color: #ffffff;
 }
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-heatmap-2);
+  background: var(--surface-floating);
+  color: var(--color-heatmap-5);
+  box-shadow: var(--shadow-floating);
+  backdrop-filter: blur(8px);
+  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.theme-toggle:hover {
+  background: var(--color-heatmap-1);
+  border-color: var(--color-heatmap-3);
+  color: var(--color-heatmap-5);
+  transform: translateY(-1px);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.2;
+}
+
 .ai-map-marker-icon {
   background: transparent;
   border: 0;
@@ -957,9 +1080,9 @@
   justify-content: center;
   border-radius: 9999px;
   border: 1px solid var(--color-heatmap-2);
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--surface-floating);
   color: var(--color-heatmap-5);
-  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.16);
+  box-shadow: var(--shadow-map-control);
   backdrop-filter: blur(8px);
   transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
 }
@@ -975,14 +1098,14 @@
   color: var(--color-heatmap-5);
 }
 .map-icon-button--home-hidden {
-  background: rgba(243, 244, 246, 0.92);
-  border-color: #d1d5db;
-  color: #6b7280;
+  background: var(--surface-icon-muted);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
 }
 .map-icon-button--home-hidden:hover {
-  background: rgba(229, 231, 235, 0.96);
-  border-color: #9ca3af;
-  color: #4b5563;
+  background: var(--surface-icon-muted-hover);
+  border-color: var(--color-text-subtle);
+  color: var(--color-text);
 }
 .map-icon-button:active {
   transform: translateY(0);

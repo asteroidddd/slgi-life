@@ -15,7 +15,7 @@ function MapPopup({ popup, onClose, heatLayer, ranks, rankTotal }: { popup: Sele
   if (popup.type === 'adong') {
     const { adong } = popup;
     return (
-      <article className="absolute left-1/2 top-1/2 z-[550] w-[360px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[8px] border border-border bg-white shadow-xl">
+      <article className="absolute left-1/2 top-1/2 z-[550] w-[360px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[8px] border border-border bg-surface shadow-xl">
         <header className="flex items-center justify-between border-b border-border px-4 py-3">
           <div>
             <p className="m-0 text-[12px] font-semibold text-text-muted">{adong.gu}</p>
@@ -40,7 +40,7 @@ function MapPopup({ popup, onClose, heatLayer, ranks, rankTotal }: { popup: Sele
     const address = [first.gu, first.dong_name, first.jibun].filter(Boolean).join(' ') || '주소 정보 없음';
     const deals = [...popup.pins].sort((a, b) => b.date.localeCompare(a.date));
     return (
-      <article className="absolute left-1/2 top-1/2 z-[550] w-[380px] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-white p-4 shadow-xl">
+      <article className="absolute left-1/2 top-1/2 z-[550] w-[380px] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-surface p-4 shadow-xl">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="m-0 text-[12px] font-semibold text-text-muted">주소</p>
@@ -66,7 +66,7 @@ function MapPopup({ popup, onClose, heatLayer, ranks, rankTotal }: { popup: Sele
   }
   if (popup.type === 'deal_loading') {
     return (
-      <article className="absolute left-1/2 top-1/2 z-[550] w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-white p-4 shadow-xl">
+      <article className="absolute left-1/2 top-1/2 z-[550] w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-surface p-4 shadow-xl">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="m-0 text-[12px] font-semibold text-text-muted">거래 상세</p>
@@ -79,7 +79,7 @@ function MapPopup({ popup, onClose, heatLayer, ranks, rankTotal }: { popup: Sele
   }
   if (popup.type === 'search') {
     return (
-      <article className="absolute left-1/2 top-1/2 z-[550] w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-white p-4 shadow-xl">
+      <article className="absolute left-1/2 top-1/2 z-[550] w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-surface p-4 shadow-xl">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="m-0 text-[12px] font-semibold text-text-muted">{popup.item.label}</p>
@@ -93,7 +93,7 @@ function MapPopup({ popup, onClose, heatLayer, ranks, rankTotal }: { popup: Sele
   }
   if (popup.type === 'home') {
     return (
-      <article className="absolute left-1/2 top-1/2 z-[550] w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-white p-4 shadow-xl">
+      <article className="absolute left-1/2 top-1/2 z-[550] w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-surface p-4 shadow-xl">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="m-0 text-[12px] font-semibold text-text-muted">내 집</p>
@@ -106,7 +106,7 @@ function MapPopup({ popup, onClose, heatLayer, ranks, rankTotal }: { popup: Sele
     );
   }
   return (
-    <article className="absolute left-1/2 top-1/2 z-[550] w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-white p-4 shadow-xl">
+    <article className="absolute left-1/2 top-1/2 z-[550] w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-surface p-4 shadow-xl">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="m-0 text-[18px] font-semibold text-text">{popup.title}</h2>

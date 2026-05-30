@@ -18,9 +18,13 @@ setup()
 
 from apps.service.amenities.updater import rebuild_amenities  # noqa: E402
 from apps.service.heatmap.updater import recompute_current_scores  # noqa: E402
+from apps.service.rent_deal.updater import (  # noqa: E402
+    rebuild_rent_deal_cache,
+    rebuild_rent_deal_summary_caches,
+)
 
 
-TARGET_ORDER = ("amenity", "current")
+TARGET_ORDER = ("amenity", "rent_deal_cache", "rent_deal_summary_cache", "current")
 UNSUCCESSFUL_STATUSES = {"rate_limited", "partial", "failed", "error"}
 
 
@@ -40,10 +44,19 @@ def _contains_unsuccessful(value) -> bool:
 
 def _run_target(target: str, *, dry_run: bool) -> dict:
     if target == "amenity":
-        return rebuild_amenities(dry_run=dry_run)
-    if target == "current":
-        return recompute_current_scores(dry_run=dry_run)
-    raise ValueError(f"Unknown target: {target}")
+        result = rebuild_amenities(dry_run=dry_run)
+    elif target == "rent_deal_cache":
+        result = rebuild_rent_deal_cache(dry_run=dry_run)
+    elif target == "rent_deal_summary_cache":
+        result = rebuild_rent_deal_summary_caches(dry_run=dry_run)
+    elif target == "current":
+        result = recompute_current_scores(dry_run=dry_run)
+    else:
+        raise ValueError(f"Unknown target: {target}")
+    result.setdefault("target", target)
+    result.setdefault("status", "success")
+    result.setdefault("completed", True)
+    return result
 
 
 def main() -> int:

@@ -19,8 +19,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 STATE_DIR = BACKEND_ROOT / "apps" / "public_data" / ".state"
 STATE_FILE = STATE_DIR / "update_all_state.json"
+PUBLIC_DATA_STATE_FILE = STATE_DIR / "public_data_state.json"
 LOCK_FILE = STATE_DIR / "update_all.lock"
-DEFAULT_MAX_HOURS = 6.0
+DEFAULT_MAX_HOURS = 23.0
+RESUMABLE_STATUSES = {"rate_limited", "partial", "timeout", "interrupted", "failed"}
 PUBLIC_ORDER = (
     "regions",
     "metrics",
@@ -34,9 +36,73 @@ PUBLIC_ORDER = (
     "parks",
     "library",
 )
-SERVICE_ORDER = ("amenity", "current")
+SERVICE_ORDER = ("amenity", "rent_deal_cache", "rent_deal_summary_cache", "current")
 DASHBOARD_ORDER = ("dashboard_cache",)
 MAINTENANCE_ORDER = ("ai_stale_keys",)
+
+RESET_MANAGED_TABLES = (
+    "django_admin_log",
+    "django_session",
+    "users_groups",
+    "users_user_permissions",
+    "auth_group_permissions",
+    "auth_group",
+    "user_ai_context_preference",
+    "user_ai_api_key",
+    "user_favorite",
+    "user_social_account",
+    "user_profile",
+    "users",
+    "dashboard_adong_cache",
+    "dashboard_ldong_cache",
+    "current_adong",
+    "current_gu",
+    "current_ldong",
+    "current_seoul",
+    "amenity_adong",
+    "amenity_ldong",
+    "amenity",
+    "rent_deal_grid_monthly_cache",
+    "rent_deal_ldong_monthly_cache",
+    "rent_deal_cache",
+    "medical_facility_specialty",
+    "medical_hira_mapping",
+    "medical_holiday_care",
+    "medical_emergency",
+    "medical_facility_hours",
+    "medical_facility",
+    "library_hours",
+    "library",
+    "store",
+    "ksci_category",
+    "business_category",
+    "nearest_subway_adong",
+    "nearest_subway_ldong",
+    "subway_congestion",
+    "subway_station",
+    "bus_congestion",
+    "bus_stop",
+    "park_adong",
+    "park_ldong",
+    "park",
+    "univ_adong",
+    "univ_ldong",
+    "univ",
+    "rent_deal",
+    "rent_deal_ldong_adong_map",
+    "adong_population",
+    "ldong_population",
+    "gu_metric",
+    "seoul_metric",
+    "metric",
+    "adjacent_adong",
+    "adjacent_ldong",
+    "adjacent_gu",
+    "adong",
+    "ldong",
+    "gu",
+    "seoul",
+)
 
 STOP_REQUESTED = False
 
@@ -56,6 +122,54 @@ def _save_state(result: dict[str, Any]) -> None:
         json.dump(result, f, ensure_ascii=False, indent=2, sort_keys=True)
         f.write("\n")
     os.replace(tmp_path, STATE_FILE)
+
+
+def _load_state() -> dict[str, Any] | None:
+    if not STATE_FILE.exists():
+        return None
+    try:
+        with STATE_FILE.open(encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _completed_resume_steps(
+    previous: dict[str, Any] | None,
+    *,
+    dry_run: bool,
+    force: bool,
+    limit: int | None,
+    reset_managed_data: bool,
+) -> dict[str, dict[str, Any]]:
+    if not previous or previous.get("status") not in RESUMABLE_STATUSES:
+        return {}
+    if bool(previous.get("dry_run")) != dry_run:
+        return {}
+    previous_args = previous.get("args")
+    if isinstance(previous_args, dict) and (
+        bool(previous_args.get("force")) != force
+        or previous_args.get("limit") != limit
+        or bool(previous_args.get("reset_managed_data")) != reset_managed_data
+    ):
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for step in previous.get("steps") or []:
+        if not isinstance(step, dict):
+            break
+        name = step.get("name")
+        if not isinstance(name, str) or step.get("status") != "success":
+            break
+        out[name] = step
+    return out
+
+
+def _resume_step_result(previous_step: dict[str, Any]) -> dict[str, Any]:
+    step = dict(previous_step)
+    step["resumed"] = True
+    step["skip_reason"] = "previous_success"
+    return step
 
 
 def _handle_stop(_signum, _frame) -> None:
@@ -127,6 +241,7 @@ def _public_args(args: argparse.Namespace) -> SimpleNamespace:
         start_ym=None,
         end_ym=None,
         include_hira_specialties=False,
+        deadline_monotonic=getattr(args, "deadline_monotonic", None),
     )
 
 
@@ -157,6 +272,49 @@ def _time_exceeded(start_monotonic: float, max_seconds: float) -> bool:
     return time.monotonic() - start_monotonic >= max_seconds
 
 
+def _reset_managed_data(*, dry_run: bool) -> dict[str, Any]:
+    from django.db import connection, transaction  # noqa: WPS433
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT tablename
+            FROM pg_tables
+            WHERE schemaname = current_schema()
+            """
+        )
+        existing = {row[0] for row in cursor.fetchall()}
+
+    tables = [table for table in RESET_MANAGED_TABLES if table in existing]
+    skipped_missing = [table for table in RESET_MANAGED_TABLES if table not in existing]
+    result: dict[str, Any] = {
+        "target": "managed_data_reset",
+        "dry_run": dry_run,
+        "status": "success",
+        "completed": True,
+        "tables": tables,
+        "table_count": len(tables),
+        "skipped_missing": skipped_missing,
+        "public_data_state_removed": False,
+    }
+    if dry_run:
+        return result
+
+    quoted_tables = ", ".join(connection.ops.quote_name(table) for table in tables)
+    with transaction.atomic():
+        if quoted_tables:
+            with connection.cursor() as cursor:
+                cursor.execute(f"TRUNCATE TABLE {quoted_tables} RESTART IDENTITY CASCADE")
+
+    try:
+        PUBLIC_DATA_STATE_FILE.unlink()
+        result["public_data_state_removed"] = True
+    except FileNotFoundError:
+        result["public_data_state_removed"] = False
+
+    return result
+
+
 def _run_flow(args: argparse.Namespace) -> dict[str, Any]:
     from _django import setup  # noqa: WPS433
 
@@ -178,12 +336,35 @@ def _run_flow(args: argparse.Namespace) -> dict[str, Any]:
 
     max_seconds = int(args.max_hours * 3600)
     started_monotonic = time.monotonic()
+    args.deadline_monotonic = started_monotonic + max_seconds
+    resume_steps = (
+        {}
+        if args.no_resume
+        else _completed_resume_steps(
+            _load_state(),
+            dry_run=dry_run,
+            force=bool(args.force),
+            limit=args.limit,
+            reset_managed_data=bool(args.reset_managed_data),
+        )
+    )
     result: dict[str, Any] = {
         "status": "running",
         "completed": False,
         "dry_run": dry_run,
         "started_at": _utc_now_iso(),
         "max_seconds": max_seconds,
+        "resume_enabled": not args.no_resume,
+        "resumed_steps": sorted(resume_steps),
+        "args": {
+            "dry_run": bool(args.dry_run),
+            "write": bool(args.write),
+            "force": bool(args.force),
+            "limit": args.limit,
+            "max_hours": args.max_hours,
+            "no_resume": bool(args.no_resume),
+            "reset_managed_data": bool(args.reset_managed_data),
+        },
         "public_order": PUBLIC_ORDER,
         "service_order": SERVICE_ORDER,
         "dashboard_order": DASHBOARD_ORDER,
@@ -199,8 +380,52 @@ def _run_flow(args: argparse.Namespace) -> dict[str, Any]:
         result["reason"] = reason
         return result
 
+    reset_step_name = "reset.managed_data"
+    if args.reset_managed_data:
+        if reset_step_name in resume_steps:
+            result["steps"].append(_resume_step_result(resume_steps[reset_step_name]))
+            _save_state(result)
+        else:
+            if STOP_REQUESTED:
+                return stop_with("interrupted", reset_step_name, "stop_signal")
+            if _time_exceeded(started_monotonic, max_seconds):
+                return stop_with("timeout", reset_step_name, "max_hours_exceeded_before_step")
+            step_started = _utc_now_iso()
+            try:
+                reset_result = _reset_managed_data(dry_run=dry_run)
+            except Exception as exc:
+                result["steps"].append(
+                    _step_result(
+                        name=reset_step_name,
+                        kind="reset",
+                        status="failed",
+                        started_at=step_started,
+                        error={
+                            "type": type(exc).__name__,
+                            "message": str(exc),
+                            "traceback": traceback.format_exc(),
+                        },
+                    )
+                )
+                _save_state(result)
+                return stop_with("failed", reset_step_name, "reset_failed")
+            result["steps"].append(
+                _step_result(
+                    name=reset_step_name,
+                    kind="reset",
+                    status="success",
+                    started_at=step_started,
+                    result=reset_result,
+                )
+            )
+            _save_state(result)
+
     for dataset in PUBLIC_ORDER:
         step_name = f"public.{dataset}"
+        if step_name in resume_steps:
+            result["steps"].append(_resume_step_result(resume_steps[step_name]))
+            _save_state(result)
+            continue
         if STOP_REQUESTED:
             return stop_with("interrupted", step_name, "stop_signal")
         if _time_exceeded(started_monotonic, max_seconds):
@@ -259,6 +484,10 @@ def _run_flow(args: argparse.Namespace) -> dict[str, Any]:
 
     for target in SERVICE_ORDER:
         step_name = f"service.{target}"
+        if step_name in resume_steps:
+            result["steps"].append(_resume_step_result(resume_steps[step_name]))
+            _save_state(result)
+            continue
         if STOP_REQUESTED:
             return stop_with("interrupted", step_name, "stop_signal")
         if _time_exceeded(started_monotonic, max_seconds):
@@ -299,6 +528,10 @@ def _run_flow(args: argparse.Namespace) -> dict[str, Any]:
 
     for target in DASHBOARD_ORDER:
         step_name = f"dashboard.{target}"
+        if step_name in resume_steps:
+            result["steps"].append(_resume_step_result(resume_steps[step_name]))
+            _save_state(result)
+            continue
         if STOP_REQUESTED:
             return stop_with("interrupted", step_name, "stop_signal")
         if _time_exceeded(started_monotonic, max_seconds):
@@ -339,6 +572,10 @@ def _run_flow(args: argparse.Namespace) -> dict[str, Any]:
 
     for target in MAINTENANCE_ORDER:
         step_name = f"maintenance.{target}"
+        if step_name in resume_steps:
+            result["steps"].append(_resume_step_result(resume_steps[step_name]))
+            _save_state(result)
+            continue
         if STOP_REQUESTED:
             return stop_with("interrupted", step_name, "stop_signal")
         if _time_exceeded(started_monotonic, max_seconds):
@@ -397,6 +634,12 @@ def main() -> int:
     parser.add_argument("--limit", type=int, help="Pass a rough row limit to public updaters.")
     parser.add_argument("--force", action="store_true", help="Force file-based public snapshots.")
     parser.add_argument("--no-lock", action="store_true", help="Allow running without update lock.")
+    parser.add_argument("--no-resume", action="store_true", help="Ignore prior incomplete update_all state.")
+    parser.add_argument(
+        "--reset-managed-data",
+        action="store_true",
+        help="Truncate managed app/user data before the full reload. Keeps Django/system metadata.",
+    )
     args = parser.parse_args()
 
     if args.dry_run and args.write:

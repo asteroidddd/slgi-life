@@ -33,6 +33,11 @@ class PopulationsUpdateOptions:
     end_ym: str | None = None
     request_interval_seconds: float = 0.2
     request_timeout_seconds: float = 40.0
+    deadline_monotonic: float | None = None
+
+
+def _deadline_reached(options: PopulationsUpdateOptions) -> bool:
+    return options.deadline_monotonic is not None and sleep_time.monotonic() >= options.deadline_monotonic
 
 
 def _validate_ym(value: str) -> str:
@@ -223,12 +228,17 @@ def _fetch_month_with_fallback(
     )
 
 
-def _missing_months(model, fk_field: str, expected_count: int, months: list[str]) -> list[str]:
-    missing = []
+def _missing_month_codes(model, fk_field: str, codes: list[str], months: list[str]) -> dict[str, list[str]]:
+    missing: dict[str, list[str]] = {}
     for ym in months:
-        count = model.objects.filter(date=_month_end(ym)).values(fk_field).distinct().count()
-        if count < expected_count:
-            missing.append(ym)
+        existing = set(
+            model.objects.filter(date=_month_end(ym), **{f"{fk_field}__in": codes})
+            .values_list(fk_field, flat=True)
+            .distinct()
+        )
+        missing_codes = [code for code in codes if code not in existing]
+        if missing_codes:
+            missing[ym] = missing_codes
     return missing
 
 
@@ -236,21 +246,36 @@ def _load_domain(
     *,
     api_keys: tuple[str, ...],
     domain: str,
-    codes: list[str],
     model,
     path: str,
     code_param: str,
     fk_field: str,
-    months: list[str],
+    month_codes: dict[str, list[str]],
     options: PopulationsUpdateOptions,
     checked_so_far: int,
 ) -> dict[str, Any]:
     checked = loaded = skipped_empty = 0
     completed = False
+    processed_months: set[str] = set()
+    stop_reason = None
 
     try:
-        for ym in months:
-            for code in codes:
+        for ym, codes_for_month in month_codes.items():
+            for code in codes_for_month:
+                if _deadline_reached(options):
+                    stop_reason = "deadline_reached"
+                    return {
+                        "domain": domain,
+                        "status": "partial",
+                        "completed": False,
+                        "checked": checked,
+                        "loaded": loaded,
+                        "skipped_empty": skipped_empty,
+                        "months": list(month_codes),
+                        "processed_months": sorted(processed_months),
+                        "target_counts": {month: len(month_codes[month]) for month in month_codes},
+                        "reason": stop_reason,
+                    }
                 if options.limit is not None and checked_so_far + checked >= options.limit:
                     return {
                         "domain": domain,
@@ -259,7 +284,10 @@ def _load_domain(
                         "checked": checked,
                         "loaded": loaded,
                         "skipped_empty": skipped_empty,
-                        "months": months,
+                        "months": list(month_codes),
+                        "processed_months": sorted(processed_months),
+                        "target_counts": {month: len(month_codes[month]) for month in month_codes},
+                        "reason": "limit_reached",
                     }
                 items = _fetch_month_with_fallback(
                     api_keys=api_keys,
@@ -290,6 +318,7 @@ def _load_domain(
                         },
                     )
                     loaded += 1
+            processed_months.add(ym)
         completed = True
     except RateLimitedError as exc:
         return {
@@ -299,7 +328,10 @@ def _load_domain(
             "checked": checked,
             "loaded": loaded,
             "skipped_empty": skipped_empty,
-            "months": months,
+            "months": list(month_codes),
+            "processed_months": sorted(processed_months),
+            "target_counts": {month: len(month_codes[month]) for month in month_codes},
+            "reason": "rate_limited",
             "error": str(exc),
         }
 
@@ -310,7 +342,10 @@ def _load_domain(
         "checked": checked,
         "loaded": loaded,
         "skipped_empty": skipped_empty,
-        "months": months,
+        "months": list(month_codes),
+        "processed_months": sorted(processed_months),
+        "target_counts": {month: len(month_codes[month]) for month in month_codes},
+        "reason": stop_reason,
     }
 
 
@@ -321,9 +356,13 @@ def update_populations(options: PopulationsUpdateOptions) -> dict[str, Any]:
 
     ldong_codes = list(Ldong.objects.order_by("ldong_code").values_list("ldong_code", flat=True))
     adong_codes = list(Adong.objects.order_by("adong_code").values_list("adong_code", flat=True))
+    before_missing_targets = {
+        "ldong": _missing_month_codes(LdongPopulation, "ldong_id", ldong_codes, months),
+        "adong": _missing_month_codes(AdongPopulation, "adong_id", adong_codes, months),
+    }
     before_missing = {
-        "ldong": _missing_months(LdongPopulation, "ldong_id", len(ldong_codes), months),
-        "adong": _missing_months(AdongPopulation, "adong_id", len(adong_codes), months),
+        "ldong": list(before_missing_targets["ldong"]),
+        "adong": list(before_missing_targets["adong"]),
     }
 
     if not before_missing["ldong"] and not before_missing["adong"]:
@@ -349,12 +388,14 @@ def update_populations(options: PopulationsUpdateOptions) -> dict[str, Any]:
     ldong_result = _load_domain(
         api_keys=api_keys,
         domain="ldong",
-        codes=ldong_codes,
         model=LdongPopulation,
         path=LDONG_POPULATION_PATH,
         code_param="stdgCd",
         fk_field="ldong_id",
-        months=sorted(before_missing["ldong"], reverse=True),
+        month_codes={
+            ym: before_missing_targets["ldong"][ym]
+            for ym in sorted(before_missing_targets["ldong"], reverse=True)
+        },
         options=options,
         checked_so_far=checked_total,
     )
@@ -364,12 +405,14 @@ def update_populations(options: PopulationsUpdateOptions) -> dict[str, Any]:
     adong_result = _load_domain(
         api_keys=api_keys,
         domain="adong",
-        codes=adong_codes,
         model=AdongPopulation,
         path=ADONG_POPULATION_PATH,
         code_param="admmCd",
         fk_field="adong_id",
-        months=sorted(before_missing["adong"], reverse=True),
+        month_codes={
+            ym: before_missing_targets["adong"][ym]
+            for ym in sorted(before_missing_targets["adong"], reverse=True)
+        },
         options=options,
         checked_so_far=checked_total,
     )
@@ -377,9 +420,13 @@ def update_populations(options: PopulationsUpdateOptions) -> dict[str, Any]:
 
     after_missing = before_missing
     if not options.dry_run:
+        after_missing_targets = {
+            "ldong": _missing_month_codes(LdongPopulation, "ldong_id", ldong_codes, months),
+            "adong": _missing_month_codes(AdongPopulation, "adong_id", adong_codes, months),
+        }
         after_missing = {
-            "ldong": _missing_months(LdongPopulation, "ldong_id", len(ldong_codes), months),
-            "adong": _missing_months(AdongPopulation, "adong_id", len(adong_codes), months),
+            "ldong": list(after_missing_targets["ldong"]),
+            "adong": list(after_missing_targets["adong"]),
         }
 
     completed = (

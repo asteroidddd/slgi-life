@@ -6,6 +6,17 @@
     <meta name="description" content="서울 자취 입문자를 위한 공공데이터 기반 동네 대시보드" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <title>자취맵</title>
+    <script>
+      (() => {
+        try {
+          const theme = window.localStorage.getItem('slgi-theme') === 'dark' ? 'dark' : 'light';
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.style.colorScheme = theme;
+        } catch {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

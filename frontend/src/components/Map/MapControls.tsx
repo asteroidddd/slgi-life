@@ -28,7 +28,7 @@ function FilterButton({
       className={`h-9 w-full rounded-[var(--map-control-radius)] border px-3 text-left text-[13px] font-semibold shadow-sm transition ${
         active
           ? 'border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]'
-          : 'border-border bg-white/95 text-text hover:bg-[var(--color-heatmap-1)] hover:text-[var(--color-heatmap-5)]'
+          : 'border-border bg-surface/95 text-text hover:bg-[var(--color-heatmap-1)] hover:text-[var(--color-heatmap-5)]'
       } ${className}`}
     >
       {children}
@@ -113,7 +113,7 @@ function ModeGuide({
         className="flex w-full items-center justify-between gap-3 bg-transparent p-0 text-left"
       >
         <strong className="block whitespace-nowrap text-[13px] font-semibold text-text">{title}</strong>
-        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border/80 bg-white/70 text-[12px] font-bold leading-none text-text-muted">
+        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border/80 bg-surface/70 text-[12px] font-bold leading-none text-text-muted">
           {open ? '-' : '+'}
         </span>
       </button>
@@ -124,7 +124,7 @@ function ModeGuide({
 
 function IconTooltip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-[1300] hidden -translate-x-1/2 whitespace-nowrap rounded-[6px] border border-border bg-white/95 px-2 py-1 text-[12px] font-semibold text-text shadow-lg group-hover:block group-focus-within:block">
+    <span className="pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-[1300] hidden -translate-x-1/2 whitespace-nowrap rounded-[6px] border border-border bg-surface/95 px-2 py-1 text-[12px] font-semibold text-text shadow-lg group-hover:block group-focus-within:block">
       {children}
     </span>
   );
@@ -158,15 +158,15 @@ function DropdownButton({
         onClick={() => { if (!disabled) onToggle(id); }}
         disabled={disabled}
         className={`flex h-9 w-full min-w-0 items-center justify-between overflow-hidden rounded-[var(--map-control-radius)] border px-3 text-[13px] font-semibold shadow-sm transition ${
-          active ? 'border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]' : 'border-border bg-white/95 text-text hover:bg-[var(--color-heatmap-1)] hover:text-[var(--color-heatmap-5)]'
-        } ${disabled ? 'cursor-not-allowed opacity-45 hover:bg-white/95 hover:text-text' : ''}`}
+          active ? 'border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]' : 'border-border bg-surface/95 text-text hover:bg-[var(--color-heatmap-1)] hover:text-[var(--color-heatmap-5)]'
+        } ${disabled ? 'cursor-not-allowed opacity-45 hover:bg-surface/95 hover:text-text' : ''}`}
         aria-expanded={open}
       >
         <span className="block min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left" title={label}>{label}</span>
         <span className="ml-2 shrink-0 text-[14px] leading-none" aria-hidden="true">▾</span>
       </button>
       {open ? (
-        <div className="absolute left-[calc(100%+8px)] top-0 z-[1400] w-[300px] rounded-[8px] border border-border bg-white p-3 shadow-xl">
+        <div className="absolute left-[calc(100%+8px)] top-0 z-[1400] w-[300px] rounded-[8px] border border-border bg-surface p-3 shadow-xl">
           {onClose ? (
             <button type="button" onClick={onClose} className="absolute right-2 top-2 h-7 w-7 rounded-[6px] bg-surface-alt text-[16px] text-text-muted">×</button>
           ) : null}

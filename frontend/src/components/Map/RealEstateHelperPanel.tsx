@@ -86,7 +86,7 @@ export default function RealEstateHelperPanel({
           className={`flex h-10 w-full items-center justify-center gap-1.5 rounded-[var(--map-control-radius)] border px-2 text-[12px] font-semibold tracking-normal shadow-lg backdrop-blur transition ${
             open
               ? 'border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]'
-              : 'border-[var(--color-heatmap-2)]/50 bg-white/95 text-text hover:bg-[var(--color-heatmap-1)] hover:text-[var(--color-heatmap-5)]'
+              : 'border-[var(--color-heatmap-2)]/50 bg-surface/95 text-text hover:bg-[var(--color-heatmap-1)] hover:text-[var(--color-heatmap-5)]'
           }`}
           aria-expanded={open}
         >
@@ -95,8 +95,8 @@ export default function RealEstateHelperPanel({
         </button>
 
         <div className="group relative z-[300] w-max">
-          <button type="button" aria-label="부동산 지도 안내" className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/80 bg-white/70 text-[11px] font-bold text-text-subtle shadow-sm backdrop-blur focus:outline-none">i</button>
-          <div className="pointer-events-none absolute left-[calc(100%+8px)] top-0 z-[1000] hidden w-[340px] rounded-card border border-[var(--color-heatmap-2)] bg-white p-3 text-[12px] leading-5 text-text shadow-xl group-hover:block">
+          <button type="button" aria-label="부동산 지도 안내" className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/80 bg-surface/70 text-[11px] font-bold text-text-subtle shadow-sm backdrop-blur focus:outline-none">i</button>
+          <div className="pointer-events-none absolute left-[calc(100%+8px)] top-0 z-[1000] hidden w-[340px] rounded-card border border-[var(--color-heatmap-2)] bg-surface p-3 text-[12px] leading-5 text-text shadow-xl group-hover:block">
             <p className="m-0">지도 핀은 실거래 캐시를 프론트에서 필터링해 묶은 요약입니다. 가격은 그룹의 대표 환산월세, 건수는 필터를 통과한 거래 수입니다.</p>
             <p className="m-0 mt-1">{"환산월세는 한국부동산원 전월세전환율 최근 서울 평균으로 계산합니다. 과거 원천 데이터 일부는 연립과 다세대가 연립다세대로 통합되어 함께 반영될 수 있습니다. 단독·다가구는 원천 데이터 특성상 개별 주소/좌표가 없어 지도 핀으로 표시되지 않고 법정동 요약에서만 다룹니다."}</p>
           </div>
@@ -104,7 +104,7 @@ export default function RealEstateHelperPanel({
       </div>
 
       {open ? (
-        <aside className="pointer-events-auto absolute left-[calc(100%+8px)] top-[-104px] z-[1200] grid max-h-[min(820px,calc(100vh-24px))] w-[500px] grid-rows-[auto_auto_1fr] overflow-hidden rounded-card border border-[var(--color-heatmap-2)]/50 bg-white/95 text-text shadow-2xl backdrop-blur" aria-label="부동산 도우미">
+        <aside className="pointer-events-auto absolute left-[calc(100%+8px)] top-[-104px] z-[1200] grid max-h-[min(820px,calc(100vh-24px))] w-[500px] grid-rows-[auto_auto_1fr] overflow-hidden rounded-card border border-[var(--color-heatmap-2)]/50 bg-surface/95 text-text shadow-2xl backdrop-blur" aria-label="부동산 도우미">
           <header className="border-b border-border/70 px-4 py-3">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -128,8 +128,8 @@ export default function RealEstateHelperPanel({
                 onClick={() => setActiveTab(tab)}
                 className={`h-8 rounded-[9px] text-[12px] font-bold transition ${
                   activeTab === tab
-                    ? 'bg-white text-[var(--color-heatmap-5)] shadow-sm'
-                    : 'text-text-muted hover:bg-white/70 hover:text-text'
+                    ? 'bg-surface text-[var(--color-heatmap-5)] shadow-sm'
+                    : 'text-text-muted hover:bg-surface/70 hover:text-text'
                 }`}
               >
                 {label}
@@ -218,7 +218,7 @@ function RealEstateChecklist() {
 
 function ChecklistCard({ title, hint, items }: { title: string; hint: string; items: string[] }) {
   return (
-    <section className="rounded-card border border-border bg-white p-3">
+    <section className="rounded-card border border-border bg-surface p-3">
       <strong className="block text-[13px] text-[var(--color-heatmap-5)]">{title}</strong>
       <span className="mt-1 block text-[11px] leading-4 text-text-muted">{hint}</span>
       <ul className="m-0 mt-2 grid gap-1.5 p-0">
@@ -290,7 +290,7 @@ function NumberField({ label, value, onChange, step = 1 }: { label: string; valu
         step={step}
         value={Number.isFinite(value) ? value : 0}
         onChange={(event) => onChange(Number(event.target.value || 0))}
-        className="h-9 rounded-[9px] border border-border bg-white px-2 text-[12px] font-semibold text-text outline-none focus:border-[var(--color-heatmap-2)]"
+        className="h-9 rounded-[9px] border border-border bg-surface px-2 text-[12px] font-semibold text-text outline-none focus:border-[var(--color-heatmap-2)]"
       />
     </label>
   );
@@ -335,13 +335,13 @@ function RealEstateListingAnalysis({
 }) {
   return (
     <div className="grid gap-3">
-      <div className="grid gap-2 rounded-card border border-border bg-white p-3">
+      <div className="grid gap-2 rounded-card border border-border bg-surface p-3">
         <label className="grid gap-1 text-[11px] font-bold text-text-muted">
           매물 주소
           <input
             value={address}
             onChange={(event) => onAddressChange(event.target.value)}
-            className="h-9 rounded-[9px] border border-border bg-white px-2 text-[12px] font-semibold text-text outline-none focus:border-[var(--color-heatmap-2)]"
+            className="h-9 rounded-[9px] border border-border bg-surface px-2 text-[12px] font-semibold text-text outline-none focus:border-[var(--color-heatmap-2)]"
           />
         </label>
         <div className="grid grid-cols-2 gap-2">
@@ -350,7 +350,7 @@ function RealEstateListingAnalysis({
             <select
               value={listingType}
               onChange={(event) => onListingTypeChange(event.target.value as RentListingType)}
-              className="h-9 rounded-[9px] border border-border bg-white px-2 text-[12px] font-semibold text-text outline-none focus:border-[var(--color-heatmap-2)]"
+              className="h-9 rounded-[9px] border border-border bg-surface px-2 text-[12px] font-semibold text-text outline-none focus:border-[var(--color-heatmap-2)]"
             >
               <option value="apartment">아파트</option>
               <option value="officetel">오피스텔</option>
@@ -382,7 +382,7 @@ function RealEstateListingAnalysis({
         </button>
         {error ? <p className="m-0 rounded-[9px] bg-red-50 px-2.5 py-2 text-[12px] font-semibold text-red-700">{error}</p> : null}
       </div>
-      <div className="grid gap-2 rounded-card border border-border bg-white p-3">
+      <div className="grid gap-2 rounded-card border border-border bg-surface p-3">
         <div className="rounded-card border border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] p-3">
           <span className="block text-[11px] font-bold text-text-muted">입력 매물 환산월세</span>
           <strong className="mt-1 block text-[34px] leading-none text-[var(--color-heatmap-5)]">{convertedRent}</strong>
@@ -406,7 +406,7 @@ function ListingAnalysisResult({ analysis }: { analysis: RentListingAnalysisResp
       : 'border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]';
   const delta = analysis.stats.delta_to_median_pct;
   return (
-    <div className="grid gap-2 rounded-card border border-border bg-white p-3">
+    <div className="grid gap-2 rounded-card border border-border bg-surface p-3">
       <div className={`rounded-card border p-3 ${toneClass}`}>
         <span className="block text-[11px] font-bold opacity-80">분석 결과</span>
         <strong className="mt-1 block text-[22px] leading-none">{analysis.verdict.label}</strong>
@@ -478,7 +478,7 @@ function LinkGroup({
         <span className="text-[10px] font-semibold text-text-muted">{caption}</span>
       </h3>
       {links.map(([logo, titleText, description, href]) => (
-        <a key={href} href={href} target="_blank" rel="noreferrer" className="grid min-h-14 grid-cols-[34px_1fr_auto] items-center gap-2 rounded-card border border-border bg-white p-2.5 text-text no-underline transition hover:border-[var(--color-heatmap-2)] hover:bg-[var(--color-heatmap-1)]">
+        <a key={href} href={href} target="_blank" rel="noreferrer" className="grid min-h-14 grid-cols-[34px_1fr_auto] items-center gap-2 rounded-card border border-border bg-surface p-2.5 text-text no-underline transition hover:border-[var(--color-heatmap-2)] hover:bg-[var(--color-heatmap-1)]">
           <span className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-surface-alt text-[11px] font-bold text-[var(--color-heatmap-5)]">{logo}</span>
           <span className="min-w-0">
             <span className="block truncate text-[13px] font-bold">{titleText}</span>

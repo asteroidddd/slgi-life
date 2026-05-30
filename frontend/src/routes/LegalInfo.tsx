@@ -413,7 +413,7 @@ export default function LegalInfo({ page }: { page: LegalPage }) {
         뒤로가기
       </button>
 
-      <article className="mx-auto max-w-[1040px] rounded-card border border-border bg-white p-6 shadow-sm sm:p-8">
+      <article className="mx-auto max-w-[1040px] rounded-card border border-border bg-surface p-6 shadow-sm sm:p-8">
         <header className="border-b border-divider pb-5">
           <p className="m-0 text-[12px] font-semibold text-text-subtle">최종 수정일: {content.updatedAt}</p>
           <h1 className="m-0 mt-3 text-[30px] font-bold text-text">{content.title}</h1>

@@ -5,7 +5,9 @@ import * as L from 'leaflet';
 import type { LatLngBoundsExpression, Map as LeafletMap } from 'leaflet';
 import type { Feature, MultiPolygon, Polygon } from 'geojson';
 
+import { useTheme } from '@/contexts/ThemeContext';
 import { api } from '@/lib/api';
+import { getVWorldMaxNativeZoom, getVWorldTileUrl } from '@/lib/vworld';
 import { useAdongGeoJson, useLdongGeoJson } from '@/hooks/useAdongGeoJson';
 
 import 'leaflet/dist/leaflet.css';
@@ -388,7 +390,7 @@ function InfoButton({ text }: { text: string }) {
       <button type="button" aria-label="추가 정보" className="grid h-5 w-5 place-items-center rounded-full border border-border bg-transparent text-[11px] font-bold text-text-muted hover:border-text-muted hover:text-text">
         i
       </button>
-      <span className="pointer-events-none absolute right-0 top-[calc(100%+6px)] z-[90] hidden w-[300px] rounded-[6px] border border-border bg-white p-3 text-left text-[12px] font-semibold leading-5 text-text-muted shadow-lg group-hover:block group-focus-within:block">
+      <span className="pointer-events-none absolute right-0 top-[calc(100%+6px)] z-[90] hidden w-[300px] rounded-[6px] border border-border bg-surface p-3 text-left text-[12px] font-semibold leading-5 text-text-muted shadow-lg group-hover:block group-focus-within:block">
         {text}
       </span>
     </span>
@@ -474,7 +476,7 @@ function BarChart({ items, valueKey = 'count' }: { items: SeriesItem[]; valueKey
           <div key={`${item.month ?? item.time ?? index}`} className="group relative flex h-full flex-1 flex-col items-center justify-end gap-2">
             <span className="w-full rounded-t-[var(--map-control-radius)] bg-[var(--color-heatmap-4)]/80 transition group-hover:bg-[var(--color-heatmap-5)]" style={{ height: `${height}%`, minHeight: value > 0 ? 10 : 0 }} />
             <span className="absolute bottom-[-22px] text-[11px] font-semibold text-text-muted">{label}</span>
-            <span className="pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-[3000] hidden min-w-[136px] -translate-x-1/2 rounded-[6px] border border-border bg-white px-2 py-1.5 text-center text-[12px] font-bold leading-5 text-text shadow-lg group-hover:block">
+            <span className="pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-[3000] hidden min-w-[136px] -translate-x-1/2 rounded-[6px] border border-border bg-surface px-2 py-1.5 text-center text-[12px] font-bold leading-5 text-text shadow-lg group-hover:block">
               {label}<br />
               거래 {value.toLocaleString()}건<br />
               <small className="font-semibold text-text-muted">표시 기준 최대 {max.toLocaleString()}건</small>
@@ -850,7 +852,7 @@ function HorizontalBars({ items }: { items: TypeMixItem[] }) {
             <span className="block h-full rounded-full bg-[var(--color-heatmap-4)]" style={{ width: `${clampPercent(item.count, max)}%` }} />
           </span>
           <b className="text-right text-text">{Math.round(item.ratio)}%</b>
-          <span className="pointer-events-none absolute right-0 top-[calc(100%+6px)] z-10 hidden rounded-[6px] border border-border bg-white px-2 py-1.5 text-[12px] font-bold leading-5 text-text shadow-lg group-hover:block">
+          <span className="pointer-events-none absolute right-0 top-[calc(100%+6px)] z-10 hidden rounded-[6px] border border-border bg-surface px-2 py-1.5 text-[12px] font-bold leading-5 text-text shadow-lg group-hover:block">
             {label} · {item.count.toLocaleString()}건 · {item.ratio.toFixed(1)}%
           </span>
         </div>
@@ -915,7 +917,7 @@ function SafetyRadarChart({ items }: { items: SafetyGradeItem[] }) {
 
   return (
     <div className="group relative grid min-h-[190px] place-items-center">
-      <div className="pointer-events-none absolute right-2 top-2 z-[1800] hidden w-[250px] rounded-[6px] border border-border bg-white p-3 text-[12px] font-semibold leading-5 text-text-muted shadow-lg group-hover:block">
+      <div className="pointer-events-none absolute right-2 top-2 z-[1800] hidden w-[250px] rounded-[6px] border border-border bg-surface p-3 text-[12px] font-semibold leading-5 text-text-muted shadow-lg group-hover:block">
         레이더 면적이 클수록 안전 점수가 높습니다. 원자료 등급은 1등급이 가장 안전하고 5등급이 낮으며, 차트는 1등급=100점, 5등급=20점으로 변환했습니다.
       </div>
       <svg viewBox={`0 0 ${size} ${size}`} className="h-[210px] w-full max-w-[260px]" role="img" aria-label="안전 점수 레이더 차트">
@@ -1133,6 +1135,7 @@ function SafetyWmsOverlay({
 }
 
 function SafetyWmsMap({ regionLevel, slug, meta }: { regionLevel: RegionLevel; slug: string | null; meta?: SafetyWmsLayerResponse }) {
+  const { theme } = useTheme();
   const adongGeo = useAdongGeoJson();
   const ldongGeo = useLdongGeoJson();
   const bbox = meta?.region?.bbox;
@@ -1169,7 +1172,7 @@ function SafetyWmsMap({ regionLevel, slug, meta }: { regionLevel: RegionLevel; s
 
   return (
     <div className="group relative h-full min-h-[340px] overflow-hidden rounded-[var(--map-control-radius)] border border-border bg-surface-alt">
-      <div className="pointer-events-none absolute right-3 top-3 z-[1800] hidden w-[270px] rounded-[6px] border border-border bg-white p-3 text-[12px] font-semibold leading-5 text-text-muted shadow-lg group-hover:block">
+      <div className="pointer-events-none absolute right-3 top-3 z-[1800] hidden w-[270px] rounded-[6px] border border-border bg-surface p-3 text-[12px] font-semibold leading-5 text-text-muted shadow-lg group-hover:block">
         범죄주의구간은 생활안전지도에서 제공하는 범죄 관련 주의 레이어입니다. 붉은색이 강할수록 주의가 필요한 구간으로 참고하세요.
       </div>
       <MapContainer
@@ -1184,7 +1187,10 @@ function SafetyWmsMap({ regionLevel, slug, meta }: { regionLevel: RegionLevel; s
         attributionControl={false}
         style={{ width: '100%', height: '100%', minHeight: 340 }}
       >
-        <TileLayer url={`https://api.vworld.kr/req/wmts/1.0.0/${import.meta.env.VITE_VWORLD_API_KEY ?? ''}/Base/{z}/{y}/{x}.png`} />
+        <TileLayer
+          url={getVWorldTileUrl(theme)}
+          maxNativeZoom={getVWorldMaxNativeZoom(theme)}
+        />
         <SafetyWmsOverlay path={path} regionBounds={viewportBounds} selectedFeature={selectedFeature} fallbackBbox={bbox} selectedKey={selectedKey} />
       </MapContainer>
     </div>
@@ -1228,7 +1234,7 @@ export default function DashboardSections({ region, regionLevel, slug }: Dashboa
 
   return (
     <div className="mt-5 grid gap-4" data-region={basePath ?? ''}>
-      {hasRentDeals ? <section className="rounded-card border border-border bg-white p-5 shadow-sm">
+      {hasRentDeals ? <section className="rounded-card border border-border bg-surface p-5 shadow-sm">
         <SectionHeader
           kicker="거래 시세 요약"
           title={rentOverview?.headline ?? `${primaryHousing} 중심의 최근 임대 구조`}
@@ -1258,7 +1264,7 @@ export default function DashboardSections({ region, regionLevel, slug }: Dashboa
         </div>
       </section> : null}
 
-      <section className="rounded-card border border-border bg-white p-5 shadow-sm">
+      <section className="rounded-card border border-border bg-surface p-5 shadow-sm">
         <SectionHeader
           kicker="교통 접근성"
           title={transitOverview.data?.headline ?? '교통시설 밀도와 혼잡도를 함께 봅니다'}
@@ -1294,7 +1300,7 @@ export default function DashboardSections({ region, regionLevel, slug }: Dashboa
         </div>
       </section>
 
-      <section className="rounded-card border border-border bg-white p-5 shadow-sm">
+      <section className="rounded-card border border-border bg-surface p-5 shadow-sm">
         <SectionHeader
           kicker="생활 인프라"
           title={infraOverview.data?.headline ?? `면적당 시설은 ${metricValue(pickMetric(infraMetrics, 'amenity_density'))} 수준입니다`}
@@ -1322,7 +1328,7 @@ export default function DashboardSections({ region, regionLevel, slug }: Dashboa
         </div>
       </section>
 
-      <section className="rounded-card border border-border bg-white p-5 shadow-sm">
+      <section className="rounded-card border border-border bg-surface p-5 shadow-sm">
         <SectionHeader
           kicker="안전"
           title={safetyOverview.data?.headline ?? `안전 점수는 ${typeof safetyScore === 'number' ? Math.round(safetyScore) : '-'}점입니다`}

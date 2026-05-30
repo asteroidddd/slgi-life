@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Capston daily data update at 00:00 KST
+
+[Timer]
+# EC2 host timezone is UTC. 15:00 UTC is 00:00 Asia/Seoul.
+OnCalendar=*-*-* 15:00:00
+Persistent=true
+Unit=capston-data-update.service
+
+[Install]
+WantedBy=timers.target

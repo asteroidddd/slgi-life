@@ -10,19 +10,17 @@ import type { LatLngBounds, Layer, LeafletMouseEvent } from 'leaflet';
 import { GeoJSON, MapContainer, TileLayer, useMap } from 'react-leaflet';
 import { useNavigate } from 'react-router-dom';
 
+import { useTheme } from '@/contexts/ThemeContext';
 import { useAdongGeoJson, useLdongGeoJson } from '@/hooks/useAdongGeoJson';
 import type { AdongFeatureProps } from '@/hooks/useAdongGeoJson';
 import { MAP_POLYGON_STROKE } from '@/lib/colors';
+import { VWORLD_ATTRIBUTION, getVWorldMaxNativeZoom, getVWorldTileUrl } from '@/lib/vworld';
 import type { AdongScore } from '@/types/api';
 
 import 'leaflet/dist/leaflet.css';
 
 const SEOUL_CENTER: [number, number] = [37.5665, 126.978];
 const MINI_ZOOM = 13;
-
-const VWORLD_KEY = import.meta.env.VITE_VWORLD_API_KEY as string | undefined;
-const TILE_URL = `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY ?? ''}/Base/{z}/{y}/{x}.png`;
-const TILE_ATTR = '&copy; <a href="https://www.vworld.kr/">V-World</a>';
 
 type DongFeature = Feature<Geometry, AdongFeatureProps>;
 type RegionMaskFeature = Feature<Polygon, { name: string }>;
@@ -100,6 +98,7 @@ export default function DashboardMiniMap({
   onRegionSelect,
 }: DashboardMiniMapProps) {
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [expanding, setExpanding] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const adongGeo = useAdongGeoJson();
@@ -233,7 +232,11 @@ export default function DashboardMiniMap({
         attributionControl={false}
         style={{ width: '100%', height: '100%', minHeight: 300 }}
       >
-        <TileLayer url={TILE_URL} attribution={TILE_ATTR} />
+        <TileLayer
+          url={getVWorldTileUrl(theme)}
+          attribution={VWORLD_ATTRIBUTION}
+          maxNativeZoom={getVWorldMaxNativeZoom(theme)}
+        />
         <MiniMapViewport center={center} zoom={MINI_ZOOM} bounds={selectedBounds} />
         {selectedMask ? <GeoJSON key={selectedMaskKey} data={selectedMask} style={REGION_MASK_STYLE} interactive={false} /> : null}
         <GeoJSON

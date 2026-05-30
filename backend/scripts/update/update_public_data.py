@@ -92,6 +92,11 @@ def _unsuccessful_status(value) -> str:
     return "partial"
 
 
+def _deadline(args: argparse.Namespace) -> float | None:
+    value = getattr(args, "deadline_monotonic", None)
+    return value if isinstance(value, (int, float)) else None
+
+
 def _run_dataset(dataset: str, args: argparse.Namespace, *, dry_run: bool) -> dict:
     if dataset == "regions":
         return update_regions(
@@ -110,6 +115,7 @@ def _run_dataset(dataset: str, args: argparse.Namespace, *, dry_run: bool) -> di
                 start_date=_date(args.start_date),
                 end_date=_date(args.end_date),
                 limit=args.limit,
+                deadline_monotonic=_deadline(args),
             )
         )
     if dataset == "library":
@@ -141,6 +147,7 @@ def _run_dataset(dataset: str, args: argparse.Namespace, *, dry_run: bool) -> di
                 limit=args.limit,
                 start_ym=args.start_ym,
                 end_ym=args.end_ym,
+                deadline_monotonic=_deadline(args),
             )
         )
     if dataset == "rent_deals":
@@ -151,6 +158,7 @@ def _run_dataset(dataset: str, args: argparse.Namespace, *, dry_run: bool) -> di
                 limit=args.limit,
                 start_ym=args.start_ym,
                 end_ym=args.end_ym,
+                deadline_monotonic=_deadline(args),
             )
         )
     if dataset == "stores":

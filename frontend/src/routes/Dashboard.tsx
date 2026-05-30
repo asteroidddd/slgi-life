@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import DashboardMiniMap from '@/components/Dashboard/DashboardMiniMap';
 import DashboardSections from '@/components/Dashboard/DashboardSections';
+import ThemeToggle from '@/components/ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdongScores, useLdongScores } from '@/hooks/useAdongs';
 import { getDashboardRegionAtPoint, getDashboardRegionIntro } from '@/lib/api';
@@ -166,12 +167,15 @@ export default function Dashboard() {
         </button>
       </div>
 
-      <Link
-        to={user ? '/mypage' : '/login'}
-        className="app-floating-button fixed right-6 top-6 z-[1200]"
-      >
-        {user ? '마이페이지' : '로그인'}
-      </Link>
+      <div className="fixed right-6 top-6 z-[1200] flex items-center gap-2">
+        <ThemeToggle />
+        <Link
+          to={user ? '/mypage' : '/login'}
+          className="app-floating-button"
+        >
+          {user ? '마이페이지' : '로그인'}
+        </Link>
+      </div>
 
       {closing ? (
         <div className="map-route-transition map-route-transition--in" aria-hidden="true">
@@ -183,7 +187,7 @@ export default function Dashboard() {
         <div className="mx-auto max-w-[var(--dashboard-max-width)] px-[var(--dashboard-page-padding)] py-[var(--dashboard-page-padding)]">
             <div className="mb-3 flex min-h-10 items-center justify-between gap-4">
               <div className="relative w-[430px] max-w-full">
-                <label className="flex h-11 w-full items-center gap-3 rounded-card border border-border bg-white/95 px-3 shadow-lg backdrop-blur" aria-label={`${regionLevel === 'adong' ? '행정동' : '법정동'} 검색`}>
+                <label className="flex h-11 w-full items-center gap-3 rounded-card border border-border bg-surface/95 px-3 shadow-lg backdrop-blur" aria-label={`${regionLevel === 'adong' ? '행정동' : '법정동'} 검색`}>
                   <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center text-[18px] font-semibold text-text-muted" aria-hidden="true">⌕</span>
                   <input
                     value={regionSearch}
@@ -207,7 +211,7 @@ export default function Dashboard() {
                   />
                 </label>
                 {showRegionSearchResults ? (
-                  <div className="absolute left-0 top-[calc(100%+6px)] z-[900] max-h-[320px] w-[430px] overflow-y-auto overflow-x-hidden rounded-card border border-border bg-white/95 shadow-xl backdrop-blur">
+                  <div className="absolute left-0 top-[calc(100%+6px)] z-[900] max-h-[320px] w-[430px] overflow-y-auto overflow-x-hidden rounded-card border border-border bg-surface/95 shadow-xl backdrop-blur">
                     {regionSearchOptions.map((region) => (
                       <button
                         key={region.slug}
@@ -233,7 +237,7 @@ export default function Dashboard() {
                   type="button"
                   onClick={() => handleRegionLevelChange('adong')}
                   className={`h-8 rounded-[var(--map-control-radius)] px-4 text-[13px] font-semibold transition ${
-                    regionLevel === 'adong' ? 'bg-white text-text shadow-sm' : 'text-text-muted hover:bg-white/70 hover:text-text'
+                    regionLevel === 'adong' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:bg-surface/70 hover:text-text'
                   }`}
                 >
                   행정동
@@ -242,7 +246,7 @@ export default function Dashboard() {
                   type="button"
                   onClick={() => handleRegionLevelChange('ldong')}
                   className={`h-8 rounded-[var(--map-control-radius)] px-4 text-[13px] font-semibold transition ${
-                    regionLevel === 'ldong' ? 'bg-white text-text shadow-sm' : 'text-text-muted hover:bg-white/70 hover:text-text'
+                    regionLevel === 'ldong' ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:bg-surface/70 hover:text-text'
                   }`}
                 >
                   법정동
@@ -250,7 +254,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-          <section className="rounded-card border border-border bg-white p-5 shadow-sm">
+          <section className="rounded-card border border-border bg-surface p-5 shadow-sm">
             <div className="grid min-h-[var(--dashboard-mini-map-height)] grid-cols-2 gap-[var(--dashboard-grid-gap)]">
               <div className="flex min-w-0 flex-col px-2 pb-1">
                 <div>

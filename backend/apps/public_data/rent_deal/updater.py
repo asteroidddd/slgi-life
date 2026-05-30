@@ -52,6 +52,11 @@ class RentDealsUpdateOptions:
     end_ym: str | None = None
     request_interval_seconds: float = 0.2
     request_timeout_seconds: float = 40.0
+    deadline_monotonic: float | None = None
+
+
+def _deadline_reached(options: RentDealsUpdateOptions) -> bool:
+    return options.deadline_monotonic is not None and sleep_time.monotonic() >= options.deadline_monotonic
 
 
 def _require_env(name: str) -> str:
@@ -476,6 +481,18 @@ def _fetch_month_deals(
 
     for lawd in lawds:
         for housing_type, path in RENT_ENDPOINTS.items():
+            if _deadline_reached(options):
+                return {
+                    "status": "partial",
+                    "completed": False,
+                    "ym": ym,
+                    "checked": checked,
+                    "records": records,
+                    "skipped": skipped,
+                    "skip_reasons": skip_reasons,
+                    "geocoded": geocoded,
+                    "reason": "deadline_reached",
+                }
             rows = _fetch_rows_with_fallback(api_keys=api_keys, path=path, lawd=lawd, ym=ym, options=options)
             for row in rows:
                 if options.limit is not None and checked_start + checked >= options.limit:
@@ -488,6 +505,7 @@ def _fetch_month_deals(
                         "skipped": skipped,
                         "skip_reasons": skip_reasons,
                         "geocoded": geocoded,
+                        "reason": "limit_reached",
                     }
                 checked += 1
                 record, reason = _build_deal(
@@ -636,6 +654,20 @@ def update_rent_deals(options: RentDealsUpdateOptions) -> dict[str, Any]:
     completed = True
 
     for ym in target_months:
+        if _deadline_reached(options):
+            completed = False
+            month_results[ym] = {
+                "status": "partial",
+                "completed": False,
+                "checked": 0,
+                "loaded": 0,
+                "skipped": 0,
+                "skip_reasons": {},
+                "geocoded": 0,
+                "current_month_replace": ym == current and options.limit is None,
+                "reason": "deadline_reached",
+            }
+            break
         try:
             fetched = _fetch_month_deals(
                 ym=ym,
@@ -660,6 +692,7 @@ def update_rent_deals(options: RentDealsUpdateOptions) -> dict[str, Any]:
                 "geocoded": 0,
                 "current_month_replace": False,
                 "error": str(exc),
+                "reason": "rate_limited",
             }
             break
         checked_total += fetched["checked"]
@@ -695,6 +728,7 @@ def update_rent_deals(options: RentDealsUpdateOptions) -> dict[str, Any]:
             "skip_reasons": fetched["skip_reasons"],
             "geocoded": fetched["geocoded"],
             "current_month_replace": ym == current and options.limit is None,
+            "reason": fetched.get("reason"),
         }
         if not fetched["completed"]:
             break

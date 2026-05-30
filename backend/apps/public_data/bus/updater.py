@@ -44,6 +44,11 @@ class BusUpdateOptions:
     limit: int | None = None
     request_interval_seconds: float = 0.2
     request_timeout_seconds: float = 40.0
+    deadline_monotonic: float | None = None
+
+
+def _deadline_reached(options: BusUpdateOptions) -> bool:
+    return options.deadline_monotonic is not None and sleep_time.monotonic() >= options.deadline_monotonic
 
 
 def _require_env(name: str) -> str:
@@ -317,16 +322,29 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
     completed_dates_for_state: list[str] = []
     completed = False
     deleted_old = 0
+    stop_reason = None
 
     try:
         for day in target_dates:
+            if _deadline_reached(options):
+                stop_reason = "deadline_reached"
+                completed = False
+                break
             day_started_checked = checked
             day_completed = True
             day_aggregate: dict[tuple[str, date, time], list[Decimal]] = defaultdict(list)
             ymd = day.strftime("%Y%m%d")
             for gu_code in gu_codes:
+                if _deadline_reached(options):
+                    stop_reason = "deadline_reached"
+                    day_completed = False
+                    break
                 page = 1
                 while True:
+                    if _deadline_reached(options):
+                        stop_reason = "deadline_reached"
+                        day_completed = False
+                        break
                     total, rows = _public_data_items_with_fallback(
                         api_keys,
                         BUS_CONGESTION_PATH,
@@ -367,6 +385,7 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
                         day_aggregate[(stop_id, day, time(hour, 0))].append(value)
 
                     if options.limit is not None and checked >= options.limit:
+                        stop_reason = "limit_reached"
                         day_completed = False
                         break
                     if total and page * PAGE_SIZE >= total:
@@ -375,7 +394,10 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
                     if options.request_interval_seconds:
                         sleep_time.sleep(options.request_interval_seconds)
                 if options.limit is not None and checked >= options.limit:
+                    stop_reason = "limit_reached"
                     day_completed = False
+                    break
+                if not day_completed:
                     break
             if not day_completed or checked == day_started_checked:
                 completed = False
@@ -417,6 +439,7 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
             "window": window_meta | {"start": start.isoformat(), "end": end.isoformat()},
             "skip_reasons": skip_reasons,
             "error": str(exc),
+            "reason": "rate_limited",
             "public_data_key_count": len(api_keys),
         }
 
@@ -433,6 +456,7 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
         "dry_run": options.dry_run,
         "window": window_meta | {"start": start.isoformat(), "end": end.isoformat()},
         "skip_reasons": skip_reasons,
+        "reason": stop_reason,
         "public_data_key_count": len(api_keys),
     }
 
