@@ -1,18 +1,19 @@
 # Capston
 
-서울에서 자취를 준비하는 사용자가 지도 위에서 주거비, 생활 편의, 교통 조건을 함께 확인할 수 있도록 돕는 공공데이터 기반 동네 탐색 서비스입니다.
+서울에서 자취를 준비하는 사용자가 지도 위에서 주거비, 생활 편의, 교통, 안전 조건을 함께 확인할 수 있도록 돕는 공공데이터 기반 동네 탐색 서비스입니다.
 
 ## 현재 서비스 범위
 
 현재 코드는 지도 탐색, 히트맵, 실거래 필터링, 대시보드, 계정 기능, AI 질의 보조를 중심으로 구성되어 있습니다. 과거 상세 페이지와 비교 페이지 코드는 제거되었고, 해당 프론트엔드 경로는 홈 화면으로 리다이렉트됩니다.
 
-핵심 판단 축은 다음 세 가지입니다.
+핵심 판단 축은 다음 네 가지입니다.
 
 | 축 | 의미 |
 |---|---|
 | Rent | 주거 비용 부담 |
 | Amenity | 생활 편의시설 접근성 |
 | Transit | 지하철/버스 접근성 |
+| Safety | 자치구 안전등급 기반 안전 점수 |
 
 ## 주요 기능
 
@@ -20,9 +21,11 @@
 - 행정동/법정동 점수 히트맵
 - 지도 영역 내 전월세 실거래 핀 조회
 - 조건 기반 전월세 매물 매칭 개수 조회
+- 병원, 약국, 응급실 등 의료시설 지도 조회
 - 선택 지역 대시보드
 - 회원가입, 로그인, 마이페이지, 즐겨찾기
 - AI Agent 자연어 질의와 사용자별 API 키 관리
+- 약관, 개인정보처리방침, 데이터 출처 페이지
 
 ## 주요 화면
 
@@ -33,6 +36,9 @@
 | `/login` | 로그인 |
 | `/register` | 회원가입 |
 | `/mypage` | 내 정보와 즐겨찾기 |
+| `/terms` | 이용약관 |
+| `/privacy` | 개인정보처리방침 |
+| `/data-sources` | 데이터 출처 |
 | `/design-system` | 개발/디자인 확인용 화면 |
 | `/adong/:slug` | 현재 `/`로 리다이렉트 |
 | `/adong/:slug/explore` | 현재 `/`로 리다이렉트 |
@@ -59,8 +65,9 @@
 capston/
 ├── backend/
 │   ├── apps/
-│   │   ├── accounts/          # 사용자, 인증, 즐겨찾기
+│   │   ├── accounts/          # 사용자, 프로필, 소셜 로그인, 즐겨찾기 하위 앱
 │   │   ├── ai_agent/          # 자연어 질의 보조와 BYOK API 키 관리
+│   │   ├── dashboard/         # 대시보드 캐시와 안전 WMS 프록시
 │   │   ├── public_data/       # 공공데이터 원천 테이블과 업데이터
 │   │   └── service/           # 지도, 히트맵, 편의시설, 전월세 서비스 API
 │   ├── config/                # Django 설정과 URL 라우팅
@@ -79,7 +86,7 @@ capston/
 ├── docker-compose.yml
 ├── initial_setup.sh
 ├── scripts/
-└── DATA_SOURCES.md
+└── DATA_SOURCES.xlsx
 ```
 
 ## 환경 파일
@@ -94,7 +101,7 @@ capston/
 
 루트 `.env`는 애플리케이션 런타임에서 사용하지 않습니다. 로컬 작업 자동화나 EC2 접속 보조용으로만 둘 수 있습니다.
 
-Backend에 필요한 외부 API 키 이름은 `backend/.env.example`과 `DATA_SOURCES.md`를 기준으로 맞춥니다.
+Backend에 필요한 외부 API 키 이름은 `backend/.env.example`과 `DATA_SOURCES.xlsx`를 기준으로 맞춥니다.
 
 Frontend 주요 환경변수:
 
@@ -134,16 +141,20 @@ Backend는 Django/DRF/GeoDjango 기반입니다. 공공데이터 원천 테이�
 
 | 앱 | 역할 |
 |---|---|
-| `apps.accounts` | 사용자, 세션 인증, 마이페이지, 즐겨찾기 |
+| `apps.accounts.user` | 사용자 모델, 회원가입, 로그인, 로그아웃 |
+| `apps.accounts.profile` | 마이페이지, 주소, 학교 선택지 |
+| `apps.accounts.social` | Kakao 로그인 시작/콜백/webhook |
+| `apps.accounts.favorites` | 즐겨찾기 조회/추가/삭제 |
 | `apps.ai_agent` | 자연어 질의 기반 보조 기능과 BYOK API 키 관리 |
+| `apps.dashboard.cache` | 대시보드 캐시, 지역 소개글, 안전 WMS 프록시 |
 | `apps.public_data.regions` | 서울 행정구역 코드와 경계 |
 | `apps.public_data.rent_deal` | 국토부 전월세 실거래 원천 데이터 |
-| `apps.public_data.*` | 인구, 지표, 상권, 교통, 공원, 도서관, 대학 원천 데이터 |
+| `apps.public_data.*` | 인구, 지표, 상권, 교통, 의료, 공원, 도서관, 대학 원천 데이터 |
 | `apps.service.map` | 검색, 서울 마스크 GeoJSON, 교통 경로 |
 | `apps.service.heatmap` | 행정동/법정동 GeoJSON과 점수 API |
 | `apps.service.rent_deal` | 전월세 캐시, 조건 매칭, 환산율, 상세 조회 |
-| `apps.dashboard` | 대시보드 화면 전용 API와 지역 소개글 |
 | `apps.service.amenities` | 지도 영역 내 편의시설 조회 |
+| `apps.service.medical` | 지도 영역 내 의료시설, 상세, 진료과목 조회 |
 
 로컬 개발 예시:
 
@@ -169,7 +180,8 @@ Frontend는 React/Vite/TypeScript 기반 SPA입니다. 지도, 대시보드, 로
 | `frontend/src/routes` | `MainMap`, `Dashboard`, 계정 화면, NotFound |
 | `frontend/src/components/Map` | 지도, 히트맵, 거래 핀 레이어 |
 | `frontend/src/components/Dashboard` | 대시보드 미니맵과 관련 UI |
-| `frontend/src/components/Layout` | AI 사이드 패널 등 레이아웃 요소 |
+| `frontend/src/components/AI` | AI 채팅 도크 |
+| `frontend/src/components/Layout` | 레이아웃 요소 |
 | `frontend/src/components/ui` | 공통 UI 컴포넌트 |
 | `frontend/src/hooks` | TanStack Query 기반 API hook |
 | `frontend/src/lib` | API client, 지도/점수/계산 유틸 |
@@ -212,12 +224,24 @@ npm run preview
 | `GET /api/heatmap/ldongs/scores` | 법정동 점수 |
 | `GET /api/transactions/bbox` | 지도 영역 내 전월세 거래 |
 | `GET /api/rent-deals/cache` | 전월세 캐시 조회/생성 |
+| `GET /api/rent-deals/cache/gus` | bbox 내 전월세 구 캐시 코드 목록 |
+| `GET /api/rent-deals/cache/gus/<gu_code>.tsv.gz` | 구 단위 전월세 핀 gzip TSV 캐시 |
+| `GET /api/rent-deals/summary/ldongs` | 법정동 전월세 요약 |
+| `GET /api/rent-deals/summary/grids` | 지도 격자 전월세 요약 |
 | `GET /api/rent-deals/match-counts` | 조건별 전월세 매칭 개수 |
+| `GET /api/rent-deals/listing-analysis` | 조건 기반 매물 분석 |
 | `GET /api/rent-deals/conversion-rate` | 보증금-월세 환산율 |
 | `GET /api/rent-deals/<deal_id>` | 전월세 거래 상세 |
 | `GET /api/amenities/bbox` | 지도 영역 내 편의시설 |
+| `GET /api/medical/facilities` | 의료시설 목록 |
+| `GET /api/medical/facilities/<hpid>` | 의료시설 상세 |
+| `GET /api/medical/specialties` | 의료 진료과목 목록 |
+| `GET /api/dashboard/cache` | 선택 지역 대시보드 캐시 |
+| `GET /api/dashboard/regions/adongs/lookup` | 대시보드 행정동 lookup |
 | `GET /api/dashboard/regions/adongs/<slug>/intro` | 대시보드 행정동 소개글 |
+| `GET /api/dashboard/regions/ldongs/lookup` | 대시보드 법정동 lookup |
 | `GET /api/dashboard/regions/ldongs/<slug>/intro` | 대시보드 법정동 소개글 |
+| `GET /api/dashboard/safety/crime-zone` | 생활안전지도 범죄주의구간 WMS 프록시 |
 | `POST /api/agent/query` | AI Agent 질의 |
 | `DELETE /api/agent/conversation/<conversation_id>` | AI Agent 대화 초기화 |
 | `GET/POST /api/agent/api-keys` | AI API 키 상태 조회/저장 |
@@ -226,6 +250,8 @@ npm run preview
 | `POST /api/auth/register` | 회원가입 |
 | `POST /api/auth/login` | 로그인 |
 | `POST /api/auth/logout` | 로그아웃 |
+| `GET /api/auth/kakao/start` | Kakao 로그인 시작 |
+| `GET /api/auth/kakao/callback` | Kakao 로그인 callback |
 | `GET/PATCH /api/users/me` | 내 정보 조회/수정 |
 | `GET /api/users/universities` | 학교 선택지 |
 | `GET/POST /api/users/me/favorites` | 즐겨찾기 조회/추가 |
@@ -250,10 +276,13 @@ python scripts/update/update_all.py --write
 6. `bus`
 7. `subway`
 8. `stores`
-9. `parks`
-10. `library`
-11. `amenity`
-12. `current`
+9. `medical`
+10. `parks`
+11. `library`
+12. `amenity`
+13. `current`
+14. `dashboard_cache`
+15. `ai_stale_keys`
 
 업데이트 상태 JSON은 `backend/apps/public_data/.state` 아래에 저장됩니다.
 
@@ -261,9 +290,8 @@ python scripts/update/update_all.py --write
 
 | 문서 | 용도 |
 |---|---|
-| `DATA_SOURCES.md` | 원천 데이터, 업데이트 정책, 현재 제공 API |
+| `DATA_SOURCES.xlsx` | 원천 데이터, 업데이트 정책, 데이터 출처 정리 |
 | `backend/README.md` | 백엔드 개발과 API 요약 |
-| `backend/data/DATA_SOURCES.md` | 파일 기반 데이터의 세부 출처 |
 | `backend/scripts/README.md` | 업데이트 스크립트 개요 |
 
 ## 운영 주의

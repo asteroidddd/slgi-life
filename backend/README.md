@@ -59,6 +59,8 @@ docker compose ps
 | `SEOUL_API_KEY` | 서울 열린데이터광장 API 키 |
 | `V_WORLD_API_KEY` | VWorld API 키 |
 | `KOSIS_API_KEY` | KOSIS API 키 |
+| `LIFE_INFO_API_KEY` | 생활안전지도 WMS API 키 |
+| `KAKAO_REST_API_KEY` | Kakao 로그인 REST API 키 |
 | `AI_AGENT_*` | AI Agent DB/OpenAI 설정 |
 
 ## 앱 구조
@@ -74,15 +76,16 @@ backend/
 │   │   └── production.py
 │   └── urls.py
 ├── apps/
-│   ├── accounts/          # 사용자, 세션 인증, 즐겨찾기
+│   ├── accounts/          # 사용자, 프로필, 소셜 로그인, 즐겨찾기 하위 앱
 │   ├── ai_agent/          # 자연어 질의, SQL guard, BYOK API 키
+│   ├── dashboard/         # 대시보드 캐시와 안전 WMS 프록시
 │   ├── public_data/       # 원천 데이터 모델과 업데이터
 │   └── service/           # 화면 제공용 서비스 API
 ├── data/                  # 파일 기반 원천 데이터
 └── scripts/               # 업데이트/검증 스크립트
 ```
 
-`AUTH_USER_MODEL`은 `users.User`입니다. 실제 코드는 `apps.accounts`에 있지만 `AccountsConfig.label = "users"`로 앱 라벨을 유지합니다.
+`AUTH_USER_MODEL`은 `accounts.User`입니다. 실제 사용자 모델은 `apps.accounts.user`에 있고, Django app label은 `accounts`입니다. 프로필, 소셜 로그인, 즐겨찾기는 각각 `accounts_profile`, `accounts_social`, `accounts_favorites` app label을 사용합니다.
 
 ## 현재 등록된 API
 
@@ -99,10 +102,24 @@ backend/
 | `GET /api/heatmap/ldongs/scores` | `service.heatmap` | 법정동 점수 |
 | `GET /api/transactions/bbox` | `public_data.rent_deal` | 지도 영역 내 전월세 거래 |
 | `GET /api/rent-deals/cache` | `service.rent_deal` | 전월세 캐시 |
+| `GET /api/rent-deals/cache/gus` | `service.rent_deal` | bbox 내 전월세 구 캐시 코드 목록 |
+| `GET /api/rent-deals/cache/gus/<gu_code>.tsv.gz` | `service.rent_deal` | 구 단위 전월세 핀 gzip TSV 캐시 |
+| `GET /api/rent-deals/summary/ldongs` | `service.rent_deal` | 법정동 전월세 요약 |
+| `GET /api/rent-deals/summary/grids` | `service.rent_deal` | 지도 격자 전월세 요약 |
 | `GET /api/rent-deals/match-counts` | `service.rent_deal` | 조건 매칭 개수 |
+| `GET /api/rent-deals/listing-analysis` | `service.rent_deal` | 조건 기반 매물 분석 |
 | `GET /api/rent-deals/conversion-rate` | `service.rent_deal` | 보증금-월세 환산율 |
 | `GET /api/rent-deals/<deal_id>` | `service.rent_deal` | 전월세 거래 상세 |
 | `GET /api/amenities/bbox` | `service.amenities` | 지도 영역 내 편의시설 |
+| `GET /api/medical/facilities` | `service.medical` | 의료시설 목록 |
+| `GET /api/medical/facilities/<hpid>` | `service.medical` | 의료시설 상세 |
+| `GET /api/medical/specialties` | `service.medical` | 의료 진료과목 목록 |
+| `GET /api/dashboard/cache` | `dashboard.cache` | 선택 지역 대시보드 캐시 |
+| `GET /api/dashboard/regions/adongs/lookup` | `dashboard.cache` | 대시보드 행정동 lookup |
+| `GET /api/dashboard/regions/adongs/<slug>/intro` | `dashboard.cache` | 행정동 소개글 |
+| `GET /api/dashboard/regions/ldongs/lookup` | `dashboard.cache` | 대시보드 법정동 lookup |
+| `GET /api/dashboard/regions/ldongs/<slug>/intro` | `dashboard.cache` | 법정동 소개글 |
+| `GET /api/dashboard/safety/crime-zone` | `dashboard.cache` | 생활안전지도 범죄주의구간 WMS 프록시 |
 | `POST /api/agent/query` | `ai_agent` | AI Agent 질의 |
 | `DELETE /api/agent/conversation/<conversation_id>` | `ai_agent` | 대화 초기화 |
 | `GET/POST /api/agent/api-keys` | `ai_agent` | AI API 키 상태 조회/저장 |
@@ -111,6 +128,9 @@ backend/
 | `POST /api/auth/register` | `accounts` | 회원가입 |
 | `POST /api/auth/login` | `accounts` | 로그인 |
 | `POST /api/auth/logout` | `accounts` | 로그아웃 |
+| `GET /api/auth/kakao/start` | `accounts.social` | Kakao 로그인 시작 |
+| `GET /api/auth/kakao/callback` | `accounts.social` | Kakao 로그인 callback |
+| `POST /api/auth/kakao/webhook` | `accounts.social` | Kakao webhook |
 | `GET/PATCH /api/users/me` | `accounts` | 내 정보 조회/수정 |
 | `GET /api/users/universities` | `accounts` | 학교 선택지 |
 | `GET/POST /api/users/me/favorites` | `accounts` | 즐겨찾기 조회/추가 |
@@ -159,6 +179,7 @@ python scripts/update/update_all.py --write
 ```bash
 python scripts/update/update_public_data.py --dataset all --write
 python scripts/update/update_service_data.py --target all --write
+python scripts/update/update_dashboard_data.py --target all --write
 ```
 
 업데이트 상태 JSON은 `backend/apps/public_data/.state` 아래에 저장됩니다.

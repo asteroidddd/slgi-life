@@ -15,7 +15,7 @@
 
 | 파일 | 역할 |
 |---|---|
-| `update/update_all.py` | 공공데이터와 서비스 파생 데이터를 전체 순서대로 업데이트 |
+| `update/update_all.py` | 공공데이터, 서비스 파생 데이터, 대시보드 캐시, 유지보수 작업을 전체 순서대로 실행 |
 | `update/update_public_data.py` | 공공데이터 도메인을 하나씩 또는 전체 순서대로 업데이트 |
 | `update/update_service_data.py` | 서비스 파생 데이터를 하나씩 또는 전체 순서대로 업데이트 |
 | `update/update_dashboard_data.py` | 대시보드 화면 전용 데이터를 하나씩 또는 전체 순서대로 업데이트 |
@@ -49,6 +49,8 @@ python scripts/update/update_dashboard_data.py --target all --write
    - `current`
 3. 대시보드 데이터 업데이트
    - `dashboard_cache`
+4. 유지보수 작업
+   - `ai_stale_keys`
 
 업데이트 상태 JSON은 `backend/apps/public_data/.state` 아래에 저장됩니다.
 
