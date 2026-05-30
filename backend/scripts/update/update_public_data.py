@@ -20,6 +20,7 @@ from apps.public_data.library.updater import (  # noqa: E402
     LibraryUpdateOptions,
     update as update_library,
 )
+from apps.public_data.medical.updater import MedicalUpdateOptions, update as update_medical  # noqa: E402
 from apps.public_data.metrics.updater import (  # noqa: E402
     MetricsUpdateOptions,
     update as update_metrics,
@@ -48,6 +49,7 @@ DATASET_ORDER = (
     "bus",
     "subway",
     "stores",
+    "medical",
     "parks",
     "library",
 )
@@ -159,6 +161,15 @@ def _run_dataset(dataset: str, args: argparse.Namespace, *, dry_run: bool) -> di
                 limit=args.limit,
             )
         )
+    if dataset == "medical":
+        return update_medical(
+            MedicalUpdateOptions(
+                dry_run=dry_run,
+                force=args.force,
+                limit=args.limit,
+                update_hira_specialties=args.include_hira_specialties,
+            )
+        )
     if dataset == "subway":
         return update_subway(
             SubwayUpdateOptions(
@@ -196,6 +207,7 @@ def main() -> int:
     parser.add_argument("--end-ym", help="Override monthly dataset end month: YYYYMM.")
     parser.add_argument("--limit", type=int, help="Stop after roughly this many checked rows.")
     parser.add_argument("--force", action="store_true", help="Force file-based snapshot reload.")
+    parser.add_argument("--include-hira-specialties", action="store_true", help="Fetch HIRA specialty details for medical dataset.")
     args = parser.parse_args()
 
     if args.dry_run and args.write:

@@ -9,6 +9,7 @@
 | `update_all.py` | 공공데이터와 서비스 파생 데이터를 정해진 순서로 전체 업데이트 |
 | `update_public_data.py` | 공공데이터 원천 테이블 업데이트 |
 | `update_service_data.py` | `Amenity`, `Current*` 같은 서비스 파생 테이블 업데이트 |
+| `update_dashboard_data.py` | 대시보드 화면 전용 캐시 업데이트 |
 
 ## 실행 예시
 
@@ -26,13 +27,17 @@ python scripts/update/update_public_data.py --dataset all --write
 
 # 서비스 파생 데이터만 실제 반영
 python scripts/update/update_service_data.py --target all --write
+
+# 대시보드 캐시만 실제 반영
+python scripts/update/update_dashboard_data.py --target all --write
 ```
 
 ## 데이터 흐름
 
 1. `update_public_data.py`가 원천 데이터를 갱신합니다.
 2. `update_service_data.py`가 화면/API 제공에 필요한 파생 데이터를 재계산합니다.
-3. `update_all.py`가 두 단계를 순서대로 실행합니다.
+3. `update_dashboard_data.py`가 대시보드 화면 전용 데이터를 갱신합니다.
+4. `update_all.py`가 세 단계를 순서대로 실행합니다.
 
 ## 주의
 

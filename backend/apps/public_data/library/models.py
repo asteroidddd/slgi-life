@@ -12,7 +12,6 @@ XCNTS=lat / YDNTS=lon. ldong_code/adong_code = ST_Within(location, *.boundary).
 """
 
 from django.contrib.gis.db import models as gis_models
-from django.contrib.postgres.indexes import GistIndex
 from django.db import models
 from django.db.models import Q
 
@@ -127,10 +126,7 @@ class Library(models.Model):
             ),
         ]
         indexes = [
-            GistIndex(fields=["location"], name="library_location_gist_idx"),
             models.Index(fields=["library_type"], name="ix_library_library_type"),
-            models.Index(fields=["ldong"], name="ix_library_ldong"),
-            models.Index(fields=["adong"], name="ix_library_adong"),
         ]
 
     def __str__(self) -> str:
@@ -187,7 +183,6 @@ class LibraryHours(models.Model):
             ),
         ]
         indexes = [
-            models.Index(fields=["library"], name="ix_library_hours_library"),
             models.Index(fields=["day_type"], name="ix_library_hours_day_type"),
         ]
 

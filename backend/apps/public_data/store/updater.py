@@ -30,6 +30,12 @@ BUSINESS_CATEGORY_PATH = DATA_DIR / "store_business_category.xlsx"
 KSCI_CATEGORY_PATH = DATA_DIR / "KSIC_10th.xlsx"
 STORE_API_URL = "https://apis.data.go.kr/B553077/api/open/sdsc2/storeListInDong"
 PAGE_SIZE = 1000
+MEDICAL_STORE_CATEGORY_CODES = {
+    "G21501",
+    "Q10101", "Q10102", "Q10103", "Q10104",
+    "Q10201", "Q10202", "Q10203", "Q10204", "Q10205", "Q10206",
+    "Q10207", "Q10208", "Q10209", "Q10210", "Q10211",
+}
 
 
 @dataclass(frozen=True)
@@ -140,31 +146,55 @@ def _load_catalog(options: StoresUpdateOptions, snapshot: dict[str, Any]) -> dic
 
     if not skipped_write and not options.dry_run:
         with transaction.atomic():
-            for row in business_rows:
-                BusinessCategory.objects.update_or_create(
-                    subcategory_code=row["sub_code"],
-                    defaults={
-                        "subcategory_name": row["sub_name"],
-                        "middle_category_code": row["middle_code"],
-                        "middle_category_name": row["middle_name"],
-                        "main_category_code": row["main_code"],
-                        "main_category_name": row["main_name"],
-                    },
-                )
-                loaded_business += 1
+            BusinessCategory.objects.bulk_create(
+                [
+                    BusinessCategory(
+                        subcategory_code=row["sub_code"],
+                        subcategory_name=row["sub_name"],
+                        middle_category_code=row["middle_code"],
+                        middle_category_name=row["middle_name"],
+                        main_category_code=row["main_code"],
+                        main_category_name=row["main_name"],
+                    )
+                    for row in business_rows
+                ],
+                batch_size=1000,
+                update_conflicts=True,
+                update_fields=[
+                    "subcategory_name",
+                    "middle_category_code",
+                    "middle_category_name",
+                    "main_category_code",
+                    "main_category_name",
+                ],
+                unique_fields=["subcategory_code"],
+            )
+            loaded_business = len(business_rows)
 
-            for row in ksci_rows:
-                KsciCategory.objects.update_or_create(
-                    ksci_code=row["ksci_code"],
-                    defaults={
-                        "subcategory_name": row["subcategory_name"],
-                        "class_name": row["class_name"],
-                        "subclass_name": row["subclass_name"],
-                        "middle_category_name": row["middle_category_name"],
-                        "main_category_name": row["main_category_name"],
-                    },
-                )
-                loaded_ksci += 1
+            KsciCategory.objects.bulk_create(
+                [
+                    KsciCategory(
+                        ksci_code=row["ksci_code"],
+                        subcategory_name=row["subcategory_name"],
+                        class_name=row["class_name"],
+                        subclass_name=row["subclass_name"],
+                        middle_category_name=row["middle_category_name"],
+                        main_category_name=row["main_category_name"],
+                    )
+                    for row in ksci_rows
+                ],
+                batch_size=1000,
+                update_conflicts=True,
+                update_fields=[
+                    "subcategory_name",
+                    "class_name",
+                    "subclass_name",
+                    "middle_category_name",
+                    "main_category_name",
+                ],
+                unique_fields=["ksci_code"],
+            )
+            loaded_ksci = len(ksci_rows)
 
     return {
         "status": "success",
@@ -280,6 +310,8 @@ def _build_store_record(
     if not point:
         return None, store_id, "missing_location"
     category_id = str(row.get("indsSclsCd") or "").strip()
+    if category_id in MEDICAL_STORE_CATEGORY_CODES:
+        return None, store_id, "medical_category"
     if category_id not in category_ids:
         return None, store_id, "unknown_category"
     ldong_id = str(row.get("ldongCd") or "").strip() or None
@@ -328,6 +360,7 @@ def _fetch_and_build_stores(options: StoresUpdateOptions) -> dict[str, Any]:
         "missing_location": 0,
         "unknown_category": 0,
         "region_not_found": 0,
+        "medical_category": 0,
     }
     completed = False
 
@@ -373,15 +406,30 @@ def update_stores_data(options: StoresUpdateOptions) -> dict[str, Any]:
     built = _fetch_and_build_stores(options)
     loaded = created = updated = deleted_missing = 0
     if not options.dry_run and built["completed"]:
+        records_by_id = {record["id"]: record for record in built["records"]}
+        records = list(records_by_id.values())
+        record_ids = list(records_by_id)
+        existing_ids = set(Store.objects.filter(id__in=record_ids).values_list("id", flat=True))
         with transaction.atomic():
-            for record in built["records"]:
-                _, was_created = Store.objects.update_or_create(
-                    id=record["id"],
-                    defaults=record["defaults"],
-                )
-                loaded += 1
-                created += int(was_created)
-                updated += int(not was_created)
+            Store.objects.bulk_create(
+                [Store(id=record["id"], **record["defaults"]) for record in records],
+                batch_size=2000,
+                update_conflicts=True,
+                update_fields=[
+                    "name",
+                    "branch_name",
+                    "address",
+                    "location",
+                    "category",
+                    "ksci",
+                    "ldong",
+                    "adong",
+                ],
+                unique_fields=["id"],
+            )
+            loaded = len(records)
+            created = len(set(record_ids) - existing_ids)
+            updated = len(set(record_ids) & existing_ids)
             if options.limit is None:
                 missing_qs = Store.objects.exclude(id__in=built["source_ids"])
                 deleted_missing = missing_qs.count()

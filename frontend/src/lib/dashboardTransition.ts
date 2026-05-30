@@ -14,16 +14,19 @@ export function dashboardLayoutVars(): React.CSSProperties {
 
 export function setDashboardMiniMapTransitionTarget() {
   const viewportWidth = window.innerWidth;
-  const containerWidth = Math.min(
-    DASHBOARD_MAX_WIDTH,
-    Math.max(0, viewportWidth - DASHBOARD_PAGE_PADDING * 2),
-  );
-  const containerLeft = (viewportWidth - containerWidth) / 2;
-  const columnWidth = (containerWidth - DASHBOARD_GRID_GAP) / 2;
-  const targetLeft = containerLeft + columnWidth + DASHBOARD_GRID_GAP;
+  const outerWidth = Math.min(DASHBOARD_MAX_WIDTH, viewportWidth);
+  const outerLeft = (viewportWidth - outerWidth) / 2;
+  const contentWidth = Math.max(0, outerWidth - DASHBOARD_PAGE_PADDING * 2);
+  const cardPadding = 12;
+  const headerHeight = 40;
+  const headerMarginBottom = 12;
+  const gridWidth = Math.max(0, contentWidth - cardPadding * 2);
+  const columnWidth = Math.max(0, (gridWidth - DASHBOARD_GRID_GAP) / 2);
+  const targetLeft = outerLeft + DASHBOARD_PAGE_PADDING + cardPadding + columnWidth + DASHBOARD_GRID_GAP;
+  const targetTop = DASHBOARD_PAGE_PADDING + cardPadding + headerHeight + headerMarginBottom;
 
   document.documentElement.style.setProperty('--map-transition-left', `${targetLeft}px`);
-  document.documentElement.style.setProperty('--map-transition-top', `${DASHBOARD_PAGE_PADDING}px`);
+  document.documentElement.style.setProperty('--map-transition-top', `${targetTop}px`);
   document.documentElement.style.setProperty('--map-transition-width', `${columnWidth}px`);
   document.documentElement.style.setProperty('--map-transition-height', `${DASHBOARD_MINI_MAP_HEIGHT}px`);
 }

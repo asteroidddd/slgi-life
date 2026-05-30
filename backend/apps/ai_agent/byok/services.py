@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import hmac
 import os
 from dataclasses import dataclass
 
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from django.core.cache import cache
 from django.db.models import Q
 from django.utils import timezone
@@ -55,28 +55,17 @@ def _derive(passphrase: str, salt: bytes) -> bytes:
     return hashlib.pbkdf2_hmac("sha256", passphrase.encode("utf-8"), salt, 210_000, dklen=32)
 
 
-def _keystream(key: bytes, nonce: bytes, length: int) -> bytes:
-    chunks: list[bytes] = []
-    counter = 0
-    while sum(len(chunk) for chunk in chunks) < length:
-        chunks.append(hmac.new(key, nonce + counter.to_bytes(8, "big"), hashlib.sha256).digest())
-        counter += 1
-    return b"".join(chunks)[:length]
-
-
 def encrypt_api_key(api_key: str, passphrase: str) -> dict[str, str]:
     salt = os.urandom(16)
-    nonce = os.urandom(16)
+    nonce = os.urandom(12)
     key = _derive(passphrase, salt)
     plaintext = api_key.encode("utf-8")
-    stream = _keystream(key, nonce, len(plaintext))
-    ciphertext = bytes(a ^ b for a, b in zip(plaintext, stream, strict=True))
-    tag = hmac.new(key, nonce + ciphertext, hashlib.sha256).digest()
+    ciphertext = AESGCM(key).encrypt(nonce, plaintext, None)
     return {
         "encrypted_api_key": _b64(ciphertext),
         "salt": _b64(salt),
         "nonce": _b64(nonce),
-        "tag": _b64(tag),
+        "tag": "aes-256-gcm-v1",
     }
 
 
@@ -84,13 +73,13 @@ def decrypt_api_key(record: UserAIAPIKey, passphrase: str) -> str:
     salt = _unb64(record.salt)
     nonce = _unb64(record.nonce)
     ciphertext = _unb64(record.encrypted_api_key)
-    expected_tag = _unb64(record.tag)
     key = _derive(passphrase, salt)
-    actual_tag = hmac.new(key, nonce + ciphertext, hashlib.sha256).digest()
-    if not hmac.compare_digest(actual_tag, expected_tag):
+    try:
+        plaintext = AESGCM(key).decrypt(nonce, ciphertext, None)
+    except Exception as exc:
         raise InvalidPassphrase("Invalid passphrase.")
-    stream = _keystream(key, nonce, len(ciphertext))
-    plaintext = bytes(a ^ b for a, b in zip(ciphertext, stream, strict=True))
+    if not record.tag.startswith("aes-256-gcm"):
+        raise InvalidPassphrase("Stored key must be registered again.")
     return plaintext.decode("utf-8")
 
 
@@ -122,6 +111,11 @@ def unlock_user_keys(*, user, passphrase: str) -> list[str]:
         cache.set(cache_key(user.id, record.provider), api_key, timeout=UNLOCK_TTL_SECONDS)
         unlocked.append(record.provider)
     return unlocked
+
+
+def lock_user_keys(user) -> None:
+    for provider in PROVIDERS:
+        cache.delete(cache_key(user.id, provider))
 
 
 def status_for_user(user) -> list[dict]:
@@ -164,9 +158,12 @@ def get_unlocked_credentials(user) -> list[ProviderCredential]:
     return credentials
 
 
-def purge_stale_user_keys(days: int = STALE_KEY_DAYS) -> int:
+def purge_stale_user_keys(days: int = STALE_KEY_DAYS, *, dry_run: bool = False) -> int:
     cutoff = timezone.now() - timezone.timedelta(days=days)
-    deleted, _ = UserAIAPIKey.objects.filter(
+    queryset = UserAIAPIKey.objects.filter(
         Q(user__last_login__isnull=True) | Q(user__last_login__lt=cutoff)
-    ).delete()
+    )
+    if dry_run:
+        return queryset.count()
+    deleted, _ = queryset.delete()
     return int(deleted)

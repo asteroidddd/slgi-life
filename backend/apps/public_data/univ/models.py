@@ -9,7 +9,6 @@ schema.dbml line 301~331 정합. 변경 요약:
 """
 
 from django.contrib.gis.db import models as gis_models
-from django.contrib.postgres.indexes import GistIndex
 from django.db import models
 from django.db.models import Q
 
@@ -83,8 +82,6 @@ class Univ(models.Model):
             ),
         ]
         indexes = [
-            GistIndex(fields=["boundary"], name="univ_boundary_gist_idx"),
-            GistIndex(fields=["location"], name="univ_location_gist_idx"),
             models.Index(fields=["school_type"], name="ix_univ_school_type"),
         ]
 
@@ -118,10 +115,6 @@ class UnivAdong(models.Model):
         verbose_name = "대학 ↔ 행정동"
         verbose_name_plural = "대학 ↔ 행정동"
         unique_together = [("univ", "adong")]
-        indexes = [
-            models.Index(fields=["univ"], name="ix_univ_adong_univ"),
-            models.Index(fields=["adong"], name="ix_univ_adong_adong"),
-        ]
 
     def __str__(self) -> str:
         return f"{self.univ_id} ↔ {self.adong_id}"
@@ -148,10 +141,6 @@ class UnivLdong(models.Model):
         verbose_name = "대학 ↔ 법정동"
         verbose_name_plural = "대학 ↔ 법정동"
         unique_together = [("univ", "ldong")]
-        indexes = [
-            models.Index(fields=["univ"], name="ix_univ_ldong_univ"),
-            models.Index(fields=["ldong"], name="ix_univ_ldong_ldong"),
-        ]
 
     def __str__(self) -> str:
         return f"{self.univ_id} ↔ {self.ldong_id}"

@@ -21,7 +21,6 @@ DB 정책 (계획서 1·2):
 """
 
 from django.contrib.gis.db import models as gis_models
-from django.contrib.postgres.indexes import GistIndex
 from django.db import models
 
 
@@ -83,9 +82,6 @@ class Gu(models.Model):
         verbose_name = "자치구"
         verbose_name_plural = "자치구"
         ordering = ["gu_code"]
-        indexes = [
-            GistIndex(fields=["boundary"], name="gu_boundary_gist_idx"),
-        ]
 
     def __str__(self) -> str:
         return self.name
@@ -127,10 +123,6 @@ class Ldong(models.Model):
         verbose_name = "법정동"
         verbose_name_plural = "법정동"
         ordering = ["ldong_code"]
-        indexes = [
-            models.Index(fields=["gu"]),
-            GistIndex(fields=["boundary"], name="ldong_boundary_gist_idx"),
-        ]
 
     def __str__(self) -> str:
         return f"{self.gu.name} {self.name}"
@@ -139,7 +131,7 @@ class Ldong(models.Model):
 class Adong(models.Model):
     """행정동. RDS `adong` 테이블 (schema.dbml line 119~127).
 
-    sub-plan 2J 신설. legacy `apps.legacy.neighborhoods.Dong`(=행정동) 모델·테이블은
+    sub-plan 2J 신설. 기존 행정동 모델·테이블은
     sub-plan 7G-C(결정 5A)에서 완전 폐기되어 Adong이 단일 행정동 마스터다.
     Adong 모델은 sub-plan 2K/2L에서 score current_*/score_history adong-level
     참조용으로 신설되었으며, 7G-C 이후 행정동 표면 객체이기도 하다.
@@ -180,9 +172,6 @@ class Adong(models.Model):
         verbose_name = "행정동"
         verbose_name_plural = "행정동"
         ordering = ["adong_code"]
-        indexes = [
-            GistIndex(fields=["boundary"], name="adong_boundary_gist_idx"),
-        ]
 
     def __str__(self) -> str:
         return f"{self.gu.name} {self.name}"
@@ -211,10 +200,6 @@ class GuAdjacency(models.Model):
         verbose_name = "자치구 인접"
         verbose_name_plural = "자치구 인접"
         unique_together = [("gu_a", "gu_b")]
-        indexes = [
-            models.Index(fields=["gu_a"]),
-            models.Index(fields=["gu_b"]),
-        ]
         # a == b 방지는 ETL/체크 제약 단계에서 검증.
 
     def __str__(self) -> str:
@@ -239,10 +224,6 @@ class LdongAdjacency(models.Model):
         verbose_name = "법정동 인접"
         verbose_name_plural = "법정동 인접"
         unique_together = [("ldong_a", "ldong_b")]
-        indexes = [
-            models.Index(fields=["ldong_a"]),
-            models.Index(fields=["ldong_b"]),
-        ]
 
     def __str__(self) -> str:
         return f"{self.ldong_a_id} ↔ {self.ldong_b_id}"
@@ -273,10 +254,6 @@ class AdongAdjacency(models.Model):
         verbose_name = "행정동 인접"
         verbose_name_plural = "행정동 인접"
         unique_together = [("adong_a", "adong_b")]
-        indexes = [
-            models.Index(fields=["adong_a"]),
-            models.Index(fields=["adong_b"]),
-        ]
 
     def __str__(self) -> str:
         return f"{self.adong_a_id} ↔ {self.adong_b_id}"

@@ -1,0 +1,4232 @@
+generated_at: '2026-05-29T09:24:43.329341+00:00'
+source: Django introspection + AI schema allowlist + table_metadata.yaml
+tables:
+  adjacent_adong:
+    description: 인접 행정동 관계 (adong1_code ↔ adong2_code 양방향)
+    category: 행정구역
+    app_label: regions
+    model: AdongAdjacency
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: adong1_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: adong.adong_code
+    - name: adong2_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: adong.adong_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: adong1_code
+      to_table: adong
+      to_column: adong_code
+    - column: adong2_code
+      to_table: adong
+      to_column: adong_code
+    indexes:
+    - name: adjacent_adong_adong_code_a_adong_code_b_fb50afeb_uniq
+      columns:
+      - adong1_code
+      - adong2_code
+      unique: true
+    - name: adjacent_adong_pkey
+      columns:
+      - id
+      unique: true
+    - name: adjacent_ad_adong1__7a7873_idx
+      columns:
+      - adong1_code
+      unique: false
+    - name: adjacent_ad_adong2__8155e5_idx
+      columns:
+      - adong2_code
+      unique: false
+    - name: adjacent_adong_adong_code_a_7fd146d2
+      columns:
+      - adong1_code
+      unique: false
+    - name: adjacent_adong_adong_code_a_7fd146d2_like
+      columns:
+      - adong1_code
+      unique: false
+    - name: adjacent_adong_adong_code_b_3bce9cb2
+      columns:
+      - adong2_code
+      unique: false
+    - name: adjacent_adong_adong_code_b_3bce9cb2_like
+      columns:
+      - adong2_code
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: 행정동 단위 인접 지역 확장 쿼리에 활용
+  adjacent_gu:
+    description: 인접 자치구 관계 (gu1_code ↔ gu2_code 양방향)
+    category: 행정구역
+    app_label: regions
+    model: GuAdjacency
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: gu1_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: gu.gu_code
+    - name: gu2_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: gu.gu_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: gu1_code
+      to_table: gu
+      to_column: gu_code
+    - column: gu2_code
+      to_table: gu
+      to_column: gu_code
+    indexes:
+    - name: adjacent_gu_gu_code_a_gu_code_b_65b791d7_uniq
+      columns:
+      - gu1_code
+      - gu2_code
+      unique: true
+    - name: adjacent_gu_pkey
+      columns:
+      - id
+      unique: true
+    - name: adjacent_gu_gu1_cod_11c194_idx
+      columns:
+      - gu1_code
+      unique: false
+    - name: adjacent_gu_gu2_cod_ccdc76_idx
+      columns:
+      - gu2_code
+      unique: false
+    - name: adjacent_gu_gu_code_a_36790694
+      columns:
+      - gu1_code
+      unique: false
+    - name: adjacent_gu_gu_code_a_36790694_like
+      columns:
+      - gu1_code
+      unique: false
+    - name: adjacent_gu_gu_code_b_f68880da
+      columns:
+      - gu2_code
+      unique: false
+    - name: adjacent_gu_gu_code_b_f68880da_like
+      columns:
+      - gu2_code
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: gu1_code, gu2_code 양방향 조인. 구 단위 인접 지역 확장 쿼리에 활용
+  adjacent_ldong:
+    description: 인접 법정동 관계 (ldong1_code ↔ ldong2_code 양방향)
+    category: 행정구역
+    app_label: regions
+    model: LdongAdjacency
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: ldong1_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ldong.ldong_code
+    - name: ldong2_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ldong.ldong_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: ldong1_code
+      to_table: ldong
+      to_column: ldong_code
+    - column: ldong2_code
+      to_table: ldong
+      to_column: ldong_code
+    indexes:
+    - name: adjacent_ldong_ldong_code_a_ldong_code_b_eb082b75_uniq
+      columns:
+      - ldong1_code
+      - ldong2_code
+      unique: true
+    - name: adjacent_ldong_pkey
+      columns:
+      - id
+      unique: true
+    - name: adjacent_ld_ldong1__a4b139_idx
+      columns:
+      - ldong1_code
+      unique: false
+    - name: adjacent_ld_ldong2__08c33b_idx
+      columns:
+      - ldong2_code
+      unique: false
+    - name: adjacent_ldong_ldong_code_a_98e98d53
+      columns:
+      - ldong1_code
+      unique: false
+    - name: adjacent_ldong_ldong_code_a_98e98d53_like
+      columns:
+      - ldong1_code
+      unique: false
+    - name: adjacent_ldong_ldong_code_b_7c2c22b1
+      columns:
+      - ldong2_code
+      unique: false
+    - name: adjacent_ldong_ldong_code_b_7c2c22b1_like
+      columns:
+      - ldong2_code
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ldong1_code, ldong2_code 양방향 조인
+  adong:
+    description: 행정동 (426개)
+    category: 행정구역
+    app_label: regions
+    model: Adong
+    columns:
+    - name: adong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: slug
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: area_m2
+      type: numeric
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: boundary
+      type: geometry
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: location
+      type: geometry
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: gu_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: gu.gu_code
+    primary_key:
+    - adong_code
+    foreign_keys:
+    - column: gu_code
+      to_table: gu
+      to_column: gu_code
+    indexes:
+    - name: adong_pkey
+      columns:
+      - adong_code
+      unique: true
+    - name: adong_slug_key
+      columns:
+      - slug
+      unique: true
+    - name: adong_adong_code_b1c05f5c_like
+      columns:
+      - adong_code
+      unique: false
+    - name: adong_boundary_8a76b116_id
+      columns:
+      - boundary
+      unique: false
+    - name: adong_boundary_gist_idx
+      columns:
+      - boundary
+      unique: false
+    - name: adong_gu_code_d971cf10
+      columns:
+      - gu_code
+      unique: false
+    - name: adong_gu_code_d971cf10_like
+      columns:
+      - gu_code
+      unique: false
+    - name: adong_location_c45c8afb_id
+      columns:
+      - location
+      unique: false
+    - name: adong_slug_59bebcdc_like
+      columns:
+      - slug
+      unique: false
+    geometry_columns:
+    - boundary
+    - location
+    join_hint: adong.gu_code = gu.gu_code
+    note: 'ldong_code 컬럼 없음. LEFT(adong_code, 5) = gu_code로 gu 연결 가능
+
+      location(POINT): 행정동 중심 좌표. boundary(MULTIPOLYGON): 행정동 경계
+
+      경계 GeoJSON 반환: ST_AsGeoJSON(boundary)
+
+      '
+  adong_population:
+    description: 행정동 월별 인구 (2022-09~현재)
+    category: 인구
+    app_label: populations
+    model: AdongPopulation
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: date
+      type: date
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: total_population
+      type: integer
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: household_count
+      type: integer
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: male_population
+      type: integer
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: female_population
+      type: integer
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: adong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: adong.adong_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
+    indexes:
+    - name: adong_population_adong_code_date_7ddc57d8_uniq
+      columns:
+      - adong_code
+      - date
+      unique: true
+    - name: adong_population_pkey
+      columns:
+      - id
+      unique: true
+    - name: adong_popul_adong_c_d66610_idx
+      columns:
+      - adong_code
+      - date
+      unique: false
+    - name: adong_popul_date_2c797b_idx
+      columns:
+      - date
+      unique: false
+    - name: adong_population_adong_code_bc1daf90
+      columns:
+      - adong_code
+      unique: false
+    - name: adong_population_adong_code_bc1daf90_like
+      columns:
+      - adong_code
+      unique: false
+    geometry_columns: []
+    join_hint: adong_population.adong_code = adong.adong_code
+    note: date 컬럼으로 기간 필터링 권장
+  amenity:
+    description: 시설 통합 테이블 (카페/편의점/헬스장/병원/공원 등 53만 건)
+    category: 시설
+    app_label: amenities
+    model: Amenity
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: category
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: location
+      type: geometry
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: source_id
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: source_table
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - id
+    foreign_keys: []
+    indexes:
+    - name: amenity_pkey
+      columns:
+      - id
+      unique: true
+    - name: uq_amenity_source
+      columns:
+      - source_table
+      - source_id
+      unique: true
+    - name: amenity_categor_4570df_idx
+      columns:
+      - category
+      unique: false
+    - name: amenity_external_id_35068938_like
+      columns:
+      - source_id
+      unique: false
+    - name: amenity_geom_0e12add0_id
+      columns:
+      - location
+      unique: false
+    - name: amenity_location_gist_idx
+      columns:
+      - location
+      unique: false
+    geometry_columns:
+    - location
+    join_hint: amenity.id = amenity_adong.amenity_id → amenity_adong.adong_code =
+      adong.adong_code
+    note: "category 컬럼으로 필터링 (한국어 금지, 영문 소문자만 사용):\n  beauty, book_stationery, bus_stop,\
+      \ cafe, convenience, dental, etc, gym,\n  hospital, laundry, library, mart,\
+      \ nightlife, oliveyoung, park, pc_room,\n  pet, pharmacy, restaurant, subway_station,\
+      \ university\nstore보다 단순하게 시설 수 집계 가능. category_code 불필요.\n행정동 기준: amenity.id\
+      \ = amenity_adong.amenity_id → amenity_adong.adong_code = adong.adong_code\n\
+      법정동 기준: amenity.id = amenity_ldong.amenity_id → amenity_ldong.ldong_code = ldong.ldong_code\n\
+      이전 추천 동네 후속 질문은 법정동 이름일 가능성이 높으므로 amenity_ldong → ldong.name 경로 우선\nlocation(POINT):\
+      \ 개별 시설 좌표. map 타입 반환 시 ST_Y/ST_X 사용\n"
+  amenity_adong:
+    description: ''
+    category: ''
+    app_label: amenities
+    model: AmenityAdong
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: amenity_id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: amenity.id
+    - name: adong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: adong.adong_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
+    - column: amenity_id
+      to_table: amenity
+      to_column: id
+    indexes:
+    - name: amenity_adong_amenity_id_adong_code_ae362611_uniq
+      columns:
+      - amenity_id
+      - adong_code
+      unique: true
+    - name: amenity_adong_pkey
+      columns:
+      - id
+      unique: true
+    - name: amenity_ado_adong_c_7226c7_idx
+      columns:
+      - adong_code
+      unique: false
+    - name: amenity_ado_amenity_5d63e4_idx
+      columns:
+      - amenity_id
+      unique: false
+    - name: amenity_adong_adong_code_00d5792c
+      columns:
+      - adong_code
+      unique: false
+    - name: amenity_adong_adong_code_00d5792c_like
+      columns:
+      - adong_code
+      unique: false
+    - name: amenity_adong_amenity_id_d64f96f7
+      columns:
+      - amenity_id
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  amenity_ldong:
+    description: ''
+    category: ''
+    app_label: amenities
+    model: AmenityLdong
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: amenity_id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: amenity.id
+    - name: ldong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ldong.ldong_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: amenity_id
+      to_table: amenity
+      to_column: id
+    - column: ldong_code
+      to_table: ldong
+      to_column: ldong_code
+    indexes:
+    - name: amenity_ldong_amenity_id_ldong_code_2bc76455_uniq
+      columns:
+      - amenity_id
+      - ldong_code
+      unique: true
+    - name: amenity_ldong_pkey
+      columns:
+      - id
+      unique: true
+    - name: amenity_ldo_amenity_6c118b_idx
+      columns:
+      - amenity_id
+      unique: false
+    - name: amenity_ldo_ldong_c_9dfdd4_idx
+      columns:
+      - ldong_code
+      unique: false
+    - name: amenity_ldong_amenity_id_e5cdcb3c
+      columns:
+      - amenity_id
+      unique: false
+    - name: amenity_ldong_ldong_code_4cbf34fd
+      columns:
+      - ldong_code
+      unique: false
+    - name: amenity_ldong_ldong_code_4cbf34fd_like
+      columns:
+      - ldong_code
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  bus_congestion:
+    description: ''
+    category: ''
+    app_label: bus
+    model: BusCongestion
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: date
+      type: date
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: time
+      type: time without time zone
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: congestion
+      type: numeric
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: bus_stop_id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - id
+    foreign_keys: []
+    indexes:
+    - name: bus_congestion_bus_stop_id_date_time_afce85db_uniq
+      columns:
+      - bus_stop_id
+      - date
+      - time
+      unique: true
+    - name: bus_congestion_pkey
+      columns:
+      - id
+      unique: true
+    - name: bus_congest_bus_sto_c2984d_idx
+      columns:
+      - bus_stop_id
+      - date
+      unique: false
+    - name: bus_congestion_bus_stop_id_a2c841fb
+      columns:
+      - bus_stop_id
+      unique: false
+    - name: buscongestion_date_brin_idx
+      columns:
+      - date
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  bus_stop:
+    description: 버스 정류장
+    category: 교통
+    app_label: bus
+    model: BusStop
+    columns:
+    - name: name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: stop_number
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: location
+      type: geometry
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: ldong_code
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ldong.ldong_code
+    - name: id
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: adong_code
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: adong.adong_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
+    - column: ldong_code
+      to_table: ldong
+      to_column: ldong_code
+    indexes:
+    - name: bus_stop_pkey
+      columns:
+      - id
+      unique: true
+    - name: bus_stop_adong_c_711295_idx
+      columns:
+      - adong_code
+      unique: false
+    - name: bus_stop_adong_code_6910032b
+      columns:
+      - adong_code
+      unique: false
+    - name: bus_stop_adong_code_6910032b_like
+      columns:
+      - adong_code
+      unique: false
+    - name: bus_stop_geom_5fe6f134_id
+      columns:
+      - location
+      unique: false
+    - name: bus_stop_id_af8c95d3_like
+      columns:
+      - id
+      unique: false
+    - name: bus_stop_ldong_c_33a3d6_idx
+      columns:
+      - ldong_code
+      unique: false
+    - name: bus_stop_ldong_code_31d8e9db
+      columns:
+      - ldong_code
+      unique: false
+    - name: bus_stop_ldong_code_31d8e9db_like
+      columns:
+      - ldong_code
+      unique: false
+    - name: bus_stop_stop_nu_874697_idx
+      columns:
+      - stop_number
+      unique: false
+    - name: busstop_location_gist_idx
+      columns:
+      - location
+      unique: false
+    geometry_columns:
+    - location
+    join_hint: bus_stop.adong_code = adong.adong_code
+    note: 'bus_stop.id는 문자열이지만 숫자형 문자열. 혼잡도 조인 시 bus_stop.id::bigint 캐스팅 필요
+
+      bus_congestion 컬럼: date, time, congestion, bus_stop_id. 시간 컬럼명은 hour가 아니라 time
+
+      location NULL 719건 존재 (가상/차고지). map 반환 시 WHERE location IS NOT NULL 필수
+
+      location(POINT): 정류장 좌표. map 타입 반환 시 ST_Y/ST_X 사용
+
+      '
+  business_category:
+    description: ''
+    category: ''
+    app_label: store
+    model: BusinessCategory
+    columns:
+    - name: subcategory_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: subcategory_name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: middle_category_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: middle_category_name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: main_category_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: main_category_name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - subcategory_code
+    foreign_keys: []
+    indexes:
+    - name: business_category_pkey
+      columns:
+      - subcategory_code
+      unique: true
+    - name: business_ca_main_ca_6484ca_idx
+      columns:
+      - main_category_code
+      unique: false
+    - name: business_ca_middle__106a60_idx
+      columns:
+      - middle_category_code
+      unique: false
+    - name: business_category_subcategory_code_e1e045d4_like
+      columns:
+      - subcategory_code
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  current_adong:
+    description: 행정동별 현재 종합점수 (월세·시설·교통·안전, 0~100 점수)
+    category: 지표
+    app_label: heatmap
+    model: CurrentAdong
+    columns:
+    - name: adong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: adong.adong_code
+    - name: score_rent
+      type: double precision
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: score_amenity
+      type: double precision
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: score_transit
+      type: double precision
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: score_safety
+      type: double precision
+      nullable: false
+      default: '0'
+      primary_key: false
+      foreign_key: ''
+    - name: score_total
+      type: double precision
+      nullable: false
+      default: '0'
+      primary_key: false
+      foreign_key: ''
+    - name: updated_at
+      type: timestamp with time zone
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rank_rent
+      type: integer
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rank_amenity
+      type: integer
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rank_transit
+      type: integer
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rank_safety
+      type: integer
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rank_total
+      type: integer
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - adong_code
+    foreign_keys:
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
+    indexes:
+    - name: current_adong_pkey
+      columns:
+      - adong_code
+      unique: true
+    - name: current_adong_adong_code_d1391d43_like
+      columns:
+      - adong_code
+      unique: false
+    geometry_columns: []
+    join_hint: current_adong.adong_code = adong.adong_code
+    note: '컬럼: score_rent, score_amenity, score_transit, score_safety, score_total
+
+      순위 컬럼: rank_rent, rank_amenity, rank_transit, rank_safety, rank_total
+
+      점수는 실제 DB 기준 0~100 범위. 종합 랭킹은 score_total 또는 rank_total 활용
+
+      '
+  current_gu:
+    description: 자치구별 현재 종합점수 (월세·시설·교통·안전, 0~100 점수)
+    category: 지표
+    app_label: heatmap
+    model: CurrentGu
+    columns:
+    - name: gu_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: gu.gu_code
+    - name: score_rent
+      type: double precision
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: score_amenity
+      type: double precision
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: score_transit
+      type: double precision
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: score_safety
+      type: double precision
+      nullable: false
+      default: '0'
+      primary_key: false
+      foreign_key: ''
+    - name: score_total
+      type: double precision
+      nullable: false
+      default: '0'
+      primary_key: false
+      foreign_key: ''
+    - name: updated_at
+      type: timestamp with time zone
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rank_rent
+      type: integer
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rank_amenity
+      type: integer
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rank_transit
+      type: integer
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rank_safety
+      type: integer
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rank_total
+      type: integer
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - gu_code
+    foreign_keys:
+    - column: gu_code
+      to_table: gu
+      to_column: gu_code
+    indexes:
+    - name: current_gu_pkey
+      columns:
+      - gu_code
+      unique: true
+    - name: current_gu_gu_code_4925ea19_like
+      columns:
+      - gu_code
+      unique: false
+    geometry_columns: []
+    join_hint: current_gu.gu_code = gu.gu_code
+    note: '컬럼: score_rent, score_amenity, score_transit, score_safety, score_total
+
+      순위 컬럼: rank_rent, rank_amenity, rank_transit, rank_safety, rank_total
+
+      구 단위 비교 전용. 동네별 추천에는 adong/ldong 점수 사용
+
+      '
+  current_ldong:
+    description: 법정동별 현재 종합점수 (월세·시설·교통·안전, 0~100 점수)
+    category: 지표
+    app_label: heatmap
+    model: CurrentLdong
+    columns:
+    - name: ldong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ldong.ldong_code
+    - name: score_rent
+      type: double precision
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: score_amenity
+      type: double precision
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: score_transit
+      type: double precision
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: score_safety
+      type: double precision
+      nullable: false
+      default: '0'
+      primary_key: false
+      foreign_key: ''
+    - name: score_total
+      type: double precision
+      nullable: false
+      default: '0'
+      primary_key: false
+      foreign_key: ''
+    - name: updated_at
+      type: timestamp with time zone
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rank_rent
+      type: integer
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rank_amenity
+      type: integer
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rank_transit
+      type: integer
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rank_safety
+      type: integer
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rank_total
+      type: integer
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - ldong_code
+    foreign_keys:
+    - column: ldong_code
+      to_table: ldong
+      to_column: ldong_code
+    indexes:
+    - name: current_ldong_pkey
+      columns:
+      - ldong_code
+      unique: true
+    - name: current_ldong_ldong_code_cd519895_like
+      columns:
+      - ldong_code
+      unique: false
+    geometry_columns: []
+    join_hint: current_ldong.ldong_code = ldong.ldong_code
+    note: '컬럼: score_rent, score_amenity, score_transit, score_safety, score_total
+
+      순위 컬럼: rank_rent, rank_amenity, rank_transit, rank_safety, rank_total
+
+      법정동 추천/비교에는 current_ldong 우선 사용 가능
+
+      '
+  current_seoul:
+    description: 서울 전체 현재 종합점수 (월세·시설·교통·안전, 0~100 점수)
+    category: 지표
+    app_label: heatmap
+    model: CurrentSeoul
+    columns:
+    - name: code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: seoul.code
+    - name: score_rent
+      type: double precision
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: score_amenity
+      type: double precision
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: score_transit
+      type: double precision
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: score_safety
+      type: double precision
+      nullable: false
+      default: '0'
+      primary_key: false
+      foreign_key: ''
+    - name: score_total
+      type: double precision
+      nullable: false
+      default: '0'
+      primary_key: false
+      foreign_key: ''
+    - name: updated_at
+      type: timestamp with time zone
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - code
+    foreign_keys:
+    - column: code
+      to_table: seoul
+      to_column: code
+    indexes:
+    - name: current_seoul_pkey
+      columns:
+      - code
+      unique: true
+    - name: current_seoul_code_a605d354_like
+      columns:
+      - code
+      unique: false
+    geometry_columns: []
+    join_hint: current_seoul.code = seoul.code
+    note: '서울 전체 기준선 비교용. 동네 추천 순위 산정에는 current_adong/current_ldong/current_gu 우선
+
+      컬럼: score_rent, score_amenity, score_transit, score_safety, score_total
+
+      '
+  dashboard_adong_cache:
+    description: 행정동 대시보드 통합 JSON 캐시
+    category: 대시보드
+    app_label: dashboard_cache
+    model: DashboardAdongCache
+    columns:
+    - name: region_payload
+      type: jsonb
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: intro
+      type: text
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rent_summary
+      type: jsonb
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: transit_summary
+      type: jsonb
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: infra_summary
+      type: jsonb
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: safety_summary
+      type: jsonb
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: dashboard_payload
+      type: jsonb
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: source_version
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: computed_at
+      type: timestamp with time zone
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: updated_at
+      type: timestamp with time zone
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: adong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: adong.adong_code
+    primary_key:
+    - adong_code
+    foreign_keys:
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
+    indexes:
+    - name: dashboard_adong_cache_pkey
+      columns:
+      - adong_code
+      unique: true
+    - name: dashboard_adong_cache_adong_code_4f06566a_like
+      columns:
+      - adong_code
+      unique: false
+    geometry_columns: []
+    join_hint: dashboard_adong_cache.adong_code = adong.adong_code
+    note: '행정동 기준 거래 시세, 교통 접근성, 생활 인프라, 안전 요약을 프론트 응답용 JSON으로 저장
+
+      컬럼: region_payload, intro, rent_summary, transit_summary, infra_summary, safety_summary,
+      dashboard_payload
+
+      '
+  dashboard_ldong_cache:
+    description: 법정동 대시보드 통합 JSON 캐시
+    category: 대시보드
+    app_label: dashboard_cache
+    model: DashboardLdongCache
+    columns:
+    - name: region_payload
+      type: jsonb
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: intro
+      type: text
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: rent_summary
+      type: jsonb
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: transit_summary
+      type: jsonb
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: infra_summary
+      type: jsonb
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: safety_summary
+      type: jsonb
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: dashboard_payload
+      type: jsonb
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: source_version
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: computed_at
+      type: timestamp with time zone
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: updated_at
+      type: timestamp with time zone
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: ldong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ldong.ldong_code
+    primary_key:
+    - ldong_code
+    foreign_keys:
+    - column: ldong_code
+      to_table: ldong
+      to_column: ldong_code
+    indexes:
+    - name: dashboard_ldong_cache_pkey
+      columns:
+      - ldong_code
+      unique: true
+    - name: dashboard_ldong_cache_ldong_code_1b74a812_like
+      columns:
+      - ldong_code
+      unique: false
+    geometry_columns: []
+    join_hint: dashboard_ldong_cache.ldong_code = ldong.ldong_code
+    note: '법정동 기준 거래 시세, 교통 접근성, 생활 인프라, 안전 요약을 프론트 응답용 JSON으로 저장
+
+      컬럼: region_payload, intro, rent_summary, transit_summary, infra_summary, safety_summary,
+      dashboard_payload
+
+      '
+  gu:
+    description: 서울시 자치구 (25개)
+    category: 행정구역
+    app_label: regions
+    model: Gu
+    columns:
+    - name: gu_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: area_m2
+      type: numeric
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: boundary
+      type: geometry
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: location
+      type: geometry
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: slug
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - gu_code
+    foreign_keys: []
+    indexes:
+    - name: gu_pkey
+      columns:
+      - gu_code
+      unique: true
+    - name: gu_slug_key
+      columns:
+      - slug
+      unique: true
+    - name: gu_boundary_33b3a994_id
+      columns:
+      - boundary
+      unique: false
+    - name: gu_boundary_gist_idx
+      columns:
+      - boundary
+      unique: false
+    - name: gu_gu_code_c94e27c1_like
+      columns:
+      - gu_code
+      unique: false
+    - name: gu_location_cf284709_id
+      columns:
+      - location
+      unique: false
+    - name: gu_slug_cd11af0a_like
+      columns:
+      - slug
+      unique: false
+    geometry_columns:
+    - boundary
+    - location
+    join_hint: gu.gu_code (기준 테이블)
+    note: 'location(POINT): 구 중심 좌표. boundary(MULTIPOLYGON): 구 경계
+
+      경계 GeoJSON 반환: ST_AsGeoJSON(boundary)
+
+      '
+  gu_metric:
+    description: 자치구별 지표 시계열 (안전등급, 인구, 교통 등)
+    category: 지표
+    app_label: metrics
+    model: GuMetric
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: date
+      type: date
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: value
+      type: numeric
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: gu_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: gu.gu_code
+    - name: metric_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: metric.metric_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: gu_code
+      to_table: gu
+      to_column: gu_code
+    - column: metric_code
+      to_table: metric
+      to_column: metric_code
+    indexes:
+    - name: gu_metric_gu_code_date_metric_code_6d9f6cbd_uniq
+      columns:
+      - gu_code
+      - date
+      - metric_code
+      unique: true
+    - name: gu_metric_pkey
+      columns:
+      - id
+      unique: true
+    - name: gu_metric_date_669330_idx
+      columns:
+      - date
+      unique: false
+    - name: gu_metric_gu_code_4b2253_idx
+      columns:
+      - gu_code
+      - metric_code
+      - date
+      unique: false
+    - name: gu_metric_gu_code_f225cfd0
+      columns:
+      - gu_code
+      unique: false
+    - name: gu_metric_gu_code_f225cfd0_like
+      columns:
+      - gu_code
+      unique: false
+    - name: gu_metric_metric__546b76_idx
+      columns:
+      - metric_code
+      - date
+      unique: false
+    - name: gu_metric_metric_code_ecc71e8f
+      columns:
+      - metric_code
+      unique: false
+    - name: gu_metric_metric_code_ecc71e8f_like
+      columns:
+      - metric_code
+      unique: false
+    geometry_columns: []
+    join_hint: gu_metric.gu_code = gu.gu_code
+    note: "metric 테이블 컬럼은 metric_code, name, unit, category, cycle, is_generated 등.\
+      \ metric_name 컬럼 없음\n최신값 비교는 보통 metric_code별 MAX(date)를 사용하거나 원하는 기간을 명시\n안전\
+      \ 주요 코드: SAFETY_GRADE_MEAN(종합안전등급_평균), SAFETY_GRADE_CRIME, SAFETY_GRADE_TRAFFIC,\
+      \ SAFETY_GRADE_FIRE, SAFETY_GRADE_LIFE, SAFETY_GRADE_DISEASE, SAFETY_GRADE_SUICIDE\n\
+      인구 주요 코드: POP_TOTAL, POP_RESIDENT, POP_YOUTH_RATIO_19_34, POP_YOUTH_RATIO_19_39,\
+      \ POP_YOUTH_19_34, POP_YOUTH_19_39, POP_ELDERLY_RATIO, POP_MEAN_AGE\n교통 주요 코드:\
+      \ ACC_TOTAL_COUNT, ACC_PER_10K_POP, ACC_PER_1K_VEHICLE, ACC_DRUNK_RATIO, ACC_HITRUN_RATIO,\
+      \ TRAFFIC_CULTURE_INDEX, TRAFFIC_CULTURE_WALK, TRAFFIC_CULTURE_SAFETY\n환경 주요\
+      \ 코드: AREA_GREEN_RATIO, AREA_GREEN_PER_CAPITA, AREA_GREEN\n경제 주요 코드: LAND_PRICE_CHANGE_RATE,\
+      \ HOUSING_COUNT, HOUSING_PER_CAPITA, GRDP_PER_CAPITA, GRDP_CURRENT\n값 방향성:\n\
+      \  - SAFETY_GRADE_*: 단위가 '등급'. 1등급에 가까울수록 안전, 숫자가 낮을수록 좋음\n  - 사고/화재 건수·비율(ACC_*,\
+      \ FIRE_COUNT): 낮을수록 좋음. 단순 건수보다 ACC_PER_10K_POP 같은 인구 보정 지표 우선\n  - TRAFFIC_CULTURE_*:\
+      \ 단위가 '점'. 높을수록 교통문화/보행/안전 수준이 좋음\n  - POP_YOUTH_RATIO_19_34/19_39: 높을수록 청년\
+      \ 비중이 큼. 대학가·자취 수요 해석에 유용\n  - POP_ELDERLY_RATIO/POP_MEAN_AGE: 높을수록 고령 비중/평균연령\
+      \ 높음. 청년 밀집과 반대 신호로 해석 가능\n  - AREA_GREEN_RATIO/AREA_GREEN_PER_CAPITA: 높을수록\
+      \ 녹지 접근성·환경 여건이 좋음\n  - LAND_PRICE_CHANGE_RATE: 양수면 지가 상승, 음수면 하락. 주거비 직접값은\
+      \ 아니므로 월세 판단에는 rent_deal 우선\n  - HOUSING_PER_CAPITA: 높을수록 인구 대비 주택 수가 많음. 실제\
+      \ 월세 수준은 rent_deal 평균으로 판단\n  - GRDP_PER_CAPITA/GRDP_CURRENT: 지역 경제 규모 참고용.\
+      \ 자취 추천의 직접 조건으로 과해석 금지\n값 선택 규칙:\n  - '안전한 구' 질문은 SAFETY_GRADE_MEAN 최신값 ASC\
+      \ 또는 score_safety DESC를 우선 사용\n  - '교통사고 적은 구' 질문은 ACC_PER_10K_POP 최신값 ASC 우선,\
+      \ 없으면 ACC_TOTAL_COUNT ASC\n  - '청년 많은 구' 질문은 POP_YOUTH_RATIO_19_34 또는 POP_YOUTH_RATIO_19_39\
+      \ 최신값 DESC\n  - '녹지/공원 환경 좋은 구' 질문은 AREA_GREEN_RATIO 또는 AREA_GREEN_PER_CAPITA\
+      \ 최신값 DESC\n  - '교통문화 좋은 구' 질문은 TRAFFIC_CULTURE_INDEX 최신값 DESC\n"
+  ksci_category:
+    description: ''
+    category: ''
+    app_label: store
+    model: KsciCategory
+    columns:
+    - name: ksci_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: subcategory_name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: class_name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: subclass_name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: middle_category_name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: main_category_name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - ksci_code
+    foreign_keys: []
+    indexes:
+    - name: ksci_category_pkey
+      columns:
+      - ksci_code
+      unique: true
+    - name: ksci_category_ksci_code_aa794bf6_like
+      columns:
+      - ksci_code
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  ldong:
+    description: 법정동 (467개)
+    category: 행정구역
+    app_label: regions
+    model: Ldong
+    columns:
+    - name: ldong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: area_m2
+      type: numeric
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: boundary
+      type: geometry
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: location
+      type: geometry
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: gu_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: gu.gu_code
+    - name: slug
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - ldong_code
+    foreign_keys:
+    - column: gu_code
+      to_table: gu
+      to_column: gu_code
+    indexes:
+    - name: ldong_pkey
+      columns:
+      - ldong_code
+      unique: true
+    - name: ldong_slug_key
+      columns:
+      - slug
+      unique: true
+    - name: ldong_boundary_58380733_id
+      columns:
+      - boundary
+      unique: false
+    - name: ldong_boundary_gist_idx
+      columns:
+      - boundary
+      unique: false
+    - name: ldong_gu_code_af3dfe_idx
+      columns:
+      - gu_code
+      unique: false
+    - name: ldong_gu_id_37dcc07d
+      columns:
+      - gu_code
+      unique: false
+    - name: ldong_gu_id_37dcc07d_like
+      columns:
+      - gu_code
+      unique: false
+    - name: ldong_ldong_code_1eb3cdad_like
+      columns:
+      - ldong_code
+      unique: false
+    - name: ldong_location_310e2428_id
+      columns:
+      - location
+      unique: false
+    - name: ldong_slug_31cc8e1f_like
+      columns:
+      - slug
+      unique: false
+    geometry_columns:
+    - boundary
+    - location
+    join_hint: ldong.gu_code = gu.gu_code
+    note: 'gu_code 컬럼 있음. adong을 경유하지 않고 ldong → gu 직접 조인
+
+      location(POINT): 법정동 중심 좌표. boundary(MULTIPOLYGON): 법정동 경계
+
+      경계 GeoJSON 반환: ST_AsGeoJSON(boundary)
+
+      '
+  ldong_population:
+    description: 법정동 월별 인구 (2022-09~현재)
+    category: 인구
+    app_label: populations
+    model: LdongPopulation
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: date
+      type: date
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: total_population
+      type: integer
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: household_count
+      type: integer
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: male_population
+      type: integer
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: female_population
+      type: integer
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: ldong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ldong.ldong_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: ldong_code
+      to_table: ldong
+      to_column: ldong_code
+    indexes:
+    - name: ldong_population_ldong_code_date_5cac2134_uniq
+      columns:
+      - ldong_code
+      - date
+      unique: true
+    - name: ldong_population_pkey
+      columns:
+      - id
+      unique: true
+    - name: ldong_popul_date_4249ae_idx
+      columns:
+      - date
+      unique: false
+    - name: ldong_popul_ldong_c_9123bf_idx
+      columns:
+      - ldong_code
+      - date
+      unique: false
+    - name: ldong_population_ldong_code_b22522ad
+      columns:
+      - ldong_code
+      unique: false
+    - name: ldong_population_ldong_code_b22522ad_like
+      columns:
+      - ldong_code
+      unique: false
+    geometry_columns: []
+    join_hint: ldong_population.ldong_code = ldong.ldong_code
+    note: date 컬럼으로 기간 필터링 권장
+  library:
+    description: 도서관 마스터 (공공/작은도서관)
+    category: 시설
+    app_label: library
+    model: Library
+    columns:
+    - name: id
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: library_type
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: remark
+      type: text
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: location
+      type: geometry
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: ldong_code
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ldong.ldong_code
+    - name: adong_code
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: adong.adong_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
+    - column: ldong_code
+      to_table: ldong
+      to_column: ldong_code
+    indexes:
+    - name: library_pkey
+      columns:
+      - id
+      unique: true
+    - name: ix_library_adong
+      columns:
+      - adong_code
+      unique: false
+    - name: ix_library_ldong
+      columns:
+      - ldong_code
+      unique: false
+    - name: ix_library_library_type
+      columns:
+      - library_type
+      unique: false
+    - name: library_adong_code_1172dda4
+      columns:
+      - adong_code
+      unique: false
+    - name: library_adong_code_1172dda4_like
+      columns:
+      - adong_code
+      unique: false
+    - name: library_id_4c785f44_like
+      columns:
+      - id
+      unique: false
+    - name: library_ldong_code_0078d3c0
+      columns:
+      - ldong_code
+      unique: false
+    - name: library_ldong_code_0078d3c0_like
+      columns:
+      - ldong_code
+      unique: false
+    - name: library_location_f9516547_id
+      columns:
+      - location
+      unique: false
+    - name: library_location_gist_idx
+      columns:
+      - location
+      unique: false
+    geometry_columns:
+    - location
+    join_hint: library.adong_code = adong.adong_code
+    note: 'univ_adong과 library 직접 조인 금지
+
+      location(POINT): 개별 도서관 좌표. map 타입 반환 시 ST_Y/ST_X 사용
+
+      '
+  library_hours:
+    description: 도서관 요일별 운영시간
+    category: 시설
+    app_label: library
+    model: LibraryHours
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: library_id
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: library.id
+    - name: day_type
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: time_open
+      type: time without time zone
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: time_close
+      type: time without time zone
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: is_irregular
+      type: boolean
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - id
+    foreign_keys:
+    - column: library_id
+      to_table: library
+      to_column: id
+    indexes:
+    - name: library_hours_library_id_day_type_a17e23f3_uniq
+      columns:
+      - library_id
+      - day_type
+      unique: true
+    - name: library_hours_pkey
+      columns:
+      - id
+      unique: true
+    - name: ix_library_hours_day_type
+      columns:
+      - day_type
+      unique: false
+    - name: ix_library_hours_library
+      columns:
+      - library_id
+      unique: false
+    - name: library_hours_library_id_515f34eb
+      columns:
+      - library_id
+      unique: false
+    - name: library_hours_library_id_515f34eb_like
+      columns:
+      - library_id
+      unique: false
+    geometry_columns: []
+    join_hint: library_hours.library_id = library.id
+    note: 'day_type 값: MON/TUE/WED/THU/FRI/SAT/SUN (한국어 요일 사용 금지)'
+  medical_emergency:
+    description: ''
+    category: ''
+    app_label: medical
+    model: MedicalEmergency
+    columns:
+    - name: hpid
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: medical_facility.hpid
+    - name: phpid
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: emergency_type
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: tel2
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: has_emergency_room
+      type: boolean
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: note
+      type: text
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - hpid
+    foreign_keys:
+    - column: hpid
+      to_table: medical_facility
+      to_column: hpid
+    indexes:
+    - name: medical_emergency_pkey
+      columns:
+      - hpid
+      unique: true
+    - name: medical_emergency_hpid_e6d67a12_like
+      columns:
+      - hpid
+      unique: false
+    - name: medical_emergency_type_idx
+      columns:
+      - emergency_type
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  medical_facility:
+    description: ''
+    category: ''
+    app_label: medical
+    model: MedicalFacility
+    columns:
+    - name: hpid
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: type
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: address
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: location
+      type: geometry
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: tel1
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: note
+      type: text
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: adong_code
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: adong.adong_code
+    - name: ldong_code
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ldong.ldong_code
+    primary_key:
+    - hpid
+    foreign_keys:
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
+    - column: ldong_code
+      to_table: ldong
+      to_column: ldong_code
+    indexes:
+    - name: medical_facility_pkey
+      columns:
+      - hpid
+      unique: true
+    - name: medical_facility_adong_code_86f17056
+      columns:
+      - adong_code
+      unique: false
+    - name: medical_facility_adong_code_86f17056_like
+      columns:
+      - adong_code
+      unique: false
+    - name: medical_facility_adong_idx
+      columns:
+      - adong_code
+      unique: false
+    - name: medical_facility_hpid_3fec2f29_like
+      columns:
+      - hpid
+      unique: false
+    - name: medical_facility_ldong_code_54738842
+      columns:
+      - ldong_code
+      unique: false
+    - name: medical_facility_ldong_code_54738842_like
+      columns:
+      - ldong_code
+      unique: false
+    - name: medical_facility_ldong_idx
+      columns:
+      - ldong_code
+      unique: false
+    - name: medical_facility_location_e945b752_id
+      columns:
+      - location
+      unique: false
+    - name: medical_facility_location_gist
+      columns:
+      - location
+      unique: false
+    - name: medical_facility_type_idx
+      columns:
+      - type
+      unique: false
+    geometry_columns:
+    - location
+    join_hint: ''
+    note: ''
+  medical_facility_hours:
+    description: ''
+    category: ''
+    app_label: medical
+    model: MedicalFacilityHours
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: day_type
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: open_time
+      type: time without time zone
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: close_time
+      type: time without time zone
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: is_closed
+      type: boolean
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: hpid
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: medical_facility.hpid
+    primary_key:
+    - id
+    foreign_keys:
+    - column: hpid
+      to_table: medical_facility
+      to_column: hpid
+    indexes:
+    - name: medical_facility_hours_hpid_day_type_bf9a9019_uniq
+      columns:
+      - hpid
+      - day_type
+      unique: true
+    - name: medical_facility_hours_pkey
+      columns:
+      - id
+      unique: true
+    - name: medical_facility_hours_hpid_c8f05146
+      columns:
+      - hpid
+      unique: false
+    - name: medical_facility_hours_hpid_c8f05146_like
+      columns:
+      - hpid
+      unique: false
+    - name: medical_hours_day_idx
+      columns:
+      - day_type
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  medical_facility_specialty:
+    description: ''
+    category: ''
+    app_label: medical
+    model: MedicalFacilitySpecialty
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: specialty_name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: specialist_count
+      type: integer
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: hira_ykiho
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: medical_hira_mapping.hira_ykiho
+    primary_key:
+    - id
+    foreign_keys:
+    - column: hira_ykiho
+      to_table: medical_hira_mapping
+      to_column: hira_ykiho
+    indexes:
+    - name: medical_facility_special_hira_ykiho_specialty_nam_44bb01b2_uniq
+      columns:
+      - hira_ykiho
+      - specialty_name
+      unique: true
+    - name: medical_facility_specialty_pkey
+      columns:
+      - id
+      unique: true
+    - name: medical_facility_specialty_hira_ykiho_9f51149e
+      columns:
+      - hira_ykiho
+      unique: false
+    - name: medical_facility_specialty_hira_ykiho_9f51149e_like
+      columns:
+      - hira_ykiho
+      unique: false
+    - name: medical_specialty_name_idx
+      columns:
+      - specialty_name
+      unique: false
+    - name: medical_specialty_ykiho_idx
+      columns:
+      - hira_ykiho
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  medical_hira_mapping:
+    description: ''
+    category: ''
+    app_label: medical
+    model: MedicalHiraMapping
+    columns:
+    - name: hpid
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: medical_facility.hpid
+    - name: hira_ykiho
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - hpid
+    foreign_keys:
+    - column: hpid
+      to_table: medical_facility
+      to_column: hpid
+    indexes:
+    - name: medical_hira_mapping_hira_ykiho_key
+      columns:
+      - hira_ykiho
+      unique: true
+    - name: medical_hira_mapping_pkey
+      columns:
+      - hpid
+      unique: true
+    - name: medical_hira_mapping_hira_ykiho_2e60b1a3_like
+      columns:
+      - hira_ykiho
+      unique: false
+    - name: medical_hira_mapping_hpid_46e94959_like
+      columns:
+      - hpid
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  medical_holiday_care:
+    description: ''
+    category: ''
+    app_label: medical
+    model: MedicalHolidayCare
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: care_date
+      type: date
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: open_time
+      type: time without time zone
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: close_time
+      type: time without time zone
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: is_closed
+      type: boolean
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: note
+      type: text
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: hpid
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: medical_facility.hpid
+    primary_key:
+    - id
+    foreign_keys:
+    - column: hpid
+      to_table: medical_facility
+      to_column: hpid
+    indexes:
+    - name: medical_holiday_care_hpid_care_date_cebb4e60_uniq
+      columns:
+      - hpid
+      - care_date
+      unique: true
+    - name: medical_holiday_care_pkey
+      columns:
+      - id
+      unique: true
+    - name: medical_holiday_care_hpid_12b28049
+      columns:
+      - hpid
+      unique: false
+    - name: medical_holiday_care_hpid_12b28049_like
+      columns:
+      - hpid
+      unique: false
+    - name: medical_holiday_date_idx
+      columns:
+      - care_date
+      unique: false
+    - name: medical_holiday_hpid_idx
+      columns:
+      - hpid
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  metric:
+    description: ''
+    category: ''
+    app_label: metrics
+    model: Metric
+    columns:
+    - name: metric_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: unit
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: category
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: cycle
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: is_generated
+      type: boolean
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: generation_method
+      type: text
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: source_agency
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: source_table
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: source_item
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: source_classification_code
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: remarks
+      type: text
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - metric_code
+    foreign_keys: []
+    indexes:
+    - name: metric_pkey
+      columns:
+      - metric_code
+      unique: true
+    - name: metric_metric_code_d1a20b57_like
+      columns:
+      - metric_code
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  nearest_subway_adong:
+    description: 행정동별 최근접 지하철역 이름·거리 (rank 1 = 가장 가까운 역)
+    category: 교통
+    app_label: subway
+    model: NearestSubwayAdong
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: rank
+      type: smallint
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: station_name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: distance_m
+      type: double precision
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: adong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: adong.adong_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
+    indexes:
+    - name: nearest_subway_adong_adong_code_rank_6294a11c_uniq
+      columns:
+      - adong_code
+      - rank
+      unique: true
+    - name: nearest_subway_adong_pkey
+      columns:
+      - id
+      unique: true
+    - name: ix_nearest_subway_adong_name
+      columns:
+      - station_name
+      unique: false
+    - name: nearest_subway_adong_adong_code_eff57039
+      columns:
+      - adong_code
+      unique: false
+    - name: nearest_subway_adong_adong_code_eff57039_like
+      columns:
+      - adong_code
+      unique: false
+    geometry_columns: []
+    join_hint: nearest_subway_adong.adong_code = adong.adong_code
+    note: 'rank=1만 사용하면 동네별 가장 가까운 역까지 거리 비교 가능
+
+      컬럼: rank, station_name, distance_m, adong_code
+
+      subway_station 조인 없이 바로 접근성 집계 가능
+
+      '
+  nearest_subway_ldong:
+    description: 법정동별 최근접 지하철역 이름·거리 (rank 1 = 가장 가까운 역)
+    category: 교통
+    app_label: subway
+    model: NearestSubwayLdong
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: rank
+      type: smallint
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: station_name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: distance_m
+      type: double precision
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: ldong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ldong.ldong_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: ldong_code
+      to_table: ldong
+      to_column: ldong_code
+    indexes:
+    - name: nearest_subway_ldong_ldong_code_rank_a415867f_uniq
+      columns:
+      - ldong_code
+      - rank
+      unique: true
+    - name: nearest_subway_ldong_pkey
+      columns:
+      - id
+      unique: true
+    - name: ix_nearest_subway_ldong_name
+      columns:
+      - station_name
+      unique: false
+    - name: nearest_subway_ldong_ldong_code_a3d27534
+      columns:
+      - ldong_code
+      unique: false
+    - name: nearest_subway_ldong_ldong_code_a3d27534_like
+      columns:
+      - ldong_code
+      unique: false
+    geometry_columns: []
+    join_hint: nearest_subway_ldong.ldong_code = ldong.ldong_code
+    note: 'rank=1만 사용. 컬럼: rank, station_name, distance_m, ldong_code'
+  park:
+    description: 서울시 공원
+    category: 시설
+    app_label: parks
+    model: Park
+    columns:
+    - name: id
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: category
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: area_m2
+      type: numeric
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: boundary
+      type: geometry
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: location
+      type: geometry
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - id
+    foreign_keys: []
+    indexes:
+    - name: park_pkey
+      columns:
+      - id
+      unique: true
+    - name: park_boundary_de5a8e2d_id
+      columns:
+      - boundary
+      unique: false
+    - name: park_boundary_gist_idx
+      columns:
+      - boundary
+      unique: false
+    - name: park_categor_4c7933_idx
+      columns:
+      - category
+      unique: false
+    - name: park_id_0998584a_like
+      columns:
+      - id
+      unique: false
+    - name: park_location_bcc54380_id
+      columns:
+      - location
+      unique: false
+    - name: park_location_gist_idx
+      columns:
+      - location
+      unique: false
+    geometry_columns:
+    - boundary
+    - location
+    join_hint: park_adong.park_id = park.id, park_adong.adong_code = adong.adong_code
+    note: 'location(POINT): 공원 중심 좌표. boundary(MULTIPOLYGON): 공원 경계
+
+      map 타입 반환 시 ST_Y/ST_X 사용. 경계는 ST_AsGeoJSON(boundary)
+
+      '
+  park_adong:
+    description: ''
+    category: ''
+    app_label: parks
+    model: ParkAdong
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: adong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: adong.adong_code
+    - name: park_id
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: park.id
+    primary_key:
+    - id
+    foreign_keys:
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
+    - column: park_id
+      to_table: park
+      to_column: id
+    indexes:
+    - name: park_adong_park_id_adong_code_3eb56c60_uniq
+      columns:
+      - park_id
+      - adong_code
+      unique: true
+    - name: park_adong_pkey
+      columns:
+      - id
+      unique: true
+    - name: park_adong_adong_c_30d82b_idx
+      columns:
+      - adong_code
+      unique: false
+    - name: park_adong_adong_code_88094120
+      columns:
+      - adong_code
+      unique: false
+    - name: park_adong_adong_code_88094120_like
+      columns:
+      - adong_code
+      unique: false
+    - name: park_adong_park_id_3c3b3d_idx
+      columns:
+      - park_id
+      unique: false
+    - name: park_adong_park_id_56a8b199
+      columns:
+      - park_id
+      unique: false
+    - name: park_adong_park_id_56a8b199_like
+      columns:
+      - park_id
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  park_ldong:
+    description: ''
+    category: ''
+    app_label: parks
+    model: ParkLdong
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: ldong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ldong.ldong_code
+    - name: park_id
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: park.id
+    primary_key:
+    - id
+    foreign_keys:
+    - column: ldong_code
+      to_table: ldong
+      to_column: ldong_code
+    - column: park_id
+      to_table: park
+      to_column: id
+    indexes:
+    - name: park_ldong_park_id_ldong_code_f27459fc_uniq
+      columns:
+      - park_id
+      - ldong_code
+      unique: true
+    - name: park_ldong_pkey
+      columns:
+      - id
+      unique: true
+    - name: park_ldong_ldong_c_385dc6_idx
+      columns:
+      - ldong_code
+      unique: false
+    - name: park_ldong_ldong_code_5a3f50ca
+      columns:
+      - ldong_code
+      unique: false
+    - name: park_ldong_ldong_code_5a3f50ca_like
+      columns:
+      - ldong_code
+      unique: false
+    - name: park_ldong_park_id_5d582150
+      columns:
+      - park_id
+      unique: false
+    - name: park_ldong_park_id_5d582150_like
+      columns:
+      - park_id
+      unique: false
+    - name: park_ldong_park_id_8414f7_idx
+      columns:
+      - park_id
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  rent_conversion_rate:
+    description: ''
+    category: ''
+    app_label: rent_deal
+    model: RentConversionRate
+    columns:
+    - name: period_ym
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: annual_rate
+      type: numeric
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: source
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: raw_payload
+      type: jsonb
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: fetched_at
+      type: timestamp with time zone
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - period_ym
+    foreign_keys: []
+    indexes:
+    - name: rent_conversion_rate_pkey
+      columns:
+      - period_ym
+      unique: true
+    - name: rent_conversion_rate_period_ym_9ed2e838_like
+      columns:
+      - period_ym
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  rent_deal:
+    description: 전월세 실거래 데이터 (2011~현재)
+    category: 부동산
+    app_label: rent_deal
+    model: RentDeal
+    columns:
+    - name: housing_type
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: contract_date
+      type: date
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: contract_end_date
+      type: date
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: contract_type
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: renewal_request_right_used
+      type: boolean
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: area_m2
+      type: numeric
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: deposit
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: monthly_rent
+      type: integer
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: previous_deposit
+      type: bigint
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: previous_monthly_rent
+      type: integer
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: floor
+      type: smallint
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: construction_year
+      type: smallint
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: house_name
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: jibun
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: location
+      type: geometry
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: ldong_code
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ldong.ldong_code
+    - name: id
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: adong_code
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: adong.adong_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
+    - column: ldong_code
+      to_table: ldong
+      to_column: ldong_code
+    indexes:
+    - name: rent_deal_pkey
+      columns:
+      - id
+      unique: true
+    - name: rent_deal_adong_code_2eeacd0a
+      columns:
+      - adong_code
+      unique: false
+    - name: rent_deal_adong_code_2eeacd0a_like
+      columns:
+      - adong_code
+      unique: false
+    - name: rent_deal_adong_contract_idx
+      columns:
+      - adong_code
+      - contract_date
+      unique: false
+    - name: rent_deal_geom_87de27b2_id
+      columns:
+      - location
+      unique: false
+    - name: rent_deal_housing_0163a0_idx
+      columns:
+      - housing_type
+      - contract_date
+      unique: false
+    - name: rent_deal_housing_438bed_idx
+      columns:
+      - housing_type
+      unique: false
+    - name: rent_deal_id_f010412b_like
+      columns:
+      - id
+      unique: false
+    - name: rent_deal_ldong_c_7caf73_idx
+      columns:
+      - ldong_code
+      - contract_date
+      unique: false
+    - name: rent_deal_ldong_id_4974d0a9
+      columns:
+      - ldong_code
+      unique: false
+    - name: rent_deal_ldong_id_4974d0a9_like
+      columns:
+      - ldong_code
+      unique: false
+    - name: rentdeal_location_gist_idx
+      columns:
+      - location
+      unique: false
+    geometry_columns:
+    - location
+    join_hint: rent_deal.ldong_code = ldong.ldong_code
+    note: '월세/전세 분석은 법정동(ldong) 기준이 기본. rent_deal.ldong_code → ldong은 실제 DB에서 전체 매칭됨.
+
+      rent_deal.adong_code는 NULL이 많으므로 행정동 기준 직접 분석에 사용 금지. 필요 시 rent_deal_ldong_adong_map은
+      보조용으로만 사용.
+
+      MIN 대신 AVG 사용 권장. store와 직접 조인 금지 — 카운트 폭발 발생
+
+      월세와 시설 수를 같이 조회할 때는 반드시 별도 SQL로 분리할 것
+
+      월세: monthly_rent > 0 / 전세: monthly_rent = 0 AND deposit > 0
+
+      housing_type 값: 오피스텔, 연립다세대, 단독, 다가구, 아파트. 자취 서비스에서는 아파트 제외 권장
+
+      최근 거래 기준 비교는 contract_date >= CURRENT_DATE - INTERVAL ''1 year'' 사용 권장
+
+      location(POINT): 개별 매물 좌표. map 타입 반환 시 ST_Y/ST_X 사용
+
+      '
+  rent_deal_cache:
+    description: 프론트 지도/목록용 전월세 캐시 테이블
+    category: 부동산
+    app_label: rent_deal_service
+    model: RentDealCache
+    columns:
+    - name: id
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: type_code
+      type: character
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: deposit
+      type: integer
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: monthly_rent
+      type: smallint
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: converted_rent
+      type: smallint
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: area_m2
+      type: real
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: lng
+      type: double precision
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: lat
+      type: double precision
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: contract_ymd
+      type: integer
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key: []
+    foreign_keys: []
+    indexes: []
+    geometry_columns: []
+    join_hint: ''
+    note: '빠른 개별 거래 조회용. 컬럼은 type_code, deposit, monthly_rent, converted_rent, area_m2,
+      lng, lat, contract_ymd
+
+      통계/추천/평균 산정은 원천 rent_deal 우선. 지도 핀이나 최근 거래 목록이 필요할 때만 제한적으로 사용
+
+      '
+  rent_deal_grid_monthly_cache:
+    description: ''
+    category: ''
+    app_label: rent_deal_service
+    model: RentDealGridMonthlyCache
+    columns:
+    - name: cache_key
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: grid_id
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: grid_size_m
+      type: smallint
+      nullable: false
+      default: '300'
+      primary_key: false
+      foreign_key: ''
+    - name: gu_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: gu_name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: year_month
+      type: integer
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: type_code
+      type: character
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: avg_converted_rent
+      type: smallint
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: deal_count
+      type: integer
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: center_lng
+      type: double precision
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: center_lat
+      type: double precision
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key: []
+    foreign_keys: []
+    indexes:
+    - name: rent_grid_center_idx
+      columns:
+      - center_lng
+      - center_lat
+      unique: false
+    - name: rent_grid_gu_idx
+      columns:
+      - gu_code
+      unique: false
+    - name: rent_grid_month_type_idx
+      columns:
+      - year_month
+      - type_code
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  rent_deal_ldong_adong_map:
+    description: 법정동↔행정동 코드 매핑 테이블
+    category: 행정구역
+    app_label: rent_deal
+    model: RentDealLdongAdongMap
+    columns:
+    - name: ldong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ldong.ldong_code
+    - name: adong_code
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: adong.adong_code
+    primary_key:
+    - ldong_code
+    foreign_keys:
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
+    - column: ldong_code
+      to_table: ldong
+      to_column: ldong_code
+    indexes:
+    - name: rent_deal_ldong_adong_map_pkey
+      columns:
+      - ldong_code
+      unique: true
+    - name: rent_deal_ldong_adong_map_adong_code_42eff29a
+      columns:
+      - adong_code
+      unique: false
+    - name: rent_deal_ldong_adong_map_adong_code_42eff29a_like
+      columns:
+      - adong_code
+      unique: false
+    - name: rent_deal_ldong_adong_map_ldong_code_26d6b8f8_like
+      columns:
+      - ldong_code
+      unique: false
+    - name: rent_ld_ad_map_adong_idx
+      columns:
+      - adong_code
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: 'ldong_code ↔ adong_code 변환이 필요할 때만 보조적으로 사용
+
+      실제 DB에서 일부 행은 adong_code가 NULL. 월세 기본 집계 기준은 rent_deal.ldong_code → ldong 유지
+
+      '
+  rent_deal_ldong_monthly_cache:
+    description: ''
+    category: ''
+    app_label: rent_deal_service
+    model: RentDealLdongMonthlyCache
+    columns:
+    - name: cache_key
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: ldong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: ldong_name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: gu_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: gu_name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: year_month
+      type: integer
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: type_code
+      type: character
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: avg_converted_rent
+      type: smallint
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: deal_count
+      type: integer
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: center_lng
+      type: double precision
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: center_lat
+      type: double precision
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key: []
+    foreign_keys: []
+    indexes:
+    - name: rent_ldong_code_idx
+      columns:
+      - ldong_code
+      unique: false
+    - name: rent_ldong_month_type_idx
+      columns:
+      - year_month
+      - type_code
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  seoul:
+    description: 서울시 단일 행정구역
+    category: 행정구역
+    app_label: regions
+    model: Seoul
+    columns:
+    - name: code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: area_m2
+      type: numeric
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: boundary
+      type: geometry
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: location
+      type: geometry
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - code
+    foreign_keys: []
+    indexes:
+    - name: seoul_pkey
+      columns:
+      - code
+      unique: true
+    - name: seoul_boundary_69b68baf_id
+      columns:
+      - boundary
+      unique: false
+    - name: seoul_code_f18aa599_like
+      columns:
+      - code
+      unique: false
+    - name: seoul_location_e4413d17_id
+      columns:
+      - location
+      unique: false
+    geometry_columns:
+    - boundary
+    - location
+    join_hint: ''
+    note: '서울 전체 기준 geometry/location이 필요할 때만 사용
+
+      서울 평균 지표는 seoul_metric 또는 current_seoul 우선 사용
+
+      '
+  seoul_metric:
+    description: 서울 전체 지표 시계열
+    category: 지표
+    app_label: metrics
+    model: SeoulMetric
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: date
+      type: date
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: value
+      type: numeric
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: metric_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: metric.metric_code
+    - name: seoul_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: seoul.code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: metric_code
+      to_table: metric
+      to_column: metric_code
+    - column: seoul_code
+      to_table: seoul
+      to_column: code
+    indexes:
+    - name: seoul_metric_pkey
+      columns:
+      - id
+      unique: true
+    - name: seoul_metric_seoul_code_date_metric_code_b8e03224_uniq
+      columns:
+      - seoul_code
+      - date
+      - metric_code
+      unique: true
+    - name: seoul_metri_date_43e815_idx
+      columns:
+      - date
+      unique: false
+    - name: seoul_metri_metric__2f3250_idx
+      columns:
+      - metric_code
+      - date
+      unique: false
+    - name: seoul_metric_metric_code_1e3bdfff
+      columns:
+      - metric_code
+      unique: false
+    - name: seoul_metric_metric_code_1e3bdfff_like
+      columns:
+      - metric_code
+      unique: false
+    - name: seoul_metric_seoul_code_73b3b291
+      columns:
+      - seoul_code
+      unique: false
+    - name: seoul_metric_seoul_code_73b3b291_like
+      columns:
+      - seoul_code
+      unique: false
+    geometry_columns: []
+    join_hint: seoul_metric.seoul_code = seoul.code
+    note: 'gu_metric과 같은 metric_code 체계 사용. 서울 전체 평균/기준선 비교에 활용
+
+      구별 비교는 gu_metric, 서울 기준선은 seoul_metric 사용
+
+      '
+  store:
+    description: 상가 점포 (소상공인 데이터)
+    category: 시설
+    app_label: store
+    model: Store
+    columns:
+    - name: id
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: branch_name
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: address
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: location
+      type: geometry
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: category_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: business_category.subcategory_code
+    - name: ksci_code
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ksci_category.ksci_code
+    - name: ldong_code
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ldong.ldong_code
+    - name: adong_code
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: adong.adong_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
+    - column: category_code
+      to_table: business_category
+      to_column: subcategory_code
+    - column: ksci_code
+      to_table: ksci_category
+      to_column: ksci_code
+    - column: ldong_code
+      to_table: ldong
+      to_column: ldong_code
+    indexes:
+    - name: store_pkey
+      columns:
+      - id
+      unique: true
+    - name: store_adong_c_b8a0a4_idx
+      columns:
+      - adong_code
+      unique: false
+    - name: store_adong_code_d27b048f
+      columns:
+      - adong_code
+      unique: false
+    - name: store_adong_code_d27b048f_like
+      columns:
+      - adong_code
+      unique: false
+    - name: store_categor_a63bc0_idx
+      columns:
+      - category_code
+      unique: false
+    - name: store_category_code_8a989c46
+      columns:
+      - category_code
+      unique: false
+    - name: store_category_code_8a989c46_like
+      columns:
+      - category_code
+      unique: false
+    - name: store_id_7fbd27e3_like
+      columns:
+      - id
+      unique: false
+    - name: store_ksci_co_e67d73_idx
+      columns:
+      - ksci_code
+      unique: false
+    - name: store_ksci_code_7bca1706
+      columns:
+      - ksci_code
+      unique: false
+    - name: store_ksci_code_7bca1706_like
+      columns:
+      - ksci_code
+      unique: false
+    - name: store_ldong_c_a49541_idx
+      columns:
+      - ldong_code
+      unique: false
+    - name: store_ldong_code_09e48bde
+      columns:
+      - ldong_code
+      unique: false
+    - name: store_ldong_code_09e48bde_like
+      columns:
+      - ldong_code
+      unique: false
+    - name: store_location_3f5b48f9_id
+      columns:
+      - location
+      unique: false
+    - name: store_location_gist_idx
+      columns:
+      - location
+      unique: false
+    geometry_columns:
+    - location
+    join_hint: store.adong_code = adong.adong_code
+    note: '업종코드 알면 WHERE store.category_code = ''코드'' 로 직접 필터링. business_category
+      조인 불필요
+
+      업종명 설명이 필요할 때만 store.category_code = business_category.subcategory_code로 조인
+
+      business_category 컬럼: subcategory_code/name, middle_category_code/name, main_category_code/name
+
+      주요 코드: I21201 카페, G20405 편의점, G20404 슈퍼마켓, R10202 독서실/스터디카페, R10307 헬스장, G21501
+      약국, S20902 셀프 빨래방
+
+      상위 코드 패턴: 음식점 전체 I2%, 식료품 소매 G205%, 스포츠 서비스 R103%
+
+      rent_deal과 직접 조인 금지 — 카운트 폭발 발생
+
+      월세와 시설 수를 같이 조회할 때는 반드시 별도 SQL로 분리할 것
+
+      location(POINT): 개별 점포 좌표. map 타입 반환 시 ST_Y/ST_X 사용
+
+      '
+  subway_congestion:
+    description: ''
+    category: ''
+    app_label: subway
+    model: SubwayCongestion
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: day_type
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: direction
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: express_yn
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: time
+      type: time without time zone
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: congestion
+      type: numeric
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: station_id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - id
+    foreign_keys: []
+    indexes:
+    - name: subway_congestion_pkey
+      columns:
+      - id
+      unique: true
+    - name: subway_congestion_station_id_day_type_dire_3f7ba7c6_uniq
+      columns:
+      - station_id
+      - day_type
+      - direction
+      - express_yn
+      - time
+      unique: true
+    - name: subway_cong_day_typ_f2d5b8_idx
+      columns:
+      - day_type
+      - time
+      unique: false
+    - name: subway_cong_station_43fb82_idx
+      columns:
+      - station_id
+      - day_type
+      unique: false
+    - name: subway_congestion_station_id_2ebc4912
+      columns:
+      - station_id
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  subway_station:
+    description: 지하철역 (1~9호선 서울 구간)
+    category: 교통
+    app_label: subway
+    model: SubwayStation
+    columns:
+    - name: name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: line
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: location
+      type: geometry
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: id
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: adong_code
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: adong.adong_code
+    - name: ldong_code
+      type: character varying
+      nullable: true
+      default: ''
+      primary_key: false
+      foreign_key: ldong.ldong_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
+    - column: ldong_code
+      to_table: ldong
+      to_column: ldong_code
+    indexes:
+    - name: subway_station_pkey
+      columns:
+      - id
+      unique: true
+    - name: subway_location_gist_idx
+      columns:
+      - location
+      unique: false
+    - name: subway_stat_adong_c_77e870_idx
+      columns:
+      - adong_code
+      unique: false
+    - name: subway_stat_ldong_c_9e7181_idx
+      columns:
+      - ldong_code
+      unique: false
+    - name: subway_stat_name_1fcc5b_idx
+      columns:
+      - name
+      unique: false
+    - name: subway_station_adong_code_b95d6a0c
+      columns:
+      - adong_code
+      unique: false
+    - name: subway_station_adong_code_b95d6a0c_like
+      columns:
+      - adong_code
+      unique: false
+    - name: subway_station_geom_a4cbb3b4_id
+      columns:
+      - location
+      unique: false
+    - name: subway_station_id_84af8e86_like
+      columns:
+      - id
+      unique: false
+    - name: subway_station_ldong_code_a9ec8201
+      columns:
+      - ldong_code
+      unique: false
+    - name: subway_station_ldong_code_a9ec8201_like
+      columns:
+      - ldong_code
+      unique: false
+    geometry_columns:
+    - location
+    join_hint: subway_station.adong_code = adong.adong_code
+    note: '호선 필터는 line 컬럼 사용 (name 아님). 예: WHERE line = ''2호선''
+
+      line 값 예: 1호선~9호선, 신림선, 우이신설선, 신분당선, 경의중앙선, 공항철도1호선 등
+
+      subway_station.id는 문자열이지만 숫자형 문자열. 혼잡도 조인 시 subway_station.id::bigint 캐스팅 필요
+
+      subway_congestion 컬럼: day_type, direction, express_yn, time, congestion, station_id
+
+      day_type = ''평일''/''토요일''/''일요일''/''휴일''. 시간 컬럼명은 hour가 아니라 time
+
+      ldong_code도 보유하므로 rent_deal과 직접 조인 가능:
+
+      subway_station.ldong_code = rent_deal.ldong_code → ldong → gu
+
+      location(POINT): 역 좌표. map 타입 반환 시 ST_Y/ST_X 사용
+
+      '
+  univ:
+    description: 대학 캠퍼스
+    category: 장소
+    app_label: univ
+    model: Univ
+    columns:
+    - name: id
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: name
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: school_type
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: boundary
+      type: geometry
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    - name: location
+      type: geometry
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ''
+    primary_key:
+    - id
+    foreign_keys: []
+    indexes:
+    - name: univ_pkey
+      columns:
+      - id
+      unique: true
+    - name: ix_univ_school_type
+      columns:
+      - school_type
+      unique: false
+    - name: univ_boundary_cf786b73_id
+      columns:
+      - boundary
+      unique: false
+    - name: univ_boundary_gist_idx
+      columns:
+      - boundary
+      unique: false
+    - name: univ_id_d25ec29a_like
+      columns:
+      - id
+      unique: false
+    - name: univ_location_c9b54fee_id
+      columns:
+      - location
+      unique: false
+    - name: univ_location_gist_idx
+      columns:
+      - location
+      unique: false
+    geometry_columns:
+    - boundary
+    - location
+    join_hint: ''
+    note: '월세는 ldong 경로, 도서관/공원/상가는 adong 경로 사용
+
+      location(POINT): 대학 중심 좌표. boundary(MULTIPOLYGON): 캠퍼스 경계
+
+      '
+  univ_adong:
+    description: ''
+    category: ''
+    app_label: univ
+    model: UnivAdong
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: univ_id
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: univ.id
+    - name: adong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: adong.adong_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
+    - column: univ_id
+      to_table: univ
+      to_column: id
+    indexes:
+    - name: univ_adong_pkey
+      columns:
+      - id
+      unique: true
+    - name: univ_adong_univ_id_adong_code_bb01d18d_uniq
+      columns:
+      - univ_id
+      - adong_code
+      unique: true
+    - name: ix_univ_adong_adong
+      columns:
+      - adong_code
+      unique: false
+    - name: ix_univ_adong_univ
+      columns:
+      - univ_id
+      unique: false
+    - name: univ_adong_adong_code_70484c74
+      columns:
+      - adong_code
+      unique: false
+    - name: univ_adong_adong_code_70484c74_like
+      columns:
+      - adong_code
+      unique: false
+    - name: univ_adong_univ_id_62ff4c1e
+      columns:
+      - univ_id
+      unique: false
+    - name: univ_adong_univ_id_62ff4c1e_like
+      columns:
+      - univ_id
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''
+  univ_ldong:
+    description: ''
+    category: ''
+    app_label: univ
+    model: UnivLdong
+    columns:
+    - name: id
+      type: bigint
+      nullable: false
+      default: ''
+      primary_key: true
+      foreign_key: ''
+    - name: univ_id
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: univ.id
+    - name: ldong_code
+      type: character varying
+      nullable: false
+      default: ''
+      primary_key: false
+      foreign_key: ldong.ldong_code
+    primary_key:
+    - id
+    foreign_keys:
+    - column: ldong_code
+      to_table: ldong
+      to_column: ldong_code
+    - column: univ_id
+      to_table: univ
+      to_column: id
+    indexes:
+    - name: univ_ldong_pkey
+      columns:
+      - id
+      unique: true
+    - name: univ_ldong_univ_id_ldong_code_f267ca8f_uniq
+      columns:
+      - univ_id
+      - ldong_code
+      unique: true
+    - name: ix_univ_ldong_ldong
+      columns:
+      - ldong_code
+      unique: false
+    - name: ix_univ_ldong_univ
+      columns:
+      - univ_id
+      unique: false
+    - name: univ_ldong_ldong_code_9dbe78c8
+      columns:
+      - ldong_code
+      unique: false
+    - name: univ_ldong_ldong_code_9dbe78c8_like
+      columns:
+      - ldong_code
+      unique: false
+    - name: univ_ldong_univ_id_f2b1c60e
+      columns:
+      - univ_id
+      unique: false
+    - name: univ_ldong_univ_id_f2b1c60e_like
+      columns:
+      - univ_id
+      unique: false
+    geometry_columns: []
+    join_hint: ''
+    note: ''

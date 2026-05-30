@@ -187,37 +187,39 @@ def update_parks(options: ParksUpdateOptions) -> dict[str, Any]:
 
     loaded = created = updated = deleted_missing = 0
     if not options.dry_run:
+        records_by_id = {record["id"]: record for record in built["records"]}
+        records = list(records_by_id.values())
+        record_ids = list(records_by_id)
+        existing_ids = set(Park.objects.filter(id__in=record_ids).values_list("id", flat=True))
         with transaction.atomic():
-            park_by_id: dict[str, Park] = {}
-            for record in built["records"]:
-                park, was_created = Park.objects.update_or_create(
-                    id=record["id"],
-                    defaults=record["defaults"],
-                )
-                park_by_id[record["id"]] = park
-                loaded += 1
-                if was_created:
-                    created += 1
-                else:
-                    updated += 1
+            Park.objects.bulk_create(
+                [Park(id=record["id"], **record["defaults"]) for record in records],
+                batch_size=1000,
+                update_conflicts=True,
+                update_fields=["name", "category", "area_m2", "boundary", "location"],
+                unique_fields=["id"],
+            )
+            loaded = len(records)
+            created = len(set(record_ids) - existing_ids)
+            updated = len(set(record_ids) & existing_ids)
 
             if completed:
                 ParkLdong.objects.all().delete()
                 ParkAdong.objects.all().delete()
                 ParkLdong.objects.bulk_create(
                     [
-                        ParkLdong(park=park_by_id[park_id], ldong_id=ldong_code)
+                        ParkLdong(park_id=park_id, ldong_id=ldong_code)
                         for park_id, ldong_code in built["ldong_links"]
-                        if park_id in park_by_id
+                        if park_id in records_by_id
                     ],
                     ignore_conflicts=True,
                     batch_size=1000,
                 )
                 ParkAdong.objects.bulk_create(
                     [
-                        ParkAdong(park=park_by_id[park_id], adong_id=adong_code)
+                        ParkAdong(park_id=park_id, adong_id=adong_code)
                         for park_id, adong_code in built["adong_links"]
-                        if park_id in park_by_id
+                        if park_id in records_by_id
                     ],
                     ignore_conflicts=True,
                     batch_size=1000,

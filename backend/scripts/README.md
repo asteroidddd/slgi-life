@@ -18,6 +18,7 @@
 | `update/update_all.py` | 공공데이터와 서비스 파생 데이터를 전체 순서대로 업데이트 |
 | `update/update_public_data.py` | 공공데이터 도메인을 하나씩 또는 전체 순서대로 업데이트 |
 | `update/update_service_data.py` | 서비스 파생 데이터를 하나씩 또는 전체 순서대로 업데이트 |
+| `update/update_dashboard_data.py` | 대시보드 화면 전용 데이터를 하나씩 또는 전체 순서대로 업데이트 |
 
 기본은 dry-run이며 실제 DB 반영에는 `--write`가 필요합니다.
 
@@ -26,6 +27,7 @@ cd /home/ubuntu/capston/backend
 python scripts/update/update_all.py --write
 python scripts/update/update_public_data.py --dataset all --write
 python scripts/update/update_service_data.py --target all --write
+python scripts/update/update_dashboard_data.py --target all --write
 ```
 
 ## 실행 순서
@@ -39,11 +41,14 @@ python scripts/update/update_service_data.py --target all --write
    - `bus`
    - `subway`
    - `stores`
+   - `medical`
    - `parks`
    - `library`
 2. 서비스 파생 데이터 업데이트
    - `amenity`
    - `current`
+3. 대시보드 데이터 업데이트
+   - `dashboard_cache`
 
 업데이트 상태 JSON은 `backend/apps/public_data/.state` 아래에 저장됩니다.
 

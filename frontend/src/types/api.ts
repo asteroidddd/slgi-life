@@ -31,6 +31,15 @@ export interface AdongScore {
   score_safety: number;
 }
 
+export interface DashboardRegionIntro {
+  type: 'adong' | 'ldong';
+  code: string;
+  slug: string;
+  gu_name: string;
+  dong_name: string;
+  intro: string;
+}
+
 /** Nearest subway station shown in the adong panel (SPEC 6.2). */
 export interface NearestStation {
   rank?: number;
@@ -505,6 +514,79 @@ export interface RentConversionRateResponse {
   unit: 'percent_per_year';
 }
 
+export type RentListingType = 'apartment' | 'officetel' | 'villa_house';
+
+export interface RentListingAnalysisRequest {
+  address: string;
+  area_m2: number;
+  housing_type: RentListingType;
+  deposit: number;
+  monthly_rent: number;
+  include_adjacent: boolean;
+}
+
+export interface RentListingAnalysisResponse {
+  status: 'ok' | 'no_data';
+  input: {
+    address: string;
+    area_m2: number;
+    deposit: number;
+    monthly_rent: number;
+    converted_monthly_rent: number;
+    rent_per_area: number;
+    housing_type: RentListingType | string;
+    housing_type_label: string;
+    include_adjacent: boolean;
+  };
+  region: {
+    code: string;
+    slug: string;
+    gu_name: string;
+    dong_name: string;
+    name: string;
+    address_source: Record<string, unknown>;
+    included_regions: Array<{ code: string; gu_name: string; dong_name: string; slug: string }>;
+  };
+  comparison: {
+    scope: string;
+    lookback_days: number;
+    decay_days: number;
+    housing_type_label: string;
+    housing_types: string[];
+    sample_count: number;
+    effective_sample_count: number;
+    confidence: 'high' | 'medium' | 'low';
+    confidence_label: string;
+    min_contract_date: string | null;
+    max_contract_date: string | null;
+    type_counts: Record<string, number>;
+  };
+  stats: {
+    q20: number | null;
+    q40: number | null;
+    median: number | null;
+    q60: number | null;
+    q80: number | null;
+    weighted_percentile: number | null;
+    delta_to_median_pct: number | null;
+  };
+  verdict: {
+    label: string;
+    tone: 'good' | 'info' | 'bad' | string;
+    description: string;
+    summary: string;
+  };
+  basis: {
+    annual_rate: number;
+    monthly_rate: number;
+    source: string;
+    unit: string;
+    period: string;
+    weight_formula: string;
+  };
+  disclaimer: string;
+}
+
 export interface MatchDetailResponse {
   /** 동 메타. */
   adong: { slug: string; code: string; name: string; gu: string };
@@ -644,6 +726,8 @@ export interface User {
 
 /** GET /api/users/me. */
 export interface MeResponse extends User {
+  email: string;
+  auth_provider: 'kakao' | 'password';
   address: string;
   home_lat: number | null;
   home_lng: number | null;
@@ -670,6 +754,7 @@ export interface LoginPayload {
 
 /** PATCH /api/users/me body — all fields optional. */
 export interface MePatchPayload {
+  email?: string;
   school?: string;
   year?: number | null;
   nickname?: string;
@@ -764,6 +849,72 @@ export interface RentDealCacheResponse {
   rows: RentDealCacheRow[];
 }
 
+export type RentDealSummaryKind = 'ldong' | 'grid';
+
+export interface RentDealSummaryPin {
+  kind: RentDealSummaryKind;
+  id: string;
+  label: string;
+  gu_name?: string;
+  deal_type: ExploreDealType;
+  area_m2: number | null;
+  deposit: number;
+  monthly_rent: number;
+  converted_rent: number;
+  count: number;
+  lat: number;
+  lng: number;
+  contract_ymd: number;
+}
+
+export type RentDealLdongSummaryRow = [
+  ldong_code: string,
+  gu_name: string,
+  ldong_name: string,
+  avg: number,
+  count: number,
+  lng: number,
+  lat: number,
+];
+
+export interface RentDealLdongSummaryResponse {
+  version: number;
+  ttl_seconds: number;
+  columns: ['ldong_code', 'gu_name', 'ldong_name', 'avg', 'count', 'lng', 'lat'];
+  filters_applied: MatchFilters;
+  rows: RentDealLdongSummaryRow[];
+}
+
+export type RentDealGridSummaryRow = [
+  grid_id: string,
+  gu_code: string,
+  gu_name: string,
+  avg: number,
+  count: number,
+  lng: number,
+  lat: number,
+];
+
+export interface RentDealGridSummaryResponse {
+  version: number;
+  ttl_seconds: number;
+  grid_size_m: number;
+  columns: ['grid_id', 'gu_code', 'gu_name', 'avg', 'count', 'lng', 'lat'];
+  filters_applied: MatchFilters;
+  rows: RentDealGridSummaryRow[];
+}
+
+export interface RentDealGuCodeItem {
+  gu_code: string;
+  gu_name: string;
+}
+
+export interface RentDealGuCodesResponse {
+  version: number;
+  ttl_seconds: number;
+  items: RentDealGuCodeItem[];
+}
+
 export interface RentDealCachePin {
   id: string;
   deal_type: ExploreDealType;
@@ -838,6 +989,7 @@ export type NearestFacilityCategory =
   | 'park'
   | 'mart'
   | 'pharmacy'
+  | 'study_cafe'
   | string;
 
 /** Single nearest facility row in the kernel score response. */
@@ -921,6 +1073,7 @@ export type KernelSchool = (typeof KERNEL_SCHOOL_OPTIONS)[number];
 
 export interface AgentQueryRequest {
   question: string;
+  conversation_id?: string;
 }
 
 export interface AgentNeighborhood {
@@ -935,6 +1088,8 @@ export interface AgentVisualizationDatum {
   label: string;
   value?: number;
   is_baseline?: boolean;
+  lat?: number;
+  lng?: number;
   columns?: Record<string, string | number | boolean | null>;
 }
 
@@ -946,12 +1101,19 @@ export interface AgentVisualization {
 }
 
 export interface AgentQueryResponse {
+  conversation_id: string;
   answer: string;
   query_type: 'recommendation' | 'info' | 'none' | string;
   route: 'db' | 'direct' | 'blocked' | string;
   neighborhoods: AgentNeighborhood[];
   visualizations: AgentVisualization[];
   elapsed_sec: number;
+  provider?: {
+    used_provider: AIProvider | string;
+    fallback_used: boolean;
+    failed_provider: AIProvider | string | null;
+    fallback_reason: string;
+  };
 }
 
 export type AIProvider = 'mindlogic' | 'openai';
@@ -967,6 +1129,19 @@ export interface AIAPIKeyStatus {
 export interface AIAPIKeyStatusResponse {
   keys: AIAPIKeyStatus[];
   unlock_ttl_seconds: number;
+  can_use_demo?: boolean;
+}
+
+export interface AIContextPreferenceResponse {
+  share_school_with_ai: boolean;
+  share_home_location_with_ai: boolean;
+  school_available: boolean;
+  home_location_available: boolean;
+}
+
+export interface AIContextPreferencePatch {
+  share_school_with_ai?: boolean;
+  share_home_location_with_ai?: boolean;
 }
 
 // -------- Map search -------------------------------------------------------
@@ -1002,4 +1177,30 @@ export interface AmenityBboxResponse {
   limit: number;
   count: number;
   items: AmenityBboxItem[];
+}
+
+export type MedicalCategoryKey = 'hospital' | 'dental' | 'pharmacy' | 'emergency';
+
+export interface MedicalFacilityItem {
+  hpid: string;
+  category: MedicalCategoryKey | string;
+  type: string;
+  name: string;
+  address: string;
+  tel1: string | null;
+  lat: number | null;
+  lng: number | null;
+  is_emergency: boolean;
+  distance_m: number | null;
+}
+
+export interface MedicalFacilitiesResponse {
+  categories: string[];
+  specialties: string[];
+  open_now: boolean;
+  bbox: [number, number, number, number] | null;
+  radius: number | null;
+  limit: number;
+  count: number;
+  items: MedicalFacilityItem[];
 }

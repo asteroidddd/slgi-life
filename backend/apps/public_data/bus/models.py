@@ -15,7 +15,7 @@ sub-plan 4.5B 정합:
 """
 
 from django.contrib.gis.db import models as gis_models
-from django.contrib.postgres.indexes import BrinIndex, GistIndex
+from django.contrib.postgres.indexes import BrinIndex
 from django.db import models
 
 
@@ -79,10 +79,7 @@ class BusStop(models.Model):
         verbose_name = "버스 정류장"
         verbose_name_plural = "버스 정류장"
         indexes = [
-            models.Index(fields=["adong"]),
-            models.Index(fields=["ldong"]),
             models.Index(fields=["stop_number"]),
-            GistIndex(fields=["location"], name="busstop_location_gist_idx"),
         ]
 
     def __str__(self) -> str:

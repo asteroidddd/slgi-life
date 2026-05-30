@@ -9,6 +9,7 @@ from django.db import transaction
 
 from apps.public_data.bus.models import BusStop
 from apps.public_data.library.models import Library
+from apps.public_data.medical.models import MedicalFacility
 from apps.public_data.park.models import Park
 from apps.public_data.store.models import Store
 from apps.public_data.subway.models import SubwayStation
@@ -17,23 +18,37 @@ from apps.service.amenities.models import Amenity, AmenityAdong, AmenityLdong
 
 
 BATCH_SIZE = 5000
+MEDICAL_STORE_CATEGORY_CODES = {
+    "G21501",
+    "Q10101", "Q10102", "Q10103", "Q10104",
+    "Q10201", "Q10202", "Q10203", "Q10204", "Q10205", "Q10206",
+    "Q10207", "Q10208", "Q10209", "Q10210", "Q10211",
+}
+MEDICAL_AMENITY_EXCLUDED_TYPES = {"\uae30\ud0c0", "\uae30\ud0c0(\uad6c\uae09\ucc28)", "\uc694\uc591\ubcd1\uc6d0", "\uc870\uc0b0\uc6d0"}
+MEDICAL_AMENITY_CATEGORY_BY_TYPE = {
+    "\uc57d\uad6d": "pharmacy",
+    "\uce58\uacfc\ubcd1\uc6d0": "dental",
+    "\uce58\uacfc\uc758\uc6d0": "dental",
+}
+
+STORE_MEDICAL_AMENITY_CATEGORIES = {"hospital", "dental", "pharmacy"}
 
 STORE_CATEGORY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("convenience", ("편의점", "슈퍼", "슈퍼마켓", "24시")),
-    ("mart", ("마트", "대형마트", "식자재", "할인점")),
-    ("restaurant", ("음식", "한식", "중식", "일식", "분식", "양식", "식당", "레스토랑")),
-    ("cafe", ("커피", "카페", "다방", "음료")),
-    ("nightlife", ("주점", "호프", "맥주", "소주", "바 ", "bar", "포차", "술집")),
-    ("hospital", ("병원", "의원", "한의원", "의료")),
-    ("dental", ("치과",)),
-    ("pharmacy", ("약국",)),
-    ("pet", ("동물", "반려", "애견", "애묘", "펫")),
-    ("laundry", ("세탁", "빨래방", "크리닝")),
-    ("beauty", ("미용", "헤어", "네일", "피부", "뷰티")),
-    ("oliveyoung", ("올리브영", "oliveyoung")),
-    ("gym", ("헬스", "체육", "피트니스", "요가", "필라테스", "운동")),
-    ("book_stationery", ("서점", "문구", "문방구", "팬시")),
-    ("pc_room", ("pc방", "피씨방", "인터넷컴퓨터게임시설")),
+    ("convenience", ("\ud3b8\uc758\uc810", "\uc288\ud37c", "\uc288\ud37c\ub9c8\ucf13", "24\uc2dc")),
+    ("mart", ("\ub9c8\ud2b8", "\ub300\ud615\ub9c8\ud2b8", "\uc2dd\uc790\uc7ac", "\ud560\uc778\uc810")),
+    ("restaurant", ("\uc74c\uc2dd", "\ud55c\uc2dd", "\uc911\uc2dd", "\uc77c\uc2dd", "\ubd84\uc2dd", "\uc591\uc2dd", "\uc2dd\ub2f9", "\ub808\uc2a4\ud1a0\ub791")),
+    ("cafe", ("\ucee4\ud53c", "\uce74\ud398", "\ub2e4\ubc29", "\uc74c\ub8cc")),
+    ("nightlife", ("\uc8fc\uc810", "\ud638\ud504", "\ub9e5\uc8fc", "\uc18c\uc8fc", "\ubc14 ", "bar", "\ud3ec\ucc28", "\uc220\uc9d1")),
+    ("hospital", ("\ubcd1\uc6d0", "\uc758\uc6d0", "\ud55c\uc758\uc6d0", "\uc758\ub8cc")),
+    ("dental", ("\uce58\uacfc",)),
+    ("pharmacy", ("\uc57d\uad6d",)),
+    ("laundry", ("\uc138\ud0c1", "\ube68\ub798\ubc29", "\ud06c\ub9ac\ub2dd")),
+    ("beauty", ("\ubbf8\uc6a9", "\ud5e4\uc5b4", "\ub124\uc77c", "\ud53c\ubd80", "\ubdf0\ud2f0")),
+    ("oliveyoung", ("\uc62c\ub9ac\ube0c\uc601", "oliveyoung")),
+    ("gym", ("\ud5ec\uc2a4", "\uccb4\uc721", "\ud53c\ud2b8\ub2c8\uc2a4", "\uc694\uac00", "\ud544\ub77c\ud14c\uc2a4", "\uc6b4\ub3d9")),
+    ("book_stationery", ("\uc11c\uc810", "\ubb38\uad6c", "\ubb38\ubc29\uad6c", "\ud32c\uc2dc")),
+    ("study_cafe", ("\uc2a4\ud130\ub514\uce74\ud398", "\ub3c5\uc11c\uc2e4", "study cafe")),
+    ("pc_room", ("pc\ubc29", "\ud53c\uc528\ubc29", "\uc778\ud130\ub137\ucef4\ud4e8\ud130\uac8c\uc784\uc2dc\uc124")),
 )
 
 
@@ -64,26 +79,38 @@ def _clean_name(value: Any, fallback: str) -> str:
     return text[:200] if text else fallback
 
 
-def _park_amenity_name(park: Park) -> str:
-    name = str(park.name or "").strip()
-    category = str(park.category or "").strip()
-    text = " ".join(part for part in (name, category) if part)
-    return _clean_name(text, park.id)
+def _medical_category(facility_type: str) -> str | None:
+    if facility_type in MEDICAL_AMENITY_EXCLUDED_TYPES:
+        return None
+    return MEDICAL_AMENITY_CATEGORY_BY_TYPE.get(facility_type, "hospital")
 
-
-def _store_category(store: Store) -> str:
+def _store_category_from_values(
+    *,
+    name: Any,
+    category_id: str | None,
+    category_subcategory_name: Any,
+    category_middle_category_name: Any,
+    category_main_category_name: Any,
+    ksci_subcategory_name: Any,
+    ksci_class_name: Any,
+    ksci_subclass_name: Any,
+    ksci_middle_category_name: Any,
+    ksci_main_category_name: Any,
+) -> str:
+    if category_id == "R10202":
+        return "study_cafe"
     haystack = " ".join(
         str(value or "")
         for value in (
-            store.name,
-            store.category.subcategory_name if store.category_id else "",
-            store.category.middle_category_name if store.category_id else "",
-            store.category.main_category_name if store.category_id else "",
-            store.ksci.subcategory_name if store.ksci_id else "",
-            store.ksci.class_name if store.ksci_id else "",
-            store.ksci.subclass_name if store.ksci_id else "",
-            store.ksci.middle_category_name if store.ksci_id else "",
-            store.ksci.main_category_name if store.ksci_id else "",
+            name,
+            category_subcategory_name,
+            category_middle_category_name,
+            category_main_category_name,
+            ksci_subcategory_name,
+            ksci_class_name,
+            ksci_subclass_name,
+            ksci_middle_category_name,
+            ksci_main_category_name,
         )
     ).lower()
     for category, keywords in STORE_CATEGORY_KEYWORDS:
@@ -94,21 +121,89 @@ def _store_category(store: Store) -> str:
 
 def _iter_store_rows() -> Iterator[AmenitySourceRow]:
     qs = (
-        Store.objects.select_related("category", "ksci", "adong", "ldong")
-        .filter(location__isnull=False)
+        Store.objects.filter(location__isnull=False)
+        .exclude(category_id__in=MEDICAL_STORE_CATEGORY_CODES)
+        .values_list(
+            "id",
+            "name",
+            "category_id",
+            "category__subcategory_name",
+            "category__middle_category_name",
+            "category__main_category_name",
+            "ksci__subcategory_name",
+            "ksci__class_name",
+            "ksci__subclass_name",
+            "ksci__middle_category_name",
+            "ksci__main_category_name",
+            "location",
+            "adong_id",
+            "ldong_id",
+        )
         .iterator(chunk_size=BATCH_SIZE)
     )
-    for store in qs:
+    for (
+        store_id,
+        name,
+        category_id,
+        category_subcategory_name,
+        category_middle_category_name,
+        category_main_category_name,
+        ksci_subcategory_name,
+        ksci_class_name,
+        ksci_subclass_name,
+        ksci_middle_category_name,
+        ksci_main_category_name,
+        location,
+        adong_id,
+        ldong_id,
+    ) in qs:
+        category = _store_category_from_values(
+            name=name,
+            category_id=category_id,
+            category_subcategory_name=category_subcategory_name,
+            category_middle_category_name=category_middle_category_name,
+            category_main_category_name=category_main_category_name,
+            ksci_subcategory_name=ksci_subcategory_name,
+            ksci_class_name=ksci_class_name,
+            ksci_subclass_name=ksci_subclass_name,
+            ksci_middle_category_name=ksci_middle_category_name,
+            ksci_main_category_name=ksci_main_category_name,
+        )
+        if category in STORE_MEDICAL_AMENITY_CATEGORIES:
+            continue
         yield AmenitySourceRow(
-            category=_store_category(store),
-            name=_clean_name(store.name, store.id),
-            location=store.location,
+            category=category,
+            name=_clean_name(name, store_id),
+            location=location,
             source_table="store",
-            source_id=str(store.id),
-            adong_ids=(store.adong_id,) if store.adong_id else (),
-            ldong_ids=(store.ldong_id,) if store.ldong_id else (),
+            source_id=str(store_id),
+            adong_ids=(adong_id,) if adong_id else (),
+            ldong_ids=(ldong_id,) if ldong_id else (),
         )
 
+
+def _iter_medical_rows() -> Iterator[AmenitySourceRow]:
+    qs = MedicalFacility.objects.filter(location__isnull=False).values_list(
+        "hpid",
+        "type",
+        "name",
+        "location",
+        "adong_id",
+        "ldong_id",
+    )
+    for hpid, facility_type, name, location, adong_id, ldong_id in qs.iterator(chunk_size=BATCH_SIZE):
+        category = _medical_category(facility_type)
+        if not category:
+            continue
+        yield AmenitySourceRow(
+            category=category,
+            name=_clean_name(name, hpid),
+            location=location,
+            source_table="medical_facility",
+            source_id=str(hpid),
+            adong_ids=(adong_id,) if adong_id else (),
+            ldong_ids=(ldong_id,) if ldong_id else (),
+        )
 
 def _iter_park_rows() -> Iterator[AmenitySourceRow]:
     adongs_by_park: dict[str, list[str]] = {}
@@ -118,22 +213,27 @@ def _iter_park_rows() -> Iterator[AmenitySourceRow]:
     for park_id, ldong_id in Park.objects.filter(park_ldongs__isnull=False).values_list("id", "park_ldongs__ldong_id"):
         ldongs_by_park.setdefault(park_id, []).append(ldong_id)
 
-    for park in Park.objects.filter(location__isnull=False).iterator(chunk_size=BATCH_SIZE):
+    for park_id, name, category, location in Park.objects.filter(location__isnull=False).values_list(
+        "id",
+        "name",
+        "category",
+        "location",
+    ).iterator(chunk_size=BATCH_SIZE):
         yield AmenitySourceRow(
             category="park",
-            name=_park_amenity_name(park),
-            location=park.location,
+            name=_clean_name(" ".join(part for part in (str(name or "").strip(), str(category or "").strip()) if part), park_id),
+            location=location,
             source_table="park",
-            source_id=str(park.id),
-            adong_ids=tuple(adongs_by_park.get(park.id, ())),
-            ldong_ids=tuple(ldongs_by_park.get(park.id, ())),
+            source_id=str(park_id),
+            adong_ids=tuple(adongs_by_park.get(park_id, ())),
+            ldong_ids=tuple(ldongs_by_park.get(park_id, ())),
         )
 
 
 def _iter_library_rows() -> Iterator[AmenitySourceRow]:
-    qs = Library.objects.select_related("adong", "ldong").filter(location__isnull=False)
-    for library in qs.iterator(chunk_size=BATCH_SIZE):
-        yield AmenitySourceRow("library", _clean_name(library.name, library.id), library.location, "library", str(library.id), (library.adong_id,) if library.adong_id else (), (library.ldong_id,) if library.ldong_id else ())
+    qs = Library.objects.filter(location__isnull=False).values_list("id", "name", "location", "adong_id", "ldong_id")
+    for library_id, name, location, adong_id, ldong_id in qs.iterator(chunk_size=BATCH_SIZE):
+        yield AmenitySourceRow("library", _clean_name(name, library_id), location, "library", str(library_id), (adong_id,) if adong_id else (), (ldong_id,) if ldong_id else ())
 
 
 def _iter_univ_rows() -> Iterator[AmenitySourceRow]:
@@ -143,24 +243,25 @@ def _iter_univ_rows() -> Iterator[AmenitySourceRow]:
         adongs_by_univ.setdefault(univ_id, []).append(adong_id)
     for univ_id, ldong_id in Univ.objects.filter(ldong_links__isnull=False).values_list("id", "ldong_links__ldong_id"):
         ldongs_by_univ.setdefault(univ_id, []).append(ldong_id)
-    for univ in Univ.objects.filter(location__isnull=False).iterator(chunk_size=BATCH_SIZE):
-        yield AmenitySourceRow("university", _clean_name(univ.name, univ.id), univ.location, "univ", str(univ.id), tuple(adongs_by_univ.get(univ.id, ())), tuple(ldongs_by_univ.get(univ.id, ())))
+    for univ_id, name, location in Univ.objects.filter(location__isnull=False).values_list("id", "name", "location").iterator(chunk_size=BATCH_SIZE):
+        yield AmenitySourceRow("university", _clean_name(name, univ_id), location, "univ", str(univ_id), tuple(adongs_by_univ.get(univ_id, ())), tuple(ldongs_by_univ.get(univ_id, ())))
 
 
 def _iter_subway_rows() -> Iterator[AmenitySourceRow]:
-    qs = SubwayStation.objects.select_related("adong", "ldong").filter(location__isnull=False)
-    for station in qs.iterator(chunk_size=BATCH_SIZE):
-        yield AmenitySourceRow("subway_station", _clean_name(f"{station.name}({station.line})", station.id), station.location, "subway_station", str(station.id), (station.adong_id,) if station.adong_id else (), (station.ldong_id,) if station.ldong_id else ())
+    qs = SubwayStation.objects.filter(location__isnull=False).values_list("id", "name", "line", "location", "adong_id", "ldong_id")
+    for station_id, name, line, location, adong_id, ldong_id in qs.iterator(chunk_size=BATCH_SIZE):
+        yield AmenitySourceRow("subway_station", _clean_name(f"{name}({line})", station_id), location, "subway_station", str(station_id), (adong_id,) if adong_id else (), (ldong_id,) if ldong_id else ())
 
 
 def _iter_bus_rows() -> Iterator[AmenitySourceRow]:
-    qs = BusStop.objects.select_related("adong", "ldong").filter(location__isnull=False)
-    for stop in qs.iterator(chunk_size=BATCH_SIZE):
-        yield AmenitySourceRow("bus_stop", _clean_name(stop.name, stop.id), stop.location, "bus_stop", str(stop.id), (stop.adong_id,) if stop.adong_id else (), (stop.ldong_id,) if stop.ldong_id else ())
+    qs = BusStop.objects.filter(location__isnull=False).values_list("id", "name", "location", "adong_id", "ldong_id")
+    for stop_id, name, location, adong_id, ldong_id in qs.iterator(chunk_size=BATCH_SIZE):
+        yield AmenitySourceRow("bus_stop", _clean_name(name, stop_id), location, "bus_stop", str(stop_id), (adong_id,) if adong_id else (), (ldong_id,) if ldong_id else ())
 
 
 def iter_source_rows() -> Iterator[AmenitySourceRow]:
     yield from _iter_store_rows()
+    yield from _iter_medical_rows()
     yield from _iter_park_rows()
     yield from _iter_library_rows()
     yield from _iter_univ_rows()

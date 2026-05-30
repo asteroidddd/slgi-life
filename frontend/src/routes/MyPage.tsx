@@ -7,11 +7,14 @@ import { Button, Input, Select } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   deleteAIAPIKey,
+  deleteMe,
   getAIAPIKeys,
+  getAIContextPreference,
   getUniversityOptions,
   patchMe,
   saveAIAPIKey,
   unlockAIAPIKeys,
+  updateAIContextPreference,
 } from '@/lib/api';
 import type { AIProvider, MeResponse } from '@/types/api';
 
@@ -21,24 +24,24 @@ const PROVIDER_LABELS: Record<AIProvider, string> = {
 };
 
 type MyPageMode = 'view' | 'profile' | 'ai-key';
-type LegalPanel = 'terms' | 'privacy' | 'data' | null;
+const WITHDRAW_CONFIRM_TEXT = '자취맵 탈퇴';
 
 export default function MyPage() {
   const navigate = useNavigate();
   const { user, isLoading, logout } = useAuth();
   const [mode, setMode] = useState<MyPageMode>('view');
-  const [legalPanel, setLegalPanel] = useState<LegalPanel>(null);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
 
   useEffect(() => {
-    if (!legalPanel) return;
+    if (!withdrawOpen) return;
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
-      setLegalPanel(null);
+      setWithdrawOpen(false);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [legalPanel]);
+  }, [withdrawOpen]);
 
   if (isLoading) {
     return <main className="min-h-screen bg-primary-soft p-8 text-center text-text-muted">불러오는 중...</main>;
@@ -51,6 +54,7 @@ export default function MyPage() {
     await logout();
     navigate('/login', { replace: true });
   };
+  const requiresEmail = !user.email?.trim();
 
   return (
     <main className="relative flex min-h-screen items-center justify-center bg-primary-soft p-6 text-text" id="main">
@@ -59,7 +63,11 @@ export default function MyPage() {
       </Link>
 
       <section className="flex w-full max-w-[560px] flex-col gap-5 rounded-card border border-border bg-surface p-8 shadow-sm" aria-labelledby="mypage-title">
-        {mode === 'view' ? (
+        {requiresEmail ? (
+          <RequiredEmailForm onSaved={() => setMode('view')} />
+        ) : null}
+
+        {!requiresEmail && mode === 'view' ? (
           <>
             <ProfileSummary user={user} />
             <Divider />
@@ -74,59 +82,83 @@ export default function MyPage() {
             </div>
             <Divider />
             <LogoutButton onClick={handleLogout} />
-            <LegalLinks onOpen={setLegalPanel} />
+            <LegalLinks />
           </>
         ) : null}
 
-        {mode === 'profile' ? (
+        {!requiresEmail && mode === 'profile' ? (
           <ProfileEditForm user={user} onCancel={() => setMode('view')} onSaved={() => setMode('view')} />
         ) : null}
 
-        {mode === 'ai-key' ? (
+        {!requiresEmail && mode === 'ai-key' ? (
           <AIKeyEditor onBack={() => setMode('view')} />
         ) : null}
       </section>
 
-      {legalPanel ? <LegalModal panel={legalPanel} onClose={() => setLegalPanel(null)} /> : null}
+      {!requiresEmail ? <WithdrawButton onClick={() => setWithdrawOpen(true)} /> : null}
+      {withdrawOpen ? <WithdrawModal onClose={() => setWithdrawOpen(false)} onDone={() => navigate('/login?withdrawn=1', { replace: true })} /> : null}
     </main>
   );
 }
 
-function LegalLinks({ onOpen }: { onOpen: (panel: Exclude<LegalPanel, null>) => void }) {
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function RequiredEmailForm({ onSaved }: { onSaved: () => void }) {
+  const { refresh } = useAuth();
+  const [email, setEmail] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    const trimmed = email.trim();
+    if (!EMAIL_PATTERN.test(trimmed)) {
+      setError('올바른 이메일 주소를 입력해주세요.');
+      return;
+    }
+    setError(null);
+    setSaving(true);
+    try {
+      await patchMe({ email: trimmed });
+      await refresh();
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '이메일 저장에 실패했습니다.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <nav className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px] font-semibold leading-5 text-text-muted" aria-label="정책 링크">
-      <button type="button" className="bg-transparent p-0 hover:text-text" onClick={() => onOpen('terms')}>이용약관</button>
-      <button type="button" className="bg-transparent p-0 hover:text-text" onClick={() => onOpen('privacy')}>개인정보처리방침</button>
-      <button type="button" className="bg-transparent p-0 hover:text-text" onClick={() => onOpen('data')}>데이터 출처</button>
-    </nav>
+    <form className="grid gap-5" onSubmit={handleSubmit}>
+      <div>
+        <h1 className="m-0 text-section-display font-semibold leading-none text-text">이메일 입력</h1>
+        <p className="m-0 mt-3 text-[13px] leading-6 text-text-muted">
+          카카오에서 이메일 제공을 사용할 수 없어 서비스 안내와 계정 관리를 위한 이메일을 직접 입력해야 합니다.
+        </p>
+      </div>
+      <Input
+        label="이메일"
+        type="email"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        placeholder="example@email.com"
+        autoComplete="email"
+        error={error ?? undefined}
+        required
+      />
+      <Button type="submit" variant="primary" size="sm" loading={saving}>저장하고 계속하기</Button>
+    </form>
   );
 }
 
-function LegalModal({ panel, onClose }: { panel: Exclude<LegalPanel, null>; onClose: () => void }) {
-  const title = panel === 'terms' ? '이용약관' : panel === 'privacy' ? '개인정보처리방침' : '데이터 출처';
+function LegalLinks() {
   return (
-    <div className="fixed inset-0 z-[1600] flex items-center justify-center bg-black/20 p-6" role="dialog" aria-modal="true" aria-label={title}>
-      <section className="w-full max-w-[420px] rounded-card border border-border bg-[var(--map-guide-bg)] p-5 text-text shadow-xl backdrop-blur">
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="m-0 text-card-heading font-semibold">{title}</h2>
-          <button type="button" onClick={onClose} className="h-8 w-8 rounded-[6px] bg-surface-alt text-[18px] text-text-muted" aria-label="닫기">×</button>
-        </div>
-        {panel === 'terms' ? (
-          <p className="m-0 mt-3 text-[13px] leading-6 text-text-muted">서비스는 공공데이터 기반 주거 탐색 정보를 제공합니다. 데이터의 최신성, 정확성은 원천 제공기관과 갱신 시점에 따라 달라질 수 있으며, 사용자는 이를 참고 정보로 사용합니다.</p>
-        ) : null}
-        {panel === 'privacy' ? (
-          <p className="m-0 mt-3 text-[13px] leading-6 text-text-muted">회원 정보, 선택 입력 주소, 집 위치 좌표, 암호화된 AI API KEY를 서비스 제공 목적으로 처리합니다. AI API KEY는 사용자의 복호화 문구 없이는 서버 단독으로 사용할 수 없고, 7일 이상 로그인 기록이 없으면 삭제됩니다.</p>
-        ) : null}
-        {panel === 'data' ? (
-          <ul className="mt-3 grid gap-1 pl-4 text-[13px] leading-6 text-text-muted">
-            <li>지도 타일, 검색, 좌표 변환: V-World</li>
-            <li>행정동/법정동 경계: V-World 행정구역 경계 데이터</li>
-            <li>실거래, 상권, 대중교통 등: 공공데이터포털, 서울 열린데이터광장</li>
-            <li>안전 지표, 전월세전환율: KOSIS 기반</li>
-          </ul>
-        ) : null}
-      </section>
-    </div>
+    <nav className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px] font-semibold leading-5 text-text-muted" aria-label="정책 링크">
+      <Link to="/terms" className="text-text-muted no-underline hover:text-text">이용약관</Link>
+      <Link to="/privacy" className="text-text-muted no-underline hover:text-text">개인정보처리방침</Link>
+      <Link to="/data-sources" className="text-text-muted no-underline hover:text-text">데이터 출처</Link>
+    </nav>
   );
 }
 
@@ -146,23 +178,152 @@ function LogoutButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-function ProfileSummary({ user }: { user: MeResponse }) {
-  const display = user.nickname?.trim() || user.username;
-  const school = user.school?.trim() || '대학 미입력';
-  const year = user.year != null ? `${user.year}학년` : '학년 미입력';
-  const address = user.address?.trim() || '주소 미입력';
+function WithdrawButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="app-floating-button withdraw-floating-button absolute bottom-5 right-5 h-10 min-h-10 shadow-sm"
+    >
+      {'\ud68c\uc6d0\ud0c8\ud1f4'}
+    </button>
+  );
+}
+
+function WithdrawModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const { logout } = useAuth();
+  const [confirmText, setConfirmText] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const canSubmit = confirmText.trim() === WITHDRAW_CONFIRM_TEXT;
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!canSubmit || submitting) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      await deleteMe(confirmText.trim());
+      await logout();
+      onDone();
+    } catch {
+      setError('회원탈퇴에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
-    <header className="grid gap-5 text-left">
+    <div className="fixed inset-0 z-[1700] flex items-center justify-center bg-black/25 p-6" role="dialog" aria-modal="true" aria-label="회원탈퇴">
+      <form className="grid w-full max-w-[440px] gap-4 rounded-card border border-danger/30 bg-surface p-5 text-text shadow-xl" onSubmit={handleSubmit}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="m-0 text-card-heading font-semibold">회원탈퇴</h2>
+            <p className="m-0 mt-2 text-[13px] leading-6 text-text-muted">계정, 프로필, 집 주소/좌표, 저장된 AI API KEY가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</p>
+          </div>
+          <button type="button" onClick={onClose} className="h-8 w-8 rounded-[6px] bg-surface-alt text-[18px] text-text-muted" aria-label="닫기">×</button>
+        </div>
+        <Input
+          label={`확인 문구: ${WITHDRAW_CONFIRM_TEXT}`}
+          value={confirmText}
+          onChange={(event) => setConfirmText(event.target.value)}
+          placeholder={WITHDRAW_CONFIRM_TEXT}
+        />
+        {error ? <p className="m-0 text-caption text-danger">{error}</p> : null}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="submit"
+            disabled={!canSubmit || submitting}
+            className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-surface-alt px-4 text-[13px] font-semibold text-text-muted transition-colors hover:enabled:border-danger hover:enabled:bg-danger hover:enabled:text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {submitting ? '처리 중...' : '탈퇴하기'}
+          </button>
+          <Button type="button" variant="secondary" size="sm" onClick={onClose} disabled={submitting}>취소</Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function ProfileSummary({ user }: { user: MeResponse }) {
+  const queryClient = useQueryClient();
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['ai-context-preferences'],
+    queryFn: getAIContextPreference,
+    staleTime: 60_000,
+  });
+  const mutation = useMutation({
+    mutationFn: updateAIContextPreference,
+    onSuccess: (next) => {
+      queryClient.setQueryData(['ai-context-preferences'], next);
+    },
+  });
+
+  const display = user.nickname?.trim() || user.username;
+  const school = user.school?.trim() || '\ub300\ud559 \ubbf8\uc785\ub825';
+  const year = user.year != null ? `${user.year}\ud559\ub144` : '\ud559\ub144 \ubbf8\uc785\ub825';
+  const address = user.address?.trim() || '\uc8fc\uc18c \ubbf8\uc785\ub825';
+  const schoolAvailable = Boolean(data?.school_available ?? user.school?.trim());
+  const homeAvailable = Boolean(data?.home_location_available ?? (typeof user.home_lat === 'number' && typeof user.home_lng === 'number'));
+  const busy = isLoading || mutation.isPending;
+
+  return (
+    <header className="grid gap-4 text-left">
       <div>
         <h1 id="mypage-title" className="m-0 text-section-display font-semibold leading-none text-text">{display}</h1>
         <div className="mt-4 grid gap-1.5 text-[16px] leading-7 text-text-muted">
-          <span>{school}</span>
+          <ProfileConsentRow
+            text={school}
+            label="AI school context consent"
+            checked={Boolean(data?.share_school_with_ai)}
+            disabled={!schoolAvailable || busy}
+            onChange={(checked) => mutation.mutate({ share_school_with_ai: checked })}
+          />
           <span>{year}</span>
-          <span>{address}</span>
+          <ProfileConsentRow
+            text={address}
+            label="AI home location context consent"
+            checked={Boolean(data?.share_home_location_with_ai)}
+            disabled={!homeAvailable || busy}
+            onChange={(checked) => mutation.mutate({ share_home_location_with_ai: checked })}
+          />
         </div>
       </div>
+      <div className="grid gap-1 text-[12px] leading-5 text-text-muted">
+        <p className="m-0">{'\ub3d9\uc758\ud558\uba74 \uc800\uc7a5\ub41c \ub300\ud559\uacfc \uc9d1 \uc704\uce58 \uc88c\ud45c\uac00 AI \uc9c8\ubb38 \ucc98\ub9ac\uc5d0 \ud568\uaed8 \uc0ac\uc6a9\ub429\ub2c8\ub2e4.'}</p>
+        <p className="m-0">{'\ub3d9\uc758\ud558\uc9c0 \uc54a\uc740 \uc815\ubcf4\ub294 \uc804\ub2ec\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.'}</p>
+        {isError ? <p className="m-0 text-danger">{'AI \uc815\ubcf4 \uc81c\uacf5 \uc124\uc815\uc744 \ubd88\ub7ec\uc624\uc9c0 \ubabb\ud588\uc2b5\ub2c8\ub2e4.'}</p> : null}
+        {mutation.isError ? <p className="m-0 text-danger">{'AI \uc815\ubcf4 \uc81c\uacf5 \uc124\uc815 \uc800\uc7a5\uc5d0 \uc2e4\ud328\ud588\uc2b5\ub2c8\ub2e4.'}</p> : null}
+      </div>
     </header>
+  );
+}
+
+function ProfileConsentRow({
+  text,
+  label,
+  checked,
+  disabled,
+  onChange,
+}: {
+  text: string;
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <span className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+      <span className="min-w-0 truncate">{text}</span>
+      <input
+        type="checkbox"
+        className="h-5 w-5 shrink-0 accent-primary"
+        aria-label={label}
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+    </span>
   );
 }
 
@@ -260,6 +421,7 @@ function AIKeyEditor({ onBack }: { onBack: () => void }) {
   const [apiKey, setApiKey] = useState('');
   const [passphrase, setPassphrase] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['ai-api-keys'] });
   const saveMutation = useMutation({
@@ -301,11 +463,24 @@ function AIKeyEditor({ onBack }: { onBack: () => void }) {
     <section className="grid gap-4" aria-labelledby="ai-key-heading">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 id="ai-key-heading" className="m-0 text-section-display font-semibold leading-none text-text">AI API KEY 설정</h1>
+          <div className="flex items-center gap-2">
+            <h1 id="ai-key-heading" className="m-0 text-section-display font-semibold leading-none text-text">AI API KEY 설정</h1>
+            <button
+              type="button"
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface-alt text-[13px] font-bold text-text-muted transition hover:border-primary hover:text-primary"
+              onClick={() => setGuideOpen((open) => !open)}
+              aria-label="API KEY 발급 안내"
+              aria-expanded={guideOpen}
+            >
+              i
+            </button>
+          </div>
           <p className="m-0 mt-2 text-[13px] leading-5 text-text-muted">저장된 키는 복호화 문구로 30분 동안 열어 사용할 수 있습니다.</p>
         </div>
         <Button type="button" variant="secondary" size="sm" onClick={onBack}>돌아가기</Button>
       </div>
+
+      {guideOpen ? <AIKeyGuide /> : null}
 
       <div className="grid gap-2 rounded-card border border-border bg-surface-alt p-3">
         {isLoading ? <p className="m-0 text-caption text-text-muted">키 상태를 불러오는 중...</p> : null}
@@ -359,6 +534,51 @@ function AIKeyEditor({ onBack }: { onBack: () => void }) {
       </form>
       {message ? <p className="m-0 text-caption text-text-muted">{message}</p> : null}
     </section>
+  );
+}
+
+function AIKeyGuide() {
+  return (
+    <aside className="grid gap-3 rounded-card border border-border bg-surface-alt p-4 text-[13px] leading-6 text-text-muted">
+      <div>
+        <h2 className="m-0 text-[14px] font-semibold text-text">Mindlogic API KEY</h2>
+        <ol className="m-0 mt-2 grid gap-1 pl-5">
+          <li>
+            <a
+              href="https://aichat.dongguk.edu/"
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-primary hover:text-primary-hover"
+            >
+              동국대 AI Chat
+            </a>
+            에 접속합니다.
+          </li>
+          <li>우측 하단의 API Gateway를 클릭합니다.</li>
+          <li>+ API KEY 생성을 클릭합니다.</li>
+          <li>생성된 키 값을 복사해 이 화면의 API KEY 입력칸에 붙여넣습니다.</li>
+        </ol>
+      </div>
+      <div>
+        <h2 className="m-0 text-[14px] font-semibold text-text">OpenAI API KEY</h2>
+        <ol className="m-0 mt-2 grid gap-1 pl-5">
+          <li>
+            <a
+              href="https://platform.openai.com/api-keys"
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-primary hover:text-primary-hover"
+            >
+              OpenAI API keys
+            </a>
+            페이지에 로그인합니다.
+          </li>
+          <li>Create new secret key를 눌러 새 키를 생성합니다.</li>
+          <li>생성 직후 한 번만 보이는 키 값을 복사해 이 화면의 API KEY 입력칸에 붙여넣습니다.</li>
+          <li>OpenAI API 사용에는 별도 결제 설정 또는 크레딧이 필요할 수 있습니다.</li>
+        </ol>
+      </div>
+    </aside>
   );
 }
 

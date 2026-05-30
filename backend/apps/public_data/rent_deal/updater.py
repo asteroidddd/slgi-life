@@ -24,8 +24,9 @@ from django.db import transaction
 from apps.public_data.api_keys import env_key_ring, with_rate_limit_fallback
 from apps.public_data.exceptions import RateLimitedError, is_rate_limited_code, is_rate_limited_text
 from apps.public_data.regions.models import Adong, Ldong
-from apps.public_data.rent_deal.models import RentDeal, RentDealLdongAdongMap
+from apps.public_data.rent_deal.models import RentConversionRate, RentDeal, RentDealLdongAdongMap
 from apps.public_data.state import dataset_state, load_state, record_dataset_result, save_state
+from apps.public_data.rent_deal.utils import refresh_conversion_rate_from_kosis
 
 
 PUBLIC_DATA_BASE_URL = "https://apis.data.go.kr"
@@ -134,7 +135,7 @@ def _read_map_rows() -> list[dict[str, str]]:
 def _load_map(options: RentDealsUpdateOptions, meta: dict[str, Any]) -> dict[str, Any]:
     rows = _read_map_rows()
     previous_hash = dataset_state("rent_deals").get("map_snapshot", {}).get("file_hash")
-    skipped_write = bool(previous_hash == meta["file_hash"] and not options.force and not options.dry_run)
+    skipped_write = bool(options.dry_run or (previous_hash == meta["file_hash"] and not options.force))
     checked = len(rows)
     loaded = 0
     null_adong = 0
@@ -535,9 +536,60 @@ def _upsert_records(records: list[dict[str, Any]]) -> dict[str, int]:
     return {"loaded": loaded, "created": created, "updated": updated}
 
 
+def _conversion_rate_payload(obj: RentConversionRate | None) -> dict[str, Any]:
+    if obj is None:
+        return {
+            "period_ym": None,
+            "annual_rate": None,
+            "fetched_at": None,
+        }
+    return {
+        "period_ym": obj.period_ym,
+        "annual_rate": float(obj.annual_rate),
+        "fetched_at": obj.fetched_at.isoformat() if obj.fetched_at else None,
+    }
+
+
+def _update_conversion_rate(options: RentDealsUpdateOptions) -> dict[str, Any]:
+    latest = RentConversionRate.objects.order_by("-period_ym").first()
+    if options.dry_run:
+        payload = _conversion_rate_payload(latest)
+        return {
+            "status": "skipped",
+            "completed": True,
+            "loaded": 0,
+            "skipped_write": True,
+            "reason": "dry_run",
+            **payload,
+        }
+
+    refreshed = refresh_conversion_rate_from_kosis()
+    if refreshed is not None:
+        payload = _conversion_rate_payload(refreshed)
+        return {
+            "status": "success",
+            "completed": True,
+            "loaded": 1,
+            "skipped_write": False,
+            "reason": None,
+            **payload,
+        }
+
+    payload = _conversion_rate_payload(latest)
+    return {
+        "status": "stale" if latest is not None else "fallback",
+        "completed": True,
+        "loaded": 0,
+        "skipped_write": False,
+        "reason": "kosis_unavailable",
+        **payload,
+    }
+
+
 def update_rent_deals(options: RentDealsUpdateOptions) -> dict[str, Any]:
     map_meta = _file_meta()
     mapping = _load_map(options, map_meta)
+    conversion_rate = _update_conversion_rate(options)
     start_ym = _validate_ym(options.start_ym or DEFAULT_START_YM)
     end_ym = _validate_ym(options.end_ym or _current_ym())
     current = _current_ym()
@@ -552,9 +604,10 @@ def update_rent_deals(options: RentDealsUpdateOptions) -> dict[str, Any]:
         return {
             "status": "success",
             "completed": True,
-            "loaded": mapping["loaded"],
+            "loaded": mapping["loaded"] + conversion_rate["loaded"],
             "dry_run": options.dry_run,
             "map": mapping,
+            "conversion_rate": conversion_rate,
             "rent_deals": {
                 "checked": 0,
                 "loaded": 0,
@@ -672,9 +725,10 @@ def update_rent_deals(options: RentDealsUpdateOptions) -> dict[str, Any]:
     return {
         "status": "success" if completed else "partial",
         "completed": completed,
-        "loaded": mapping["loaded"] + loaded_total,
+        "loaded": mapping["loaded"] + conversion_rate["loaded"] + loaded_total,
         "dry_run": options.dry_run,
         "map": mapping,
+        "conversion_rate": conversion_rate,
         "rent_deals": rent_deals,
     }
 
@@ -712,5 +766,6 @@ def update(options: RentDealsUpdateOptions) -> dict[str, Any]:
                 "missing_months": result["rent_deals"]["rent_deals"].get("after_missing_months"),
                 "deleted_current_month": result["rent_deals"]["rent_deals"].get("deleted_current_month"),
             }
+            rent_state["conversion_rate"] = result["rent_deals"].get("conversion_rate")
             save_state(state)
     return result

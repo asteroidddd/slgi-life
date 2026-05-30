@@ -18,7 +18,6 @@ sub-plan 7G-C (결정 4A):
 """
 
 from django.contrib.gis.db import models as gis_models
-from django.contrib.postgres.indexes import GistIndex
 from django.db import models
 from django.db.models import Q
 
@@ -66,9 +65,6 @@ class SubwayStation(models.Model):
         verbose_name = "지하철역"
         verbose_name_plural = "지하철역"
         indexes = [
-            GistIndex(fields=["location"], name="subway_location_gist_idx"),
-            models.Index(fields=["adong"]),
-            models.Index(fields=["ldong"]),
             models.Index(fields=["name"]),
         ]
         ordering = ["line", "name"]

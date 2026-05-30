@@ -30,7 +30,7 @@ SEOUL_BUS_STOP_URL = (
 PUBLIC_DATA_BASE_URL = "https://apis.data.go.kr"
 BUS_CONGESTION_PATH = "/1613000/RouteCongestionLevel/getRouteCongestionLevel"
 PAGE_SIZE = 1000
-BUS_CONGESTION_RETENTION_DAYS = 31
+BUS_CONGESTION_RETENTION_DAYS = 14
 BUS_CONGESTION_LAG_DAYS = 15
 
 
@@ -163,42 +163,55 @@ def update_bus_stops(options: BusUpdateOptions) -> dict[str, Any]:
     api_key = _require_env("SEOUL_API_KEY")
     checked = created = updated = skipped = 0
     skip_reasons = {"bad_coord": 0, "missing_required": 0}
+    records: list[dict[str, Any]] = []
 
-    with transaction.atomic():
-        for row in _seoul_bus_stop_rows(api_key, options):
-            checked += 1
-            stop_id = _normalize_id(_get(row, "NODE_ID", "STTN_ID", "BUSSTOP_ID"))
-            name = str(_get(row, "STOPS_NM", "STTN_NM", "BUSSTOP_NM") or "").strip()
-            stop_number = str(_get(row, "STOPS_NO", "STTN_ARS_NO", "ARS_ID") or "").strip() or None
-            try:
-                lon = float(_get(row, "XCRD", "X", "LON"))
-                lat = float(_get(row, "YCRD", "Y", "LAT"))
-            except (TypeError, ValueError):
-                skipped += 1
-                skip_reasons["bad_coord"] += 1
-                continue
-            if not stop_id or not name:
-                skipped += 1
-                skip_reasons["missing_required"] += 1
-                continue
+    for row in _seoul_bus_stop_rows(api_key, options):
+        checked += 1
+        stop_id = _normalize_id(_get(row, "NODE_ID", "STTN_ID", "BUSSTOP_ID"))
+        name = str(_get(row, "STOPS_NM", "STTN_NM", "BUSSTOP_NM") or "").strip()
+        stop_number = str(_get(row, "STOPS_NO", "STTN_ARS_NO", "ARS_ID") or "").strip() or None
+        try:
+            lon = float(_get(row, "XCRD", "X", "LON"))
+            lat = float(_get(row, "YCRD", "Y", "LAT"))
+        except (TypeError, ValueError):
+            skipped += 1
+            skip_reasons["bad_coord"] += 1
+            continue
+        if not stop_id or not name:
+            skipped += 1
+            skip_reasons["missing_required"] += 1
+            continue
 
-            point = Point(lon, lat, srid=4326)
-            ldong, adong = _find_region(point)
-            if not options.dry_run:
-                _, was_created = BusStop.objects.update_or_create(
-                    id=stop_id,
-                    defaults={
-                        "name": name[:100],
-                        "stop_number": stop_number,
-                        "location": point,
-                        "ldong_id": ldong.ldong_code if ldong else None,
-                        "adong_id": adong.adong_code if adong else None,
-                    },
-                )
-                if was_created:
-                    created += 1
-                else:
-                    updated += 1
+        point = Point(lon, lat, srid=4326)
+        ldong, adong = _find_region(point)
+        records.append(
+            {
+                "id": stop_id,
+                "defaults": {
+                    "name": name[:100],
+                    "stop_number": stop_number,
+                    "location": point,
+                    "ldong_id": ldong.ldong_code if ldong else None,
+                    "adong_id": adong.adong_code if adong else None,
+                },
+            }
+        )
+
+    if not options.dry_run:
+        records_by_id = {record["id"]: record for record in records}
+        records = list(records_by_id.values())
+        record_ids = list(records_by_id)
+        existing_ids = set(BusStop.objects.filter(id__in=record_ids).values_list("id", flat=True))
+        with transaction.atomic():
+            BusStop.objects.bulk_create(
+                [BusStop(id=record["id"], **record["defaults"]) for record in records],
+                batch_size=2000,
+                update_conflicts=True,
+                update_fields=["name", "stop_number", "location", "ldong", "adong"],
+                unique_fields=["id"],
+            )
+            created = len(set(record_ids) - existing_ids)
+            updated = len(set(record_ids) & existing_ids)
 
     return {
         "checked": checked,
@@ -301,10 +314,15 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
     checked = created = updated = skipped = 0
     skip_reasons = {"bad_row": 0, "missing_bus_stop": 0}
     processed_dates: list[str] = []
+    completed_dates_for_state: list[str] = []
     completed = False
+    deleted_old = 0
 
     try:
         for day in target_dates:
+            day_started_checked = checked
+            day_completed = True
+            day_aggregate: dict[tuple[str, date, time], list[Decimal]] = defaultdict(list)
             ymd = day.strftime("%Y%m%d")
             for gu_code in gu_codes:
                 page = 1
@@ -325,7 +343,6 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
                     if not rows:
                         break
 
-                    aggregate: dict[tuple[str, date, time], list[Decimal]] = defaultdict(list)
                     for row in rows:
                         checked += 1
                         try:
@@ -347,23 +364,10 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
                             skipped += 1
                             skip_reasons["missing_bus_stop"] += 1
                             continue
-                        aggregate[(stop_id, day, time(hour, 0))].append(value)
-
-                    if not options.dry_run:
-                        for (stop_id, date_value, time_value), values in aggregate.items():
-                            with transaction.atomic():
-                                _, was_created = BusCongestion.objects.update_or_create(
-                                    bus_stop_id=stop_id,
-                                    date=date_value,
-                                    time=time_value,
-                                    defaults={"congestion": sum(values) / Decimal(len(values))},
-                                )
-                            if was_created:
-                                created += 1
-                            else:
-                                updated += 1
+                        day_aggregate[(stop_id, day, time(hour, 0))].append(value)
 
                     if options.limit is not None and checked >= options.limit:
+                        day_completed = False
                         break
                     if total and page * PAGE_SIZE >= total:
                         break
@@ -371,14 +375,30 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
                     if options.request_interval_seconds:
                         sleep_time.sleep(options.request_interval_seconds)
                 if options.limit is not None and checked >= options.limit:
+                    day_completed = False
                     break
-            processed_dates.append(day.isoformat())
-            if options.limit is not None and checked >= options.limit:
+            if not day_completed or checked == day_started_checked:
+                completed = False
                 break
-        else:
-            completed = checked > 0
 
-        deleted_old = 0
+            if not options.dry_run:
+                with transaction.atomic():
+                    for (stop_id, date_value, time_value), values in day_aggregate.items():
+                        _, was_created = BusCongestion.objects.update_or_create(
+                            bus_stop_id=stop_id,
+                            date=date_value,
+                            time=time_value,
+                            defaults={"congestion": sum(values) / Decimal(len(values))},
+                        )
+                        if was_created:
+                            created += 1
+                        else:
+                            updated += 1
+            processed_dates.append(day.isoformat())
+            completed_dates_for_state.append(day.isoformat())
+        else:
+            completed = len(completed_dates_for_state) == len(target_dates)
+
         if not options.dry_run and completed:
             cutoff = date.today() - timedelta(days=BUS_CONGESTION_RETENTION_DAYS)
             deleted_old, _ = BusCongestion.objects.filter(date__lt=cutoff).delete()
@@ -392,7 +412,7 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
             "skipped": skipped,
             "deleted_old": 0,
             "processed_dates": processed_dates,
-            "completed_dates": processed_dates,
+            "completed_dates": completed_dates_for_state,
             "dry_run": options.dry_run,
             "window": window_meta | {"start": start.isoformat(), "end": end.isoformat()},
             "skip_reasons": skip_reasons,
@@ -409,7 +429,7 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
         "skipped": skipped,
         "deleted_old": deleted_old if not options.dry_run else 0,
         "processed_dates": processed_dates,
-        "completed_dates": processed_dates,
+        "completed_dates": completed_dates_for_state,
         "dry_run": options.dry_run,
         "window": window_meta | {"start": start.isoformat(), "end": end.isoformat()},
         "skip_reasons": skip_reasons,

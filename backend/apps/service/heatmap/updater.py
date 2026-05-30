@@ -16,7 +16,6 @@ from django.utils import timezone
 from apps.public_data.bus.models import BusStop
 from apps.public_data.metrics.models import GuMetric
 from apps.public_data.regions.models import Adong, Gu, Ldong, Seoul
-from apps.public_data.rent_deal.models import RentDeal
 from apps.public_data.rent_deal.utils import get_monthly_conversion_rate
 from apps.public_data.subway.models import NearestSubwayAdong, NearestSubwayLdong
 from apps.service.amenities.models import Amenity, AmenityAdong, AmenityLdong
@@ -40,11 +39,11 @@ LIFE_CATEGORIES = {
     "cafe",
     "nightlife",
     "laundry",
-    "pet",
     "beauty",
     "oliveyoung",
     "gym",
     "book_stationery",
+    "study_cafe",
     "pc_room",
     "etc",
     "library",
@@ -163,41 +162,84 @@ def _rent_raw_scores(
     today: date,
 ) -> tuple[dict[str, float | None], dict[str, float | None], dict[str, float | None], dict[str, float | None]]:
     since = today - timedelta(days=RENT_LOOKBACK_DAYS)
-    values = {
-        "seoul": defaultdict(list),
-        "gu": defaultdict(list),
-        "ldong": defaultdict(list),
-        "adong": defaultdict(list),
+    raw_values: dict[str, dict[str, float]] = {
+        "seoul": {},
+        "gu": {},
+        "ldong": {},
+        "adong": {},
     }
-
-    qs = (
-        RentDeal.objects.filter(contract_date__gte=since, area_m2__isnull=False)
-        .exclude(area_m2=0)
-        .select_related("ldong__gu", "adong__gu")
-        .values_list("monthly_rent", "deposit", "area_m2", "ldong_id", "ldong__gu_id", "adong_id", "adong__gu_id")
-        .iterator(chunk_size=10000)
-    )
-    for monthly_rent, deposit, area_m2, ldong_id, ldong_gu_id, adong_id, adong_gu_id in qs:
-        area = float(area_m2 or 0.0)
-        if area <= 0:
-            continue
-        value = (float(monthly_rent) + float(deposit) * get_monthly_conversion_rate()) / area
-        for seoul_code in seouls:
-            values["seoul"][seoul_code].append(value)
-        if ldong_gu_id:
-            values["gu"][ldong_gu_id].append(value)
-        elif adong_gu_id:
-            values["gu"][adong_gu_id].append(value)
-        if ldong_id:
-            values["ldong"][ldong_id].append(value)
-        if adong_id:
-            values["adong"][adong_id].append(value)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            WITH base AS (
+                SELECT
+                    (
+                        r.monthly_rent::double precision
+                        + r.deposit::double precision * %s
+                    ) / NULLIF(r.area_m2::double precision, 0) AS value,
+                    r.ldong_code,
+                    l.gu_code AS ldong_gu_code,
+                    r.adong_code,
+                    a.gu_code AS adong_gu_code
+                FROM rent_deal r
+                LEFT JOIN ldong l ON l.ldong_code = r.ldong_code
+                LEFT JOIN adong a ON a.adong_code = r.adong_code
+                WHERE r.contract_date >= %s
+                  AND r.area_m2 IS NOT NULL
+                  AND r.area_m2 > 0
+            ), scoped AS (
+                SELECT 'seoul' AS scope, seoul.code, base.value
+                FROM base
+                CROSS JOIN unnest(%s::varchar[]) AS seoul(code)
+                UNION ALL
+                SELECT 'gu', COALESCE(ldong_gu_code, adong_gu_code), value
+                FROM base
+                WHERE COALESCE(ldong_gu_code, adong_gu_code) IS NOT NULL
+                UNION ALL
+                SELECT 'ldong', ldong_code, value
+                FROM base
+                WHERE ldong_code IS NOT NULL
+                UNION ALL
+                SELECT 'adong', adong_code, value
+                FROM base
+                WHERE adong_code IS NOT NULL
+            ), ranked AS (
+                SELECT
+                    scope,
+                    code,
+                    value,
+                    COUNT(*) OVER (PARTITION BY scope, code) AS n,
+                    ROW_NUMBER() OVER (PARTITION BY scope, code ORDER BY value) AS rn
+                FROM scoped
+                WHERE value IS NOT NULL
+            ), trimmed AS (
+                SELECT scope, code, value
+                FROM ranked
+                WHERE n >= %s
+                  AND rn > FLOOR(n * %s)
+                  AND rn <= n - FLOOR(n * %s)
+            )
+            SELECT scope, code, AVG(value)::float AS trimmed_mean
+            FROM trimmed
+            GROUP BY scope, code
+            """,
+            [
+                get_monthly_conversion_rate(),
+                since,
+                list(seouls),
+                RENT_MIN_DEALS,
+                RENT_TRIM_RATIO,
+                RENT_TRIM_RATIO,
+            ],
+        )
+        for scope, code, value in cursor.fetchall():
+            raw_values[scope][code] = float(value)
 
     return (
-        _score_lower_is_better({code: _trimmed_mean(values["seoul"].get(code, [])) for code in seouls}),
-        _score_lower_is_better({code: _trimmed_mean(values["gu"].get(code, [])) for code in gus}),
-        _score_lower_is_better({code: _trimmed_mean(values["ldong"].get(code, [])) for code in ldongs}),
-        _score_lower_is_better({code: _trimmed_mean(values["adong"].get(code, [])) for code in adongs}),
+        _score_lower_is_better({code: raw_values["seoul"].get(code) for code in seouls}),
+        _score_lower_is_better({code: raw_values["gu"].get(code) for code in gus}),
+        _score_lower_is_better({code: raw_values["ldong"].get(code) for code in ldongs}),
+        _score_lower_is_better({code: raw_values["adong"].get(code) for code in adongs}),
     )
 
 
@@ -539,10 +581,18 @@ def _safety_scores(
 
 
 def _write_current(rows: Iterable[ScoreRow], model: type, fk_name: str) -> int:
-    count = 0
     now = timezone.now()
+    objects = []
+    update_fields = [
+        "score_rent",
+        "score_amenity",
+        "score_transit",
+        "score_safety",
+        "score_total",
+        "updated_at",
+    ]
     for row in rows:
-        defaults = {
+        values = {
             "score_rent": row.score_rent,
             "score_amenity": row.score_amenity,
             "score_transit": row.score_transit,
@@ -551,16 +601,30 @@ def _write_current(rows: Iterable[ScoreRow], model: type, fk_name: str) -> int:
             "updated_at": now,
         }
         if fk_name != "seoul":
-            defaults |= {
+            values |= {
                 "rank_rent": row.rank_rent,
                 "rank_amenity": row.rank_amenity,
                 "rank_transit": row.rank_transit,
                 "rank_safety": row.rank_safety,
                 "rank_total": row.rank_total,
             }
-        model.objects.update_or_create(**{f"{fk_name}_id": row.code}, defaults=defaults)
-        count += 1
-    return count
+        objects.append(model(**{f"{fk_name}_id": row.code}, **values))
+    if fk_name != "seoul":
+        update_fields += [
+            "rank_rent",
+            "rank_amenity",
+            "rank_transit",
+            "rank_safety",
+            "rank_total",
+        ]
+    model.objects.bulk_create(
+        objects,
+        batch_size=1000,
+        update_conflicts=True,
+        update_fields=update_fields,
+        unique_fields=[fk_name],
+    )
+    return len(objects)
 
 
 def recompute_current_scores(*, dry_run: bool = False, today: date | None = None) -> dict[str, Any]:

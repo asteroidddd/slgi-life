@@ -200,15 +200,21 @@ def update_stations(options: SubwayUpdateOptions) -> dict[str, Any]:
     loaded = len(built["records"]) if options.dry_run else 0
 
     if not options.dry_run and built["completed"]:
+        records_by_id = {record["id"]: record for record in built["records"]}
+        records = list(records_by_id.values())
+        record_ids = list(records_by_id)
+        existing_ids = set(SubwayStation.objects.filter(id__in=record_ids).values_list("id", flat=True))
         with transaction.atomic():
-            for record in built["records"]:
-                _, was_created = SubwayStation.objects.update_or_create(
-                    id=record["id"],
-                    defaults=record["defaults"],
-                )
-                loaded += 1
-                created += int(was_created)
-                updated += int(not was_created)
+            SubwayStation.objects.bulk_create(
+                [SubwayStation(id=record["id"], **record["defaults"]) for record in records],
+                batch_size=1000,
+                update_conflicts=True,
+                update_fields=["name", "line", "location", "ldong", "adong"],
+                unique_fields=["id"],
+            )
+            loaded = len(records)
+            created = len(set(record_ids) - existing_ids)
+            updated = len(set(record_ids) & existing_ids)
             missing_qs = SubwayStation.objects.exclude(id__in=built["source_ids"])
             deleted_missing = missing_qs.count()
             missing_qs.delete()
@@ -568,20 +574,19 @@ def update_subway(options: SubwayUpdateOptions) -> dict[str, Any]:
         congestion = update_congestion(options)
         nearest = update_nearest(options) if congestion["completed"] else None
     else:
-        with transaction.atomic():
-            stations = update_stations(options)
-            if not stations["completed"]:
-                return {
-                    "status": "partial",
-                    "completed": False,
-                    "loaded": stations["loaded"],
-                    "dry_run": options.dry_run,
-                    "stations": stations,
-                    "congestion": None,
-                    "nearest": None,
-                }
-            congestion = update_congestion(options)
-            nearest = update_nearest(options) if congestion["completed"] else None
+        stations = update_stations(options)
+        if not stations["completed"]:
+            return {
+                "status": "partial",
+                "completed": False,
+                "loaded": stations["loaded"],
+                "dry_run": options.dry_run,
+                "stations": stations,
+                "congestion": None,
+                "nearest": None,
+            }
+        congestion = update_congestion(options)
+        nearest = update_nearest(options) if congestion["completed"] else None
     completed = bool(stations["completed"] and congestion["completed"] and nearest and nearest["completed"])
     return {
         "status": "success" if completed else "partial",

@@ -30,10 +30,13 @@ PUBLIC_ORDER = (
     "bus",
     "subway",
     "stores",
+    "medical",
     "parks",
     "library",
 )
 SERVICE_ORDER = ("amenity", "current")
+DASHBOARD_ORDER = ("dashboard_cache",)
+MAINTENANCE_ORDER = ("ai_stale_keys",)
 
 STOP_REQUESTED = False
 
@@ -123,6 +126,7 @@ def _public_args(args: argparse.Namespace) -> SimpleNamespace:
         end_date=None,
         start_ym=None,
         end_ym=None,
+        include_hira_specialties=False,
     )
 
 
@@ -164,7 +168,9 @@ def _run_flow(args: argparse.Namespace) -> dict[str, Any]:
         _contains_unsuccessful,
         _run_dataset,
     )
-    from scripts.update.update_service_data import _run_target  # noqa: WPS433
+    from scripts.update.update_dashboard_data import _run_target as _run_dashboard_target  # noqa: WPS433
+    from scripts.update.update_service_data import _run_target as _run_service_target  # noqa: WPS433
+    from apps.ai_agent.byok.services import purge_stale_user_keys  # noqa: WPS433
 
     dry_run = not args.write
     if args.dry_run:
@@ -180,6 +186,8 @@ def _run_flow(args: argparse.Namespace) -> dict[str, Any]:
         "max_seconds": max_seconds,
         "public_order": PUBLIC_ORDER,
         "service_order": SERVICE_ORDER,
+        "dashboard_order": DASHBOARD_ORDER,
+        "maintenance_order": MAINTENANCE_ORDER,
         "steps": [],
     }
     public_args = _public_args(args)
@@ -258,7 +266,7 @@ def _run_flow(args: argparse.Namespace) -> dict[str, Any]:
 
         step_started = _utc_now_iso()
         try:
-            target_result = _run_target(target, dry_run=dry_run)
+            target_result = _run_service_target(target, dry_run=dry_run)
         except Exception as exc:
             result["steps"].append(
                 _step_result(
@@ -288,6 +296,93 @@ def _run_flow(args: argparse.Namespace) -> dict[str, Any]:
         _save_state(result)
         if status == "partial":
             return stop_with("partial", step_name, "step_incomplete")
+
+    for target in DASHBOARD_ORDER:
+        step_name = f"dashboard.{target}"
+        if STOP_REQUESTED:
+            return stop_with("interrupted", step_name, "stop_signal")
+        if _time_exceeded(started_monotonic, max_seconds):
+            return stop_with("timeout", step_name, "max_hours_exceeded_before_step")
+
+        step_started = _utc_now_iso()
+        try:
+            target_result = _run_dashboard_target(target, dry_run=dry_run, strict=False)
+        except Exception as exc:
+            result["steps"].append(
+                _step_result(
+                    name=step_name,
+                    kind="dashboard",
+                    status="failed",
+                    started_at=step_started,
+                    error={
+                        "type": type(exc).__name__,
+                        "message": str(exc),
+                        "traceback": traceback.format_exc(),
+                    },
+                )
+            )
+            return stop_with("failed", step_name, "step_failed")
+
+        status = "partial" if _contains_unsuccessful(target_result) else "success"
+        result["steps"].append(
+            _step_result(
+                name=step_name,
+                kind="dashboard",
+                status=status,
+                started_at=step_started,
+                result=target_result,
+            )
+        )
+        _save_state(result)
+        if status == "partial":
+            return stop_with("partial", step_name, "step_incomplete")
+
+    for target in MAINTENANCE_ORDER:
+        step_name = f"maintenance.{target}"
+        if STOP_REQUESTED:
+            return stop_with("interrupted", step_name, "stop_signal")
+        if _time_exceeded(started_monotonic, max_seconds):
+            return stop_with("timeout", step_name, "max_hours_exceeded_before_step")
+
+        step_started = _utc_now_iso()
+        try:
+            if target == "ai_stale_keys":
+                stale_count = purge_stale_user_keys(dry_run=dry_run)
+                target_result = {
+                    "target": target,
+                    "dry_run": dry_run,
+                    "stale_key_count": stale_count,
+                    "deleted_key_count": 0 if dry_run else stale_count,
+                    "completed": True,
+                }
+            else:
+                raise ValueError(f"Unknown maintenance target: {target}")
+        except Exception as exc:
+            result["steps"].append(
+                _step_result(
+                    name=step_name,
+                    kind="maintenance",
+                    status="failed",
+                    started_at=step_started,
+                    error={
+                        "type": type(exc).__name__,
+                        "message": str(exc),
+                        "traceback": traceback.format_exc(),
+                    },
+                )
+            )
+            return stop_with("failed", step_name, "step_failed")
+
+        result["steps"].append(
+            _step_result(
+                name=step_name,
+                kind="maintenance",
+                status="success",
+                started_at=step_started,
+                result=target_result,
+            )
+        )
+        _save_state(result)
 
     result["status"] = "success"
     result["completed"] = True

@@ -65,7 +65,6 @@ DJANGO_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.gis",  # GeoDjango
-    # "django.contrib.sites",  # allauth 비활성화로 함께 주석 처리
 ]
 
 THIRD_PARTY_APPS = [
@@ -73,19 +72,16 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "drf_spectacular",  # OpenAPI 3 schema + Swagger UI / ReDoc
     "django_prometheus",  # /metrics — Prometheus scrape용
-    # 9단계 — 사용자 명시로 카카오/allauth는 비활성화.
-    # 표준 Django username/password (세션) 인증만 사용.
-    # "allauth",
-    # "allauth.account",
-    # "allauth.socialaccount",
-    # "allauth.socialaccount.providers.kakao",
 ]
 
 LOCAL_APPS = [
-    "apps.accounts",
-    "apps.legacy.neighborhoods",
+    "apps.accounts.user",
+    "apps.accounts.profile",
+    "apps.accounts.social",
+    "apps.accounts.favorites",
     "apps.service.map",
     "apps.service.rent_deal",
+    "apps.dashboard.cache",
     # LLM 질의 API. 현재 모델은 없지만 URL/DRF 뷰 등록을 위해 Django 앱으로 둔다.
     "apps.ai_agent",
     "apps.public_data.regions",
@@ -93,9 +89,11 @@ LOCAL_APPS = [
     "apps.public_data.park",
     "apps.service.amenities",
     "apps.service.heatmap",
+    "apps.service.medical",
     "apps.public_data.populations",
     "apps.public_data.rent_deal",
     "apps.public_data.store",
+    "apps.public_data.medical",
     "apps.public_data.subway",
     "apps.public_data.bus",
     "apps.public_data.univ",
@@ -103,8 +101,6 @@ LOCAL_APPS = [
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
-
-# SITE_ID = 1  # allauth 비활성화로 함께 주석 처리
 
 # ---------------------------------------------------------------------------
 # Middleware
@@ -119,7 +115,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # "allauth.account.middleware.AccountMiddleware",  # allauth 비활성화
     "django_prometheus.middleware.PrometheusAfterMiddleware",  # 응답 시각 측정 — 가장 아래
 ]
 
@@ -158,7 +153,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # ---------------------------------------------------------------------------
 # Auth
 # ---------------------------------------------------------------------------
-AUTH_USER_MODEL = "users.User"
+AUTH_USER_MODEL = "accounts.User"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -286,28 +281,10 @@ LOGGING = {
 }
 
 # ---------------------------------------------------------------------------
-# 인증 — 9단계: 사용자 명시로 카카오/allauth 비활성화.
-# 표준 Django username/password 세션 인증만 사용.
+# 인증 — Django session + 직접 구현한 Kakao OAuth.
 # ---------------------------------------------------------------------------
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
 
-# allauth 관련 설정은 모두 주석 처리 (필요 시 다시 켤 때 참고용).
-# SITE_ID = 1
-# ACCOUNT_EMAIL_VERIFICATION = "none"
-# ACCOUNT_LOGIN_METHODS = {"username"}
-# ACCOUNT_SIGNUP_FIELDS = ["username*", "password1*"]
-# SOCIALACCOUNT_AUTO_SIGNUP = True
-# SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
-# SOCIALACCOUNT_QUERY_EMAIL = True
-# SOCIALACCOUNT_PROVIDERS = {
-#     "kakao": {
-#         "APP": {
-#             "client_id": env("KAKAO_REST_API_KEY", default=""),
-#             "secret": env("KAKAO_CLIENT_SECRET", default=""),
-#             "key": "",
-#         },
-#     }
-# }
 LOGIN_REDIRECT_URL = "/"

@@ -196,9 +196,10 @@ def _fetch_sources(options: MetricsUpdateOptions) -> dict[str, Any]:
     api_key = _require_env("KOSIS_API_KEY")
     mapping = _source_mapping()
     name_to_gu = {gu.name: gu.gu_code for gu in Gu.objects.all()}
-    checked = loaded_gu = loaded_seoul = skipped = 0
+    checked = skipped = 0
     skip_reasons = {"bad_row": 0, "unknown_metric": 0, "unknown_region": 0}
     dates: list[date] = []
+    source_records: list[dict[str, Any]] = []
     table_stats: dict[str, dict[str, int]] = {}
     completed = False
 
@@ -264,52 +265,71 @@ def _fetch_sources(options: MetricsUpdateOptions) -> dict[str, Any]:
                 continue
 
             dates.append(date_value)
-            if not options.dry_run:
-                if kind == "seoul":
-                    SeoulMetric.objects.update_or_create(
-                        seoul_id="11",
-                        metric_id=meta["metric_code"],
-                        date=date_value,
-                        defaults={"value": value},
-                    )
-                    loaded_seoul += 1
-                    table_stats[table_id]["loaded_seoul"] += 1
-                else:
-                    GuMetric.objects.update_or_create(
-                        gu_id=code,
-                        metric_id=meta["metric_code"],
-                        date=date_value,
-                        defaults={"value": value},
-                    )
-                    loaded_gu += 1
-                    table_stats[table_id]["loaded_gu"] += 1
+            source_records.append(
+                {
+                    "kind": kind,
+                    "table_id": table_id,
+                    "region_code": "11" if kind == "seoul" else code,
+                    "metric_code": meta["metric_code"],
+                    "date": date_value,
+                    "value": value,
+                }
+            )
 
             if options.limit is not None and checked >= options.limit:
                 return {
                     "status": "partial",
                     "completed": False,
                     "checked": checked,
-                    "loaded_gu": loaded_gu,
-                    "loaded_seoul": loaded_seoul,
+                    "loaded_gu": 0,
+                    "loaded_seoul": 0,
                     "skipped": skipped,
                     "loaded_start": min(dates).isoformat() if dates else None,
                     "loaded_end": max(dates).isoformat() if dates else None,
                     "skip_reasons": skip_reasons,
                     "tables": table_stats,
+                    "_source_records": source_records,
                 }
     completed = checked > 0 and bool(dates)
     return {
         "status": "success" if completed else "partial",
         "completed": completed,
         "checked": checked,
-        "loaded_gu": loaded_gu,
-        "loaded_seoul": loaded_seoul,
+        "loaded_gu": 0,
+        "loaded_seoul": 0,
         "skipped": skipped,
         "loaded_start": min(dates).isoformat() if dates else None,
         "loaded_end": max(dates).isoformat() if dates else None,
         "skip_reasons": skip_reasons,
         "tables": table_stats,
+        "_source_records": source_records,
     }
+
+
+def _write_source_records(records: list[dict[str, Any]]) -> dict[str, Any]:
+    loaded_gu = loaded_seoul = 0
+    table_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"loaded_gu": 0, "loaded_seoul": 0})
+    for record in records:
+        table_id = record["table_id"]
+        if record["kind"] == "seoul":
+            SeoulMetric.objects.update_or_create(
+                seoul_id=record["region_code"],
+                metric_id=record["metric_code"],
+                date=record["date"],
+                defaults={"value": record["value"]},
+            )
+            loaded_seoul += 1
+            table_stats[table_id]["loaded_seoul"] += 1
+        else:
+            GuMetric.objects.update_or_create(
+                gu_id=record["region_code"],
+                metric_id=record["metric_code"],
+                date=record["date"],
+                defaults={"value": record["value"]},
+            )
+            loaded_gu += 1
+            table_stats[table_id]["loaded_gu"] += 1
+    return {"loaded_gu": loaded_gu, "loaded_seoul": loaded_seoul, "tables": table_stats}
 
 
 def _safe_div(num: Decimal, den: Decimal | None, mult: int = 1) -> Decimal | None:
@@ -409,10 +429,24 @@ def _load_derived(*, dry_run: bool) -> dict[str, int]:
 
 
 def update_metrics(options: MetricsUpdateOptions) -> dict[str, Any]:
-    with transaction.atomic():
-        catalog = _insert_catalog(dry_run=options.dry_run)
-        kosis = _fetch_sources(options)
-        derived = _load_derived(dry_run=options.dry_run) if kosis["completed"] else {"loaded_gu": 0, "loaded_seoul": 0}
+    catalog = _insert_catalog(dry_run=True)
+    kosis = _fetch_sources(options)
+    source_records = kosis.pop("_source_records", [])
+    derived = {"loaded_gu": 0, "loaded_seoul": 0}
+    if kosis["completed"]:
+        if options.dry_run:
+            derived = _load_derived(dry_run=True)
+        else:
+            with transaction.atomic():
+                catalog = _insert_catalog(dry_run=False)
+                written = _write_source_records(source_records)
+                kosis["loaded_gu"] = written["loaded_gu"]
+                kosis["loaded_seoul"] = written["loaded_seoul"]
+                for table_id, table_written in written["tables"].items():
+                    if table_id in kosis["tables"]:
+                        kosis["tables"][table_id]["loaded_gu"] = table_written["loaded_gu"]
+                        kosis["tables"][table_id]["loaded_seoul"] = table_written["loaded_seoul"]
+                derived = _load_derived(dry_run=False)
 
     loaded = catalog["loaded"] + kosis["loaded_gu"] + kosis["loaded_seoul"] + derived["loaded_gu"] + derived["loaded_seoul"]
     return {

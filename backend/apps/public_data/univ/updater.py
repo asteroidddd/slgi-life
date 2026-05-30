@@ -146,35 +146,39 @@ def update_univ(options: UnivUpdateOptions) -> dict[str, Any]:
 
     loaded = created = updated = deleted_missing = 0
     if not options.dry_run:
+        records_by_id = {record["id"]: record for record in built["records"]}
+        records = list(records_by_id.values())
+        record_ids = list(records_by_id)
+        existing_ids = set(Univ.objects.filter(id__in=record_ids).values_list("id", flat=True))
         with transaction.atomic():
-            univ_by_id: dict[str, Univ] = {}
-            for record in built["records"]:
-                univ, was_created = Univ.objects.update_or_create(
-                    id=record["id"],
-                    defaults=record["defaults"],
-                )
-                univ_by_id[record["id"]] = univ
-                loaded += 1
-                created += int(was_created)
-                updated += int(not was_created)
+            Univ.objects.bulk_create(
+                [Univ(id=record["id"], **record["defaults"]) for record in records],
+                batch_size=1000,
+                update_conflicts=True,
+                update_fields=["name", "school_type", "boundary", "location"],
+                unique_fields=["id"],
+            )
+            loaded = len(records)
+            created = len(set(record_ids) - existing_ids)
+            updated = len(set(record_ids) & existing_ids)
 
             if completed:
                 UnivLdong.objects.all().delete()
                 UnivAdong.objects.all().delete()
                 UnivLdong.objects.bulk_create(
                     [
-                        UnivLdong(univ=univ_by_id[univ_id], ldong_id=ldong_code)
+                        UnivLdong(univ_id=univ_id, ldong_id=ldong_code)
                         for univ_id, ldong_code in built["ldong_links"]
-                        if univ_id in univ_by_id
+                        if univ_id in records_by_id
                     ],
                     ignore_conflicts=True,
                     batch_size=1000,
                 )
                 UnivAdong.objects.bulk_create(
                     [
-                        UnivAdong(univ=univ_by_id[univ_id], adong_id=adong_code)
+                        UnivAdong(univ_id=univ_id, adong_id=adong_code)
                         for univ_id, adong_code in built["adong_links"]
-                        if univ_id in univ_by_id
+                        if univ_id in records_by_id
                     ],
                     ignore_conflicts=True,
                     batch_size=1000,

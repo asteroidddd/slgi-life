@@ -16,7 +16,6 @@ uq_amenity_source: (source_table, source_id) unique.
 """
 
 from django.contrib.gis.db import models as gis_models
-from django.contrib.postgres.indexes import GistIndex
 from django.db import models
 
 
@@ -38,6 +37,7 @@ CATEGORY_CHOICES = [
     ("gym", "체육시설"),
     ("nightlife", "주점"),
     ("book_stationery", "서점/문구"),
+    ("study_cafe", "스터디카페/독서실"),
     ("pc_room", "PC방"),
     ("etc", "기타"),
     ("park", "공원"),
@@ -49,6 +49,7 @@ CATEGORY_CHOICES = [
 
 SOURCE_TABLE_CHOICES = [
     ("store", "store"),
+    ("medical_facility", "medical_facility"),
     ("park", "park"),
     ("library", "library"),
     ("univ", "univ"),
@@ -88,7 +89,7 @@ class Amenity(models.Model):
     source_table = models.CharField(
         max_length=30,
         choices=SOURCE_TABLE_CHOICES,
-        help_text="원천 테이블명 (6종, ck_amenity_source_table)",
+        help_text="Source table name for the amenity row",
     )
     source_id = models.CharField(
         max_length=64,
@@ -106,7 +107,6 @@ class Amenity(models.Model):
         verbose_name_plural = "생활시설"
         indexes = [
             models.Index(fields=["category"]),
-            GistIndex(fields=["location"], name="amenity_location_gist_idx"),
         ]
         constraints = [
             models.UniqueConstraint(
@@ -144,10 +144,6 @@ class AmenityAdong(models.Model):
         verbose_name = "생활시설 ↔ 행정동"
         verbose_name_plural = "생활시설 ↔ 행정동"
         unique_together = [("amenity", "adong")]
-        indexes = [
-            models.Index(fields=["amenity"]),
-            models.Index(fields=["adong"]),
-        ]
 
     def __str__(self) -> str:
         return f"{self.amenity_id} ↔ {self.adong_id}"
@@ -174,10 +170,6 @@ class AmenityLdong(models.Model):
         verbose_name = "생활시설 ↔ 법정동"
         verbose_name_plural = "생활시설 ↔ 법정동"
         unique_together = [("amenity", "ldong")]
-        indexes = [
-            models.Index(fields=["amenity"]),
-            models.Index(fields=["ldong"]),
-        ]
 
     def __str__(self) -> str:
         return f"{self.amenity_id} ↔ {self.ldong_id}"

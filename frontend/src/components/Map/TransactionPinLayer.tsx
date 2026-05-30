@@ -8,9 +8,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { Marker, useMap, useMapEvents } from 'react-leaflet';
 
-import type { Bbox, RentDealCachePin, RentDealPin } from '@/types/api';
+import type { Bbox, RentDealCachePin, RentDealPin, RentDealSummaryPin } from '@/types/api';
 
-const MIN_ZOOM_FOR_PINS = 13;
+const MIN_ZOOM_FOR_PINS = 12;
 
 const MOVE_DEBOUNCE_MS = 250;
 
@@ -23,9 +23,9 @@ function chipVariantForZoom(zoom: number): ChipVariant {
 }
 
 const VARIANT_SIZE: Record<ChipVariant, { w: number; h: number }> = {
-  compact: { w: 28, h: 28 },
-  standard: { w: 64, h: 30 },
-  expanded: { w: 72, h: 44 },
+  compact: { w: 96, h: 52 },
+  standard: { w: 116, h: 62 },
+  expanded: { w: 144, h: 82 },
 };
 
 export interface MapState {
@@ -41,43 +41,98 @@ export interface TransactionPinLayerProps {
   suppressTooltips?: boolean;
 }
 
-export type RentDealMapPin = RentDealPin | RentDealCachePin;
+export type RentDealMapPin = RentDealPin | RentDealCachePin | RentDealSummaryPin;
 
 function hasAddress(p: RentDealMapPin): p is RentDealPin {
   return 'gu' in p && 'dong_name' in p && 'jibun' in p;
 }
 
+function isSummaryPin(p: RentDealMapPin): p is RentDealSummaryPin {
+  return 'kind' in p;
+}
+
 function pinKeyOf(p: RentDealMapPin): string {
+  if (isSummaryPin(p)) return `${p.kind}:${p.id}`;
   if (!hasAddress(p)) return `${p.lng.toFixed(5)}|${p.lat.toFixed(5)}`;
   return `${p.gu}|${p.dong_name}|${p.jibun}`;
 }
 
 const jibunKeyOf = pinKeyOf;
 
-function roundMan(v: number): number {
-  return Math.round(v);
+function bucketPrecisionForZoom(zoom: number): number {
+  if (zoom >= 17) return 5;
+  if (zoom >= 15) return 4;
+  return 3;
+}
+
+function mapKeyOf(p: RentDealMapPin, zoom: number): string {
+  if (isSummaryPin(p)) return `${p.kind}:${p.id}`;
+  if (hasAddress(p)) return `${p.gu}|${p.dong_name}|${p.jibun}`;
+  const precision = bucketPrecisionForZoom(zoom);
+  return `${p.lng.toFixed(precision)}|${p.lat.toFixed(precision)}`;
+}
+
+function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) return sorted[mid];
+  return (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function avg(values: number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function formatMan(v: number | null, suffix = '만'): string {
+  if (v == null || !Number.isFinite(v)) return '-';
+  return `${Math.round(v).toLocaleString()}${suffix}`;
+}
+
+function typeLabel(type: RentDealMapPin['deal_type']): string {
+  switch (type) {
+    case 'apt':
+      return '아파트';
+    case 'officetel':
+      return '오피스텔';
+    case 'yeonlip':
+      return '연립';
+    case 'dasedae':
+      return '다세대';
+    case 'yeonlip_dasedae':
+    case 'villa':
+      return '연립다세대';
+    case 'dagagu':
+      return '다가구';
+    case 'danok':
+      return '단독';
+    default:
+      return '거래';
+  }
+}
+
+function formatYmd(ymd: number | null): string {
+  if (ymd == null || !Number.isFinite(ymd)) return '';
+  const raw = String(Math.trunc(ymd));
+  if (raw.length !== 8) return '';
+  return `${raw.slice(2, 4)}.${raw.slice(4, 6)}.${raw.slice(6, 8)}`;
 }
 
 function chipHtml(opts: {
   variant: ChipVariant;
   isSelected: boolean;
   isDimmed: boolean;
-  avgConverted: number | null;
-  count: number;
+  summary: GroupSummary;
 }): string {
-  const { variant, isSelected, isDimmed, avgConverted, count } = opts;
-
-  const priceText =
-    avgConverted == null
-      ? '?'
-      : variant === 'compact'
-        ? `${avgConverted}`
-        : `${avgConverted}만원`;
-
-  const sub =
-    variant === 'expanded'
-      ? `<span class="tx-chip__sub">${count}건</span>`
-      : '';
+  const { variant, isSelected, isDimmed, summary } = opts;
+  const priceText = formatMan(summary.medianConverted);
+  const countText = `${summary.count.toLocaleString()}건`;
+  const labelText = summary.label ?? '';
+  const typeText = summary.primaryType ? typeLabel(summary.primaryType) : '거래';
+  const areaText = summary.avgArea == null ? '-' : `평균 ${Math.round(summary.avgArea)}m²`;
+  const depositText = `보증금 ${formatMan(summary.medianDeposit)}`;
+  const latestText = formatYmd(summary.latestContractYmd);
 
   const cls = [
     'tx-chip',
@@ -88,7 +143,28 @@ function chipHtml(opts: {
     .filter(Boolean)
     .join(' ');
 
-  return `<div class="${cls}"><span class="tx-chip__price">${priceText}</span>${sub}<span class="tx-chip__pointer" aria-hidden="true"></span></div>`;
+  if (variant === 'compact') {
+    const top = labelText || priceText;
+    const bottom = labelText ? `${priceText} · ${countText}` : countText;
+    return `<div class="${cls}"><span class="tx-chip__price">${top}</span><span class="tx-chip__sub">${bottom}</span><span class="tx-chip__pointer" aria-hidden="true"></span></div>`;
+  }
+  if (variant === 'standard') {
+    return `<div class="${cls}"><span class="tx-chip__price">${priceText}</span><span class="tx-chip__sub">${countText} · ${typeText}</span><span class="tx-chip__pointer" aria-hidden="true"></span></div>`;
+  }
+  return `<div class="${cls}"><span class="tx-chip__label">${priceText}</span><span class="tx-chip__sub">${countText} · ${areaText}</span><span class="tx-chip__meta">${depositText}${latestText ? ` · ${latestText}` : ''}</span><span class="tx-chip__pointer" aria-hidden="true"></span></div>`;
+}
+
+interface GroupSummary {
+  count: number;
+  medianConverted: number | null;
+  avgConverted: number | null;
+  medianDeposit: number | null;
+  avgMonthlyRent: number | null;
+  avgArea: number | null;
+  latestContractYmd: number | null;
+  primaryType: RentDealMapPin['deal_type'] | null;
+  label?: string;
+  kind?: 'ldong' | 'grid';
 }
 
 export default function TransactionPinLayer({
@@ -156,39 +232,63 @@ export default function TransactionPinLayer({
     interface Group {
       key: string;
       pin: RentDealMapPin;
-      count: number;
-      convertedSum: number;
-      convertedSamples: number;
+      items: RentDealMapPin[];
     }
     const m = new Map<string, Group>();
     for (const p of pins) {
-      const key = jibunKeyOf(p);
+      const key = mapKeyOf(p, zoom);
       const existing = m.get(key);
-      const conv = typeof p.converted_rent === 'number' ? p.converted_rent : null;
       if (existing) {
-        existing.count += 1;
-        if (conv != null) {
-          existing.convertedSum += conv;
-          existing.convertedSamples += 1;
-        }
+        existing.items.push(p);
       } else {
         m.set(key, {
           key,
           pin: p,
-          count: 1,
-          convertedSum: conv ?? 0,
-          convertedSamples: conv != null ? 1 : 0,
+          items: [p],
         });
       }
     }
-    return Array.from(m.values()).map((g) => ({
-      key: g.key,
-      pin: g.pin,
-      count: g.count,
-      avgConverted:
-        g.convertedSamples > 0 ? roundMan(g.convertedSum / g.convertedSamples) : null,
-    }));
-  }, [pins]);
+    return Array.from(m.values()).map((g) => {
+      const converted = g.items
+        .map((p) => p.converted_rent)
+        .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+      const deposits = g.items
+        .map((p) => p.deposit)
+        .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+      const monthlyRents = g.items
+        .map((p) => p.monthly_rent)
+        .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+      const areas = g.items
+        .map((p) => p.area_m2)
+        .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+      const latestContractYmd = g.items.reduce<number | null>((latest, p) => {
+        if (!('contract_ymd' in p)) return latest;
+        if (latest == null || p.contract_ymd > latest) return p.contract_ymd;
+        return latest;
+      }, null);
+      const typeCounts = new Map<RentDealMapPin['deal_type'], number>();
+      for (const item of g.items) {
+        typeCounts.set(item.deal_type, (typeCounts.get(item.deal_type) ?? 0) + 1);
+      }
+      const primaryType = Array.from(typeCounts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+      return {
+        key: g.key,
+        pin: g.pin,
+        summary: {
+          count: g.items.reduce((sum, p) => sum + (isSummaryPin(p) ? p.count : 1), 0),
+          medianConverted: median(converted),
+          avgConverted: avg(converted),
+          medianDeposit: median(deposits),
+          avgMonthlyRent: avg(monthlyRents),
+          avgArea: avg(areas),
+          latestContractYmd,
+          primaryType,
+          label: isSummaryPin(g.pin) ? g.pin.label : undefined,
+          kind: isSummaryPin(g.pin) ? g.pin.kind : undefined,
+        } satisfies GroupSummary,
+      };
+    });
+  }, [pins, zoom]);
 
   if (zoom < MIN_ZOOM_FOR_PINS) return null;
 
@@ -197,7 +297,7 @@ export default function TransactionPinLayer({
 
   return (
     <>
-      {groups.map(({ key, pin, count, avgConverted }) => {
+      {groups.map(({ key, pin, summary }) => {
         const isSelected = selectedJibun === key;
         const isDimmed = suppressTooltips && !isSelected;
 
@@ -207,8 +307,7 @@ export default function TransactionPinLayer({
             variant,
             isSelected,
             isDimmed,
-            avgConverted,
-            count,
+            summary,
           }),
           iconSize: [size.w, size.h],
           iconAnchor: [size.w / 2, size.h],
@@ -219,9 +318,9 @@ export default function TransactionPinLayer({
             key={key}
             position={[pin.lat, pin.lng]}
             icon={icon}
-            zIndexOffset={isSelected ? 1000 : isDimmed ? -100 : 0}
+            zIndexOffset={isSelected ? 1400 : isDimmed ? 500 : 700}
             bubblingMouseEvents={false}
-            eventHandlers={{
+            eventHandlers={isSummaryPin(pin) ? undefined : {
               click: (e) => {
                 e.originalEvent.stopPropagation();
                 onPinClick(key, pin);

@@ -8,22 +8,27 @@
 //
 import { lazy, Suspense, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
+import { useAuth } from './contexts/AuthContext';
 import { PageTitleProvider } from './contexts/PageTitleContext';
 import { ADONG_GEOJSON_QUERY_KEY, fetchAdongGeoJson } from './hooks/useAdongGeoJson';
 import { SEOUL_MASK_GEOJSON_QUERY_KEY, fetchSeoulMaskGeoJson } from './hooks/useSeoulMaskGeoJson';
 import DesignSystem from './routes/DesignSystem';
 import Login from './routes/Login';
+import LegalInfo from './routes/LegalInfo';
 import MainMap from './routes/MainMap';
 import MyPage from './routes/MyPage';
 import NotFound from './routes/NotFound';
 import Register from './routes/Register';
 
 const Dashboard = lazy(() => import('./routes/Dashboard'));
+const AiChatDock = lazy(() => import('./components/AI/AiChatDock'));
 
 function AppContent() {
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
     queryClient.prefetchQuery({
@@ -37,6 +42,10 @@ function AppContent() {
       staleTime: Infinity,
     });
   }, [queryClient]);
+
+  if (!isLoading && user && !user.email?.trim() && location.pathname !== '/mypage') {
+    return <Navigate to="/mypage" replace />;
+  }
 
   return (
     <div>
@@ -62,6 +71,9 @@ function AppContent() {
         <Route path="/adong/:slug/explore" element={<Navigate to="/" replace />} />
         <Route path="/compare" element={<Navigate to="/" replace />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/terms" element={<LegalInfo page="terms" />} />
+        <Route path="/privacy" element={<LegalInfo page="privacy" />} />
+        <Route path="/data-sources" element={<LegalInfo page="data" />} />
         <Route path="/register" element={<Register />} />
         <Route path="/mypage" element={<MyPage />} />
         <Route path="/design-system" element={<DesignSystem />} />
@@ -75,6 +87,9 @@ export default function App() {
   return (
     <PageTitleProvider>
       <AppContent />
+      <Suspense fallback={null}>
+        <AiChatDock />
+      </Suspense>
     </PageTitleProvider>
   );
 }

@@ -212,6 +212,47 @@ def _update_regions(source: dict[str, Any], options: RegionsUpdateOptions) -> di
     gu_codes = {row["gu_code"] for row in source["gu_rows"]}
     ldong_codes = {row["ldong_code"] for row in source["ldong_rows"]}
     adong_codes = {row["adong_code"] for row in source["adong_rows"]}
+    gu_name_by_code = {row["gu_code"]: row["gu_name"] for row in source["gu_rows"]}
+    existing_gu_codes = set(Gu.objects.filter(gu_code__in=gu_codes).values_list("gu_code", flat=True))
+    existing_ldong_codes = set(Ldong.objects.filter(ldong_code__in=ldong_codes).values_list("ldong_code", flat=True))
+    existing_adong_codes = set(Adong.objects.filter(adong_code__in=adong_codes).values_list("adong_code", flat=True))
+    gu_objects = []
+    for row in source["gu_rows"]:
+        geom = source["gu_boundary_by_name"].get(row["gu_name"])
+        gu_objects.append(
+            Gu(
+                gu_code=row["gu_code"],
+                name=row["gu_name"],
+                slug=_slug(row["gu_name"]),
+                boundary=geom,
+                location=_point(geom),
+                area_m2=_area_m2(geom),
+            )
+        )
+    ldong_objects_to_upsert = [
+        Ldong(
+            ldong_code=row["ldong_code"],
+            name=row["ldong_name"],
+            gu_id=row["gu_code"],
+            slug=_slug(f"{gu_name_by_code[row['gu_code']]}-{row['ldong_name']}"),
+            boundary=source["ldong_boundary_by_code"][row["ldong_code"]],
+            location=_point(source["ldong_boundary_by_code"][row["ldong_code"]]),
+            area_m2=_area_m2(source["ldong_boundary_by_code"][row["ldong_code"]]),
+        )
+        for row in source["ldong_rows"]
+    ]
+    adong_objects_to_upsert = [
+        Adong(
+            adong_code=row["adong_code"],
+            name=row["adong_name"],
+            gu_id=row["gu_code"],
+            slug=_slug(f"{gu_name_by_code[row['gu_code']]}-{row['adong_name']}"),
+            boundary=source["adong_boundary_by_code"][row["adong_code"]],
+            location=_point(source["adong_boundary_by_code"][row["adong_code"]]),
+            area_m2=_area_m2(source["adong_boundary_by_code"][row["adong_code"]]),
+        )
+        for row in source["adong_rows"]
+    ]
 
     if options.dry_run:
         return {
@@ -228,22 +269,17 @@ def _update_regions(source: dict[str, Any], options: RegionsUpdateOptions) -> di
         }
 
     with transaction.atomic():
-        for row in source["gu_rows"]:
-            geom = source["gu_boundary_by_name"].get(row["gu_name"])
-            _, was_created = Gu.objects.update_or_create(
-                gu_code=row["gu_code"],
-                defaults={
-                    "name": row["gu_name"],
-                    "slug": _slug(row["gu_name"]),
-                    "boundary": geom,
-                    "location": _point(geom),
-                    "area_m2": _area_m2(geom),
-                },
-            )
-            checked += 1
-            loaded += 1
-            created += int(was_created)
-            updated += int(not was_created)
+        Gu.objects.bulk_create(
+            gu_objects,
+            batch_size=100,
+            update_conflicts=True,
+            update_fields=["name", "slug", "boundary", "location", "area_m2"],
+            unique_fields=["gu_code"],
+        )
+        checked += len(gu_objects)
+        loaded += len(gu_objects)
+        created += len(gu_codes - existing_gu_codes)
+        updated += len(gu_codes & existing_gu_codes)
 
         seoul_boundary = None
         for gu in Gu.objects.filter(gu_code__in=gu_codes).exclude(boundary__isnull=True):
@@ -263,41 +299,29 @@ def _update_regions(source: dict[str, Any], options: RegionsUpdateOptions) -> di
         created += int(was_created)
         updated += int(not was_created)
 
-        for row in source["ldong_rows"]:
-            geom = source["ldong_boundary_by_code"][row["ldong_code"]]
-            _, was_created = Ldong.objects.update_or_create(
-                ldong_code=row["ldong_code"],
-                defaults={
-                    "name": row["ldong_name"],
-                    "gu_id": row["gu_code"],
-                    "slug": _slug(f"{row['gu_name']}-{row['ldong_name']}"),
-                    "boundary": geom,
-                    "location": _point(geom),
-                    "area_m2": _area_m2(geom),
-                },
-            )
-            checked += 1
-            loaded += 1
-            created += int(was_created)
-            updated += int(not was_created)
+        Ldong.objects.bulk_create(
+            ldong_objects_to_upsert,
+            batch_size=1000,
+            update_conflicts=True,
+            update_fields=["name", "gu", "slug", "boundary", "location", "area_m2"],
+            unique_fields=["ldong_code"],
+        )
+        checked += len(ldong_objects_to_upsert)
+        loaded += len(ldong_objects_to_upsert)
+        created += len(ldong_codes - existing_ldong_codes)
+        updated += len(ldong_codes & existing_ldong_codes)
 
-        for row in source["adong_rows"]:
-            geom = source["adong_boundary_by_code"][row["adong_code"]]
-            _, was_created = Adong.objects.update_or_create(
-                adong_code=row["adong_code"],
-                defaults={
-                    "name": row["adong_name"],
-                    "gu_id": row["gu_code"],
-                    "slug": _slug(f"{row['gu_name']}-{row['adong_name']}"),
-                    "boundary": geom,
-                    "location": _point(geom),
-                    "area_m2": _area_m2(geom),
-                },
-            )
-            checked += 1
-            loaded += 1
-            created += int(was_created)
-            updated += int(not was_created)
+        Adong.objects.bulk_create(
+            adong_objects_to_upsert,
+            batch_size=1000,
+            update_conflicts=True,
+            update_fields=["name", "gu", "slug", "boundary", "location", "area_m2"],
+            unique_fields=["adong_code"],
+        )
+        checked += len(adong_objects_to_upsert)
+        loaded += len(adong_objects_to_upsert)
+        created += len(adong_codes - existing_adong_codes)
+        updated += len(adong_codes & existing_adong_codes)
 
         gu_objects = list(Gu.objects.filter(gu_code__in=gu_codes))
         ldong_objects = list(Ldong.objects.filter(ldong_code__in=ldong_codes).exclude(boundary__isnull=True))

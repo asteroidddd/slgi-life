@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import socket
 import time as sleep_time
 import xml.etree.ElementTree as ET
@@ -13,6 +12,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from apps.public_data.api_keys import env_key_ring, with_rate_limit_fallback
 from apps.public_data.exceptions import RateLimitedError, is_rate_limited_code, is_rate_limited_text
 from apps.public_data.populations.models import AdongPopulation, LdongPopulation
 from apps.public_data.regions.models import Adong, Ldong
@@ -33,13 +33,6 @@ class PopulationsUpdateOptions:
     end_ym: str | None = None
     request_interval_seconds: float = 0.2
     request_timeout_seconds: float = 40.0
-
-
-def _require_env(name: str) -> str:
-    value = os.environ.get(name, "").strip()
-    if not value:
-        raise RuntimeError(f"{name} is required")
-    return value
 
 
 def _validate_ym(value: str) -> str:
@@ -208,6 +201,28 @@ def _fetch_month(
         page += 1
 
 
+def _fetch_month_with_fallback(
+    *,
+    api_keys: tuple[str, ...],
+    path: str,
+    code_param: str,
+    code: str,
+    ym: str,
+    options: PopulationsUpdateOptions,
+) -> list[dict[str, str]]:
+    return with_rate_limit_fallback(
+        api_keys,
+        lambda api_key: _fetch_month(
+            api_key=api_key,
+            path=path,
+            code_param=code_param,
+            code=code,
+            ym=ym,
+            options=options,
+        ),
+    )
+
+
 def _missing_months(model, fk_field: str, expected_count: int, months: list[str]) -> list[str]:
     missing = []
     for ym in months:
@@ -219,7 +234,7 @@ def _missing_months(model, fk_field: str, expected_count: int, months: list[str]
 
 def _load_domain(
     *,
-    api_key: str,
+    api_keys: tuple[str, ...],
     domain: str,
     codes: list[str],
     model,
@@ -246,8 +261,8 @@ def _load_domain(
                         "skipped_empty": skipped_empty,
                         "months": months,
                     }
-                items = _fetch_month(
-                    api_key=api_key,
+                items = _fetch_month_with_fallback(
+                    api_keys=api_keys,
                     path=path,
                     code_param=code_param,
                     code=code,
@@ -327,12 +342,12 @@ def update_populations(options: PopulationsUpdateOptions) -> dict[str, Any]:
             "domains": [],
         }
 
-    api_key = _require_env("PUBLIC_DATA_API_KEY")
+    api_keys = env_key_ring("PUBLIC_DATA_API_KEY")
     results = []
     checked_total = 0
 
     ldong_result = _load_domain(
-        api_key=api_key,
+        api_keys=api_keys,
         domain="ldong",
         codes=ldong_codes,
         model=LdongPopulation,
@@ -347,7 +362,7 @@ def update_populations(options: PopulationsUpdateOptions) -> dict[str, Any]:
     checked_total += ldong_result["checked"]
 
     adong_result = _load_domain(
-        api_key=api_key,
+        api_keys=api_keys,
         domain="adong",
         codes=adong_codes,
         model=AdongPopulation,

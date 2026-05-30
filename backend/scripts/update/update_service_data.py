@@ -1,4 +1,7 @@
-"""Run service-data updaters."""
+"""Run service-data updaters.
+
+Dashboard-specific datasets are handled by update_dashboard_data.py.
+"""
 
 from __future__ import annotations
 

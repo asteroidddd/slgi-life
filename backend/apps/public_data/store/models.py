@@ -20,7 +20,6 @@ Store schema.dbml 정합 (sub-plan 4.5B):
 """
 
 from django.contrib.gis.db import models as gis_models
-from django.contrib.postgres.indexes import GistIndex
 from django.db import models
 
 
@@ -141,13 +140,6 @@ class Store(models.Model):
         db_table = "store"
         verbose_name = "상가"
         verbose_name_plural = "상가"
-        indexes = [
-            models.Index(fields=["adong"]),
-            models.Index(fields=["ldong"]),
-            models.Index(fields=["category"]),
-            models.Index(fields=["ksci"]),
-            GistIndex(fields=["location"], name="store_location_gist_idx"),
-        ]
 
     def __str__(self) -> str:
         return f"{self.name} ({self.branch_name})" if self.branch_name else self.name

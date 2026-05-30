@@ -13,7 +13,6 @@ sub-plan 4.5C 정합:
 """
 
 from django.contrib.gis.db import models as gis_models
-from django.contrib.postgres.indexes import GistIndex
 from django.db import models
 
 
@@ -58,8 +57,6 @@ class Park(models.Model):
         ordering = ["name"]
         indexes = [
             models.Index(fields=["category"]),
-            GistIndex(fields=["boundary"], name="park_boundary_gist_idx"),
-            GistIndex(fields=["location"], name="park_location_gist_idx"),
         ]
 
     def __str__(self) -> str:
@@ -88,10 +85,6 @@ class ParkAdong(models.Model):
         verbose_name = "공원-행정동 매핑"
         verbose_name_plural = "공원-행정동 매핑"
         unique_together = [("park", "adong")]
-        indexes = [
-            models.Index(fields=["park"]),
-            models.Index(fields=["adong"]),
-        ]
 
     def __str__(self) -> str:
         return f"{self.park_id} ↔ {self.adong_id}"
@@ -115,10 +108,6 @@ class ParkLdong(models.Model):
         verbose_name = "공원-법정동 매핑"
         verbose_name_plural = "공원-법정동 매핑"
         unique_together = [("park", "ldong")]
-        indexes = [
-            models.Index(fields=["park"]),
-            models.Index(fields=["ldong"]),
-        ]
 
     def __str__(self) -> str:
         return f"{self.park_id} ↔ {self.ldong_id}"

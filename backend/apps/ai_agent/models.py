@@ -35,3 +35,21 @@ class UserAIAPIKey(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user_id}:{self.provider}:{self.priority}"
+
+
+class UserAIContextPreference(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        related_name="ai_context_preference",
+        on_delete=models.CASCADE,
+    )
+    share_school_with_ai = models.BooleanField(default=False)
+    share_home_location_with_ai = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "user_ai_context_preference"
+
+    def __str__(self) -> str:
+        return f"{self.user_id}:school={self.share_school_with_ai}:home={self.share_home_location_with_ai}"

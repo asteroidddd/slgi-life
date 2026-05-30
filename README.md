@@ -61,7 +61,6 @@ capston/
 │   ├── apps/
 │   │   ├── accounts/          # 사용자, 인증, 즐겨찾기
 │   │   ├── ai_agent/          # 자연어 질의 보조와 BYOK API 키 관리
-│   │   ├── legacy/            # 과거 neighborhoods 모델 보존
 │   │   ├── public_data/       # 공공데이터 원천 테이블과 업데이터
 │   │   └── service/           # 지도, 히트맵, 편의시설, 전월세 서비스 API
 │   ├── config/                # Django 설정과 URL 라우팅
@@ -143,8 +142,8 @@ Backend는 Django/DRF/GeoDjango 기반입니다. 공공데이터 원천 테이�
 | `apps.service.map` | 검색, 서울 마스크 GeoJSON, 교통 경로 |
 | `apps.service.heatmap` | 행정동/법정동 GeoJSON과 점수 API |
 | `apps.service.rent_deal` | 전월세 캐시, 조건 매칭, 환산율, 상세 조회 |
+| `apps.dashboard` | 대시보드 화면 전용 API와 지역 소개글 |
 | `apps.service.amenities` | 지도 영역 내 편의시설 조회 |
-| `apps.legacy.neighborhoods` | 과거 neighborhoods 모델 보존용 |
 
 로컬 개발 예시:
 
@@ -217,6 +216,8 @@ npm run preview
 | `GET /api/rent-deals/conversion-rate` | 보증금-월세 환산율 |
 | `GET /api/rent-deals/<deal_id>` | 전월세 거래 상세 |
 | `GET /api/amenities/bbox` | 지도 영역 내 편의시설 |
+| `GET /api/dashboard/regions/adongs/<slug>/intro` | 대시보드 행정동 소개글 |
+| `GET /api/dashboard/regions/ldongs/<slug>/intro` | 대시보드 법정동 소개글 |
 | `POST /api/agent/query` | AI Agent 질의 |
 | `DELETE /api/agent/conversation/<conversation_id>` | AI Agent 대화 초기화 |
 | `GET/POST /api/agent/api-keys` | AI API 키 상태 조회/저장 |

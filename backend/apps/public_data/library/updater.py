@@ -468,56 +468,62 @@ def update_libraries(options: LibraryUpdateOptions) -> dict[str, Any]:
         service: {"checked": 0, "loaded": 0, "skipped": 0} for service in SEOUL_LIBRARY_SERVICES
     }
     seen_source_ids: set[str] = set()
+    records: list[dict[str, Any]] = []
     completed = False
 
-    with transaction.atomic():
-        for service in SEOUL_LIBRARY_SERVICES:
-            for row in _seoul_rows(api_key, service, options):
-                checked += 1
-                service_stats[service]["checked"] += 1
-                source_id = str(_get(row, "LBRRY_SEQ_NO", "LBRRY_ID") or "").strip()
-                if source_id:
-                    seen_source_ids.add(source_id[:20])
-                record = _row_to_record(row, service, options, skip_reasons)
-                if not record:
-                    skipped += 1
-                    service_stats[service]["skipped"] += 1
-                else:
-                    if not options.dry_run:
-                        library, was_created = Library.objects.update_or_create(
-                            id=record["id"],
-                            defaults=record["library"],
-                        )
-                        LibraryHours.objects.filter(library=library).delete()
-                        LibraryHours.objects.bulk_create(
-                            [
-                                LibraryHours(
-                                    library=library,
-                                    day_type=day,
-                                    time_open=open_t,
-                                    time_close=close_t,
-                                    is_irregular=irregular,
-                                )
-                                for day, open_t, close_t, irregular in record["hours"]
-                            ]
-                        )
-                        if was_created:
-                            created += 1
-                        else:
-                            updated += 1
-                    loaded += 1
-                    hour_rows += len(record["hours"])
-                    service_stats[service]["loaded"] += 1
+    for service in SEOUL_LIBRARY_SERVICES:
+        for row in _seoul_rows(api_key, service, options):
+            checked += 1
+            service_stats[service]["checked"] += 1
+            source_id = str(_get(row, "LBRRY_SEQ_NO", "LBRRY_ID") or "").strip()
+            if source_id:
+                seen_source_ids.add(source_id[:20])
+            record = _row_to_record(row, service, options, skip_reasons)
+            if not record:
+                skipped += 1
+                service_stats[service]["skipped"] += 1
+            else:
+                records.append(record)
+                loaded += 1
+                hour_rows += len(record["hours"])
+                service_stats[service]["loaded"] += 1
 
-                if options.limit is not None and checked >= options.limit:
-                    break
             if options.limit is not None and checked >= options.limit:
                 break
-        else:
-            completed = checked > 0 and loaded > 0
+        if options.limit is not None and checked >= options.limit:
+            break
+    else:
+        completed = checked > 0 and loaded > 0
 
-        deleted_missing = 0
-        if completed and not options.dry_run:
+    deleted_missing = 0
+    if not options.dry_run and completed:
+        records_by_id = {record["id"]: record for record in records}
+        records = list(records_by_id.values())
+        record_ids = list(records_by_id)
+        existing_ids = set(Library.objects.filter(id__in=record_ids).values_list("id", flat=True))
+        hour_objects = [
+            LibraryHours(
+                library_id=record["id"],
+                day_type=day,
+                time_open=open_t,
+                time_close=close_t,
+                is_irregular=irregular,
+            )
+            for record in records
+            for day, open_t, close_t, irregular in record["hours"]
+        ]
+        with transaction.atomic():
+            Library.objects.bulk_create(
+                [Library(id=record["id"], **record["library"]) for record in records],
+                batch_size=1000,
+                update_conflicts=True,
+                update_fields=["name", "library_type", "remark", "location", "ldong", "adong"],
+                unique_fields=["id"],
+            )
+            created = len(set(record_ids) - existing_ids)
+            updated = len(set(record_ids) & existing_ids)
+            LibraryHours.objects.filter(library_id__in=record_ids).delete()
+            LibraryHours.objects.bulk_create(hour_objects, batch_size=2000)
             missing_queryset = Library.objects.exclude(id__in=seen_source_ids)
             deleted_missing = missing_queryset.count()
             missing_queryset.delete()
@@ -526,7 +532,7 @@ def update_libraries(options: LibraryUpdateOptions) -> dict[str, Any]:
         "status": "success" if completed else "partial",
         "completed": completed,
         "checked": checked,
-        "loaded": loaded,
+        "loaded": loaded if (options.dry_run or completed) else 0,
         "created": created,
         "updated": updated,
         "skipped": skipped,

@@ -213,3 +213,27 @@ class RentDealLdongAdongMap(models.Model):
 
     def __str__(self) -> str:
         return f"{self.ldong_id} -> {self.adong_id or 'NULL'}"
+
+
+
+class RentConversionRate(models.Model):
+    """KOSIS monthly rent-deposit conversion rate snapshot."""
+
+    period_ym = models.CharField(max_length=6, primary_key=True, help_text="KOSIS PRD_DE as YYYYMM")
+    annual_rate = models.DecimalField(max_digits=7, decimal_places=3, help_text="Annual conversion rate, percent.")
+    source = models.CharField(max_length=100, default="KOSIS \ud55c\uad6d\ubd80\ub3d9\uc0b0\uc6d0 \uc804\uc6d4\uc138\uc804\ud658\uc728")
+    raw_payload = models.JSONField(default=dict, blank=True)
+    fetched_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "rent_conversion_rate"
+        verbose_name = "rent conversion rate"
+        verbose_name_plural = "rent conversion rates"
+        ordering = ["-period_ym"]
+
+    @property
+    def monthly_rate(self) -> float:
+        return float(self.annual_rate) / 100.0 / 12.0
+
+    def __str__(self) -> str:
+        return f"{self.period_ym} {self.annual_rate}%"

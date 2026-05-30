@@ -76,7 +76,6 @@ backend/
 ├── apps/
 │   ├── accounts/          # 사용자, 세션 인증, 즐겨찾기
 │   ├── ai_agent/          # 자연어 질의, SQL guard, BYOK API 키
-│   ├── legacy/            # 과거 neighborhoods 모델 보존
 │   ├── public_data/       # 원천 데이터 모델과 업데이터
 │   └── service/           # 화면 제공용 서비스 API
 ├── data/                  # 파일 기반 원천 데이터

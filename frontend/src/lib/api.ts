@@ -7,19 +7,26 @@ import type {
   Bbox,
   AdongScore,
   AIAPIKeyStatusResponse,
+  AIContextPreferencePatch,
+  AIContextPreferenceResponse,
   AIProvider,
   AgentQueryRequest,
   AgentQueryResponse,
   MatchCountsResponse,
+  DashboardRegionIntro,
   AmenityBboxResponse,
+  MedicalFacilitiesResponse,
   MapSearchResponse,
   MatchFilters,
   FavoriteItem,
-  LoginPayload,
   MePatchPayload,
   MeResponse,
-  RegisterPayload,
   RentDealCacheResponse,
+  RentDealLdongSummaryResponse,
+  RentDealGuCodesResponse,
+  RentDealGridSummaryResponse,
+  RentListingAnalysisRequest,
+  RentListingAnalysisResponse,
   RentConversionRateResponse,
   RentDealPin,
   SchoolOptionsResponse,
@@ -71,6 +78,41 @@ export async function getLdongScores(weights: Weights): Promise<AdongScore[]> {
   return data;
 }
 
+export async function getDashboardRegionIntro(
+  regionType: 'adong' | 'ldong',
+  slug: string,
+): Promise<DashboardRegionIntro> {
+  const path = regionType === 'ldong'
+    ? `/dashboard/regions/ldongs/${slug}/intro`
+    : `/dashboard/regions/adongs/${slug}/intro`;
+  const { data } = await api.get<DashboardRegionIntro>(path);
+  return data;
+}
+
+export async function getDashboardLdongAtPoint(
+  lat: number,
+  lng: number,
+): Promise<DashboardRegionIntro> {
+  const { data } = await api.get<DashboardRegionIntro>('/dashboard/regions/ldongs/lookup', {
+    params: { lat, lng },
+  });
+  return data;
+}
+
+export async function getDashboardRegionAtPoint(
+  regionType: 'adong' | 'ldong',
+  lat: number,
+  lng: number,
+): Promise<DashboardRegionIntro> {
+  const path = regionType === 'ldong'
+    ? '/dashboard/regions/ldongs/lookup'
+    : '/dashboard/regions/adongs/lookup';
+  const { data } = await api.get<DashboardRegionIntro>(path, {
+    params: { lat, lng },
+  });
+  return data;
+}
+
 
 export async function getAdongMatchCounts(
   filters: MatchFilters,
@@ -83,6 +125,56 @@ export async function getAdongMatchCounts(
 
 export async function getRentConversionRate(): Promise<RentConversionRateResponse> {
   const { data } = await api.get<RentConversionRateResponse>('/rent-deals/conversion-rate');
+  return data;
+}
+
+export async function analyzeRentListing(
+  payload: RentListingAnalysisRequest,
+): Promise<RentListingAnalysisResponse> {
+  const { data } = await api.post<RentListingAnalysisResponse>('/rent-deals/listing-analysis', payload, {
+    timeout: 20_000,
+  });
+  return data;
+}
+
+function bboxToParam(bbox: Bbox): string {
+  return `${bbox.lng1},${bbox.lat1},${bbox.lng2},${bbox.lat2}`;
+}
+
+export async function getRentDealLdongSummary(
+  filters: MatchFilters,
+): Promise<RentDealLdongSummaryResponse> {
+  const { data } = await api.get<RentDealLdongSummaryResponse>('/rent-deals/summary/ldongs', {
+    params: matchFiltersToParams(filters),
+  });
+  return data;
+}
+
+export async function getRentDealGridSummary(
+  filters: MatchFilters,
+  bbox: Bbox | null,
+): Promise<RentDealGridSummaryResponse> {
+  const params: Record<string, string | number> = matchFiltersToParams(filters);
+  if (bbox) params.bbox = bboxToParam(bbox);
+  const { data } = await api.get<RentDealGridSummaryResponse>('/rent-deals/summary/grids', {
+    params,
+  });
+  return data;
+}
+
+export async function getRentDealGuCodes(bbox: Bbox): Promise<RentDealGuCodesResponse> {
+  const { data } = await api.get<RentDealGuCodesResponse>('/rent-deals/cache/gus', {
+    params: { bbox: bboxToParam(bbox) },
+  });
+  return data;
+}
+
+export async function getRentDealGuCacheText(guCode: string): Promise<string> {
+  const { data } = await api.get<string>(`/rent-deals/cache/gus/${guCode}.tsv.gz`, {
+    responseType: 'text',
+    timeout: 600_000,
+    transformResponse: [(value) => value],
+  });
   return data;
 }
 
@@ -139,28 +231,26 @@ export async function getTransactionsBbox(
 
 export async function postAgentQuery(
   question: string,
+  conversationId?: string,
 ): Promise<AgentQueryResponse> {
   const body: AgentQueryRequest = { question };
+  if (conversationId) body.conversation_id = conversationId;
   const { data } = await api.post<AgentQueryResponse>('/agent/query', body, {
     timeout: 180_000,
   });
   return data;
 }
 
-// -------- Auth + Users (SPEC 6.6, 9 — step 9) ------------------------------
-// All routes rely on the session cookie set by Django. Make sure axios
-// `withCredentials` stays true (set above on the shared instance).
-
-/** POST /api/auth/register — creates the user and auto-logs in. */
-export async function register(payload: RegisterPayload): Promise<MeResponse> {
-  const { data } = await api.post<MeResponse>('/auth/register', payload);
+export async function getAgentDemoVisualization(): Promise<AgentQueryResponse> {
+  const { data } = await api.get<AgentQueryResponse>('/agent/demo/visualization');
   return data;
 }
 
-/** POST /api/auth/login — sets the session cookie. */
-export async function login(payload: LoginPayload): Promise<MeResponse> {
-  const { data } = await api.post<MeResponse>('/auth/login', payload);
-  return data;
+// -------- Auth + Users -------------------------------------------------------
+// Auth uses Django session cookies. Login starts through Kakao OAuth redirect.
+
+export function getKakaoLoginUrl(): string {
+  return `${baseURL.replace(/\/$/, '')}/auth/kakao/start`;
 }
 
 /** POST /api/auth/logout — idempotent (200 even if not logged in). */
@@ -172,6 +262,10 @@ export async function logout(): Promise<void> {
 export async function getMe(): Promise<MeResponse> {
   const { data } = await api.get<MeResponse>('/users/me');
   return data;
+}
+
+export async function deleteMe(confirmText: string): Promise<void> {
+  await api.delete('/users/me', { data: { confirm_text: confirmText } });
 }
 
 
@@ -228,18 +322,30 @@ export async function deleteAIAPIKey(provider: AIProvider): Promise<void> {
   await api.delete(`/agent/api-keys/${provider}`);
 }
 
+export async function getAIContextPreference(): Promise<AIContextPreferenceResponse> {
+  const { data } = await api.get<AIContextPreferenceResponse>('/agent/context-preferences');
+  return data;
+}
+
+export async function updateAIContextPreference(
+  payload: AIContextPreferencePatch,
+): Promise<AIContextPreferenceResponse> {
+  const { data } = await api.patch<AIContextPreferenceResponse>('/agent/context-preferences', payload);
+  return data;
+}
+
 
 // Re-exports so callers can `import type { User } from '@/lib/api'` if they
 // prefer barreling through the API module rather than `types/api`.
 export type {
   FavoriteItem,
-  LoginPayload,
   MePatchPayload,
   MeResponse,
-  RegisterPayload,
   SchoolOptionsResponse,
   User,
   AIAPIKeyStatusResponse,
+  AIContextPreferencePatch,
+  AIContextPreferenceResponse,
   AIProvider,
 };
 
@@ -253,6 +359,24 @@ export async function getAmenitiesBbox(params: {
     params: {
       bbox: params.bbox.join(','),
       categories: params.categories?.join(','),
+      limit: params.limit,
+    },
+  });
+  return data;
+}
+
+
+export async function getMedicalFacilities(params: {
+  bbox: [number, number, number, number];
+  categories?: string[];
+  openNow?: boolean;
+  limit?: number;
+}): Promise<MedicalFacilitiesResponse> {
+  const { data } = await api.get<MedicalFacilitiesResponse>('/medical/facilities', {
+    params: {
+      bbox: params.bbox.join(','),
+      category: params.categories?.join(','),
+      open_now: params.openNow ? 'true' : undefined,
       limit: params.limit,
     },
   });
