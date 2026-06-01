@@ -306,7 +306,7 @@ const CONTENT: Record<LegalPage, LegalContent> = {
           },
           {
             category: '생활 인프라',
-            source: '공공데이터포털, 소상공인시장진흥공단, 통계분류포털, 국가데이터처, 서울 열린데이터광장, 서울특별시, OpenStreetMap',
+            source: '공공데이터포털, 소상공인시장진흥공단, 통계분류포털, 국가데이터처, 서울 열린데이터광장, 서울특별시, OpenStreetMap, 다이소',
             usage: '상권 업종, 도서관, 대학, 공원 데이터를 묶어 식생활·문화·학습·공원·대학 관련 생활 인프라 밀도와 구성을 계산합니다.',
             links: [
               { label: '상가(상권)정보 API', href: 'https://www.data.go.kr/data/15012005/openapi.do' },
@@ -315,6 +315,7 @@ const CONTENT: Record<LegalPage, LegalContent> = {
               { label: '서울시 작은도서관 현황정보', href: 'https://data.seoul.go.kr/dataList/OA-15481/S/1/datasetView.do' },
               { label: '서울시 대학 및 전문대학 DB', href: 'https://data.seoul.go.kr/dataList/OA-12974/S/1/datasetView.do' },
               { label: 'OpenStreetMap', href: 'https://www.openstreetmap.org/#map=17/37.536266/126.984186' },
+              { label: '매장검색|다이소', href: 'https://www.daiso.co.kr/cs/shop' },
               { label: '생활권계획 시설(공원) 공간정보', href: 'https://data.seoul.go.kr/dataList/OA-15529/S/1/datasetView.do' },
               { label: '서울시 주요 공원현황', href: 'http://data.seoul.go.kr/dataList/OA-394/S/1/datasetView.do' },
             ],
@@ -455,7 +456,7 @@ export default function LegalInfo({ page }: { page: LegalPage }) {
                         <th className="w-[130px] border-b border-border px-4 py-3 font-bold">구분</th>
                         <th className="w-[210px] border-b border-border px-4 py-3 font-bold">출처/제공</th>
                         <th className="border-b border-border px-4 py-3 font-bold">사용 내용</th>
-                        <th className="w-[240px] border-b border-border px-4 py-3 font-bold">확인 링크</th>
+                        <th className="w-[280px] border-b border-border px-4 py-3 font-bold">확인 링크</th>
                       </tr>
                     </thead>
                     <tbody>
