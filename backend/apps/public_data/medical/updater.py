@@ -10,9 +10,12 @@ import re
 import socket
 import time as sleep_time
 import xml.etree.ElementTree as ET
+import csv
 from dataclasses import dataclass
 from datetime import date, time
 from decimal import Decimal
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -33,6 +36,7 @@ from apps.public_data.medical.models import (
 )
 from apps.public_data.regions.models import Adong, Ldong
 from apps.public_data.state import record_dataset_result
+from apps.common.geocoding import geocode_address as _shared_geocode_address
 
 
 HOSPITAL_API_URL = "https://apis.data.go.kr/B552657/HsptlAsembySearchService/getHsptlMdcncListInfoInqire"
@@ -41,7 +45,6 @@ EMERGENCY_API_URL = "https://apis.data.go.kr/B552657/ErmctInfoInqireService/getE
 HOLIDAY_API_URL = "https://apis.data.go.kr/B552657/HolidyEmgncClnicInsttInfoInqireService/getHolidyClnicPosblEgytInfoInqire"
 HIRA_HOSPITAL_API_URL = "https://apis.data.go.kr/B551182/hospInfoServicev2/getHospBasisList"
 HIRA_SPECIALTY_API_URL = "https://apis.data.go.kr/B551182/MadmDtlInfoService2.7/getDgsbjtInfo2.7"
-VWORLD_SEARCH_URL = "https://api.vworld.kr/req/search"
 PAGE_SIZE = 1000
 SEOUL_Q0 = "\uc11c\uc6b8\ud2b9\ubcc4\uc2dc"
 HIRA_MATCH_EXCLUDED_TYPES = {
@@ -51,6 +54,7 @@ HIRA_MATCH_EXCLUDED_TYPES = {
     "\uae30\ud0c0",
     "\uae30\ud0c0(\uad6c\uae09\ucc28)",
 }
+SPECIALTY_GROUPS_PATH = Path(__file__).resolve().parents[3] / "data" / "medical_specialty_groups.csv"
 
 
 DAY_FIELDS = (
@@ -79,6 +83,23 @@ class MedicalUpdateOptions:
 def _text(value: Any, limit: int | None = None) -> str:
     text = str(value or "").strip()
     return text[:limit] if limit else text
+
+
+@lru_cache(maxsize=1)
+def _specialty_group_by_name() -> dict[str, str]:
+    try:
+        with SPECIALTY_GROUPS_PATH.open("r", encoding="utf-8-sig", newline="") as handle:
+            return {
+                (row.get("specialty_name") or "").strip(): (row.get("specialty_group") or "").strip()
+                for row in csv.DictReader(handle)
+                if (row.get("specialty_name") or "").strip() and (row.get("specialty_group") or "").strip()
+            }
+    except FileNotFoundError:
+        return {}
+
+
+def _specialty_group(name: str) -> str:
+    return _specialty_group_by_name().get(name, "기타")
 
 
 def _request_xml(url: str, params: dict[str, str], options: MedicalUpdateOptions) -> ET.Element:
@@ -173,43 +194,16 @@ def _point(row: dict[str, Any]) -> Point | None:
         return None
 
 
-def _vworld_key() -> str:
-    return os.environ.get("V_WORLD_API_KEY", "").strip() or os.environ.get("VWORLD_API_KEY", "").strip()
-
-
 def _geocode_address(address: str, options: MedicalUpdateOptions) -> Point | None:
-    api_key = _vworld_key()
-    if not (options.geocode_missing and api_key and address):
+    if not (options.geocode_missing and address):
         return None
-    for search_type in ("road", "parcel"):
-        try:
-            root = _request_xml(
-                VWORLD_SEARCH_URL,
-                {
-                    "service": "search",
-                    "request": "search",
-                    "version": "2.0",
-                    "crs": "EPSG:4326",
-                    "size": "1",
-                    "page": "1",
-                    "query": address,
-                    "type": "address",
-                    "category": search_type,
-                    "format": "xml",
-                    "key": api_key,
-                },
-                options,
-            )
-        except Exception:
-            continue
-        point = root.find(".//point")
-        if point is None:
-            continue
-        try:
-            return Point(float(_element_text(point, "x")), float(_element_text(point, "y")), srid=4326)
-        except ValueError:
-            continue
-    return None
+    result = _shared_geocode_address(
+        address,
+        request_timeout=options.request_timeout_seconds,
+        request_interval=options.request_interval_seconds,
+        user_agent="capston-medical-data-updater/0.1",
+    )
+    return result.point if result.status == "success" else None
 
 
 def _find_region(point: Point) -> tuple[Ldong | None, Adong | None]:
@@ -802,6 +796,7 @@ def _specialty_rows_for_matches(
                 MedicalFacilitySpecialty(
                     mapping_id=ykiho,
                     specialty_name=name,
+                    specialty_group=_specialty_group(name),
                     specialist_count=max(specialist_count, 0),
                 )
             )

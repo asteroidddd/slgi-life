@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import csv
 import hashlib
-import json
 import os
 import socket
 import time as sleep_time
@@ -27,10 +26,11 @@ from apps.public_data.regions.models import Adong, Ldong
 from apps.public_data.rent_deal.models import RentConversionRate, RentDeal, RentDealLdongAdongMap
 from apps.public_data.state import dataset_state, load_state, record_dataset_result, save_state
 from apps.public_data.rent_deal.utils import refresh_conversion_rate_from_kosis
+from apps.common.geocoding import GeocodeResult as _GeocodeResult
+from apps.common.geocoding import geocode_address as _shared_geocode_address
 
 
 PUBLIC_DATA_BASE_URL = "https://apis.data.go.kr"
-V_WORLD_GEOCODE_URL = "https://api.vworld.kr/req/address"
 DATA_PATH = Path(__file__).resolve().parents[3] / "data" / "rent_deal_ldong_adong_map.csv"
 DEFAULT_START_YM = "201101"
 PAGE_SIZE = 1000
@@ -41,6 +41,9 @@ RENT_ENDPOINTS = {
     "연립다세대": "/1613000/RTMSDataSvcRHRent/getRTMSDataSvcRHRent",
     "단독다가구": "/1613000/RTMSDataSvcSHRent/getRTMSDataSvcSHRent",
 }
+SOURCE_HOUSING_TYPES = {"연립", "다세대", "연립다세대", "단독", "다가구", "단독다가구"}
+GEOCODE_HOUSING_TYPES = {"\uc544\ud30c\ud2b8", "\uc624\ud53c\uc2a4\ud154", "\uc5f0\ub9bd\ub2e4\uc138\ub300", "\uc5f0\ub9bd", "\ub2e4\uc138\ub300"}
+SKIP_GEOCODE_HOUSING_TYPES = {"\ub2e8\ub3c5\ub2e4\uac00\uad6c", "\ub2e8\ub3c5", "\ub2e4\uac00\uad6c"}
 
 
 @dataclass(frozen=True)
@@ -50,6 +53,7 @@ class RentDealsUpdateOptions:
     limit: int | None = None
     start_ym: str | None = None
     end_ym: str | None = None
+    geocode_missing: bool = True
     request_interval_seconds: float = 0.2
     request_timeout_seconds: float = 40.0
     deadline_monotonic: float | None = None
@@ -64,11 +68,6 @@ def _require_env(name: str) -> str:
     if not value:
         raise RuntimeError(f"{name} is required")
     return value
-
-
-def _optional_env(name: str) -> str | None:
-    value = os.environ.get(name, "").strip()
-    return value or None
 
 
 def _validate_ym(value: str) -> str:
@@ -137,15 +136,36 @@ def _read_map_rows() -> list[dict[str, str]]:
     return rows
 
 
+def _map_table_populated() -> bool:
+    return RentDealLdongAdongMap.objects.exists()
+
+
 def _load_map(options: RentDealsUpdateOptions, meta: dict[str, Any]) -> dict[str, Any]:
-    rows = _read_map_rows()
     previous_hash = dataset_state("rent_deals").get("map_snapshot", {}).get("file_hash")
-    skipped_write = bool(options.dry_run or (previous_hash == meta["file_hash"] and not options.force))
+    skipped_write = bool(
+        previous_hash == meta["file_hash"]
+        and not options.force
+        and not options.dry_run
+        and _map_table_populated()
+    )
+    if skipped_write:
+        return {
+            "status": "success",
+            "completed": True,
+            "checked": 0,
+            "loaded": 0,
+            "null_adong": 0,
+            "skipped_write": True,
+            "reason": "file_hash_unchanged",
+            "files": meta,
+        }
+
+    rows = _read_map_rows()
     checked = len(rows)
     loaded = 0
     null_adong = 0
 
-    if not skipped_write and not options.dry_run:
+    if not options.dry_run:
         ldong_ids = set(Ldong.objects.values_list("ldong_code", flat=True))
         adong_ids = set(Adong.objects.values_list("adong_code", flat=True))
         with transaction.atomic():
@@ -172,7 +192,7 @@ def _load_map(options: RentDealsUpdateOptions, meta: dict[str, Any]) -> dict[str
         "checked": checked,
         "loaded": loaded,
         "null_adong": null_adong,
-        "skipped_write": skipped_write,
+        "skipped_write": False,
         "files": meta,
     }
 
@@ -313,64 +333,69 @@ def _resolve_ldong(lawd: str, row: dict[str, str], name_lookup: dict[tuple[str, 
     return None
 
 
-def _vworld_point(payload: dict[str, Any]) -> Point | None:
-    items = payload.get("response", {}).get("result", {}).get("items", [])
-    if not items:
-        return None
-    point = items[0].get("point") or {}
-    try:
-        return Point(float(point["x"]), float(point["y"]), srid=4326)
-    except (KeyError, TypeError, ValueError):
-        return None
+def geocode_address(
+    query: str,
+    *,
+    categories: tuple[str, ...] = ("road", "parcel"),
+    request_timeout: float = 4.0,
+    request_interval: float = 0.0,
+    user_agent: str = "capston-rent-deal-updater/0.1",
+    use_kakao: bool = False,
+) -> _GeocodeResult:
+    return _shared_geocode_address(
+        query,
+        categories=categories,
+        request_timeout=request_timeout,
+        request_interval=request_interval,
+        user_agent=user_agent,
+        prefer_kakao=use_kakao,
+    )
 
 
-def _request_json(url: str, params: dict[str, str], options: RentDealsUpdateOptions) -> Any:
-    if options.request_interval_seconds:
-        sleep_time.sleep(options.request_interval_seconds)
-    req = Request(f"{url}?{urlencode(params, safe='%')}", headers={"User-Agent": "capston-public-data-updater/0.1"})
-    try:
-        with urlopen(req, timeout=options.request_timeout_seconds) as res:
-            return json.loads(res.read().decode("utf-8", errors="replace"))
-    except (HTTPError, URLError, TimeoutError, socket.timeout, json.JSONDecodeError):
-        return {}
+def _jibun_address_candidate(*, ldong: Ldong, jibun: str | None, housing_type: str) -> str | None:
+    if housing_type in SKIP_GEOCODE_HOUSING_TYPES:
+        return None
+    if housing_type not in GEOCODE_HOUSING_TYPES:
+        return None
+    if not jibun:
+        return None
+    return f"\uc11c\uc6b8\ud2b9\ubcc4\uc2dc {ldong.gu.name} {ldong.name} {jibun}".strip()
 
 
 def _geocode_location(
     *,
-    vworld_key: str | None,
+    geocoding_enabled: bool,
     ldong: Ldong,
-    jibun: str | None,
+    address_candidates: list[str],
     options: RentDealsUpdateOptions,
     cache: dict[str, tuple[Point | None, str | None]],
 ) -> tuple[Point | None, str | None]:
-    if not vworld_key or not jibun:
+    if not geocoding_enabled:
         return None, None
-    query = f"서울특별시 {ldong.gu.name} {ldong.name} {jibun}".strip()
-    if query in cache:
-        return cache[query]
-    payload = _request_json(
-        V_WORLD_GEOCODE_URL,
-        {
-            "service": "address",
-            "request": "getCoord",
-            "version": "2.0",
-            "crs": "EPSG:4326",
-            "address": query,
-            "refine": "true",
-            "simple": "false",
-            "format": "json",
-            "type": "PARCEL",
-            "key": vworld_key,
-        },
-        options,
-    )
-    point = _vworld_point(payload)
-    adong_id = None
-    if point:
-        adong = Adong.objects.filter(boundary__covers=point).order_by("area_m2").first()
-        adong_id = adong.adong_code if adong else None
-    cache[query] = (point, adong_id)
-    return cache[query]
+    for query in address_candidates:
+        if query not in cache:
+            result = geocode_address(
+                query,
+                categories=("road", "parcel"),
+                request_timeout=options.request_timeout_seconds,
+                request_interval=options.request_interval_seconds,
+                user_agent="capston-rent-deal-updater/0.1",
+                use_kakao=True,
+            )
+            point = result.point if result.status == "success" else None
+            adong_id = None
+            if point:
+                matched_ldong = Ldong.objects.filter(boundary__covers=point).order_by("area_m2").first()
+                if matched_ldong and matched_ldong.ldong_code != ldong.ldong_code:
+                    point = None
+                else:
+                    adong = Adong.objects.filter(boundary__covers=point).order_by("area_m2").first()
+                    adong_id = adong.adong_code if adong else None
+            cache[query] = (point, adong_id)
+        point, adong_id = cache[query]
+        if point:
+            return point, adong_id
+    return None, None
 
 
 def _missing_months(months: list[str], current_ym: str) -> list[str]:
@@ -393,12 +418,12 @@ def _build_deal(
     ldong_by_id: dict[str, Ldong],
     ldong_name_lookup: dict[tuple[str, str], str],
     map_by_ldong: dict[str, str | None],
-    vworld_key: str | None,
+    geocoding_enabled: bool,
     options: RentDealsUpdateOptions,
     geocode_cache: dict[str, tuple[Point | None, str | None]],
 ) -> tuple[dict[str, Any] | None, str | None]:
     source_housing_type = str(_get(row, "houseType", "주택유형") or housing_type).strip()
-    if source_housing_type in {"연립", "다세대", "연립다세대"}:
+    if source_housing_type in SOURCE_HOUSING_TYPES:
         housing_type = source_housing_type
     try:
         contract_date = _contract_date(row)
@@ -414,15 +439,18 @@ def _build_deal(
     except (InvalidOperation, ValueError):
         return None, "bad_required_money"
 
-    jibun = str(_get(row, "지번", "jibun") or "").strip()[:50] or None
+    jibun = str(_get(row, "\uc9c0\ubc88", "jibun") or "").strip()[:50] or None
+    house_name = str(_get(row, "\uc544\ud30c\ud2b8", "\ub2e8\uc9c0", "aptNm", "houseNm", "offiNm", "mhouseNm") or "")[:100] or None
+    geocode_address = _jibun_address_candidate(ldong=ldong, jibun=jibun, housing_type=housing_type)
+    candidates = [geocode_address] if geocode_address else []
     adong_id = map_by_ldong.get(ldong.ldong_code)
     location = None
     geocoded = False
-    if jibun:
+    if candidates:
         location, geocoded_adong_id = _geocode_location(
-            vworld_key=vworld_key,
+            geocoding_enabled=geocoding_enabled,
             ldong=ldong,
-            jibun=jibun,
+            address_candidates=candidates,
             options=options,
             cache=geocode_cache,
         )
@@ -446,7 +474,7 @@ def _build_deal(
                 "previous_monthly_rent": _to_int(_get(row, "종전계약월세", "previousMonthlyRent")),
                 "floor": _to_int(_get(row, "층", "floor")),
                 "construction_year": _to_int(_get(row, "건축년도", "buildYear")),
-                "house_name": str(_get(row, "아파트", "단지", "aptNm", "houseNm", "offiNm", "mhouseNm") or "")[:100] or None,
+                "house_name": house_name,
                 "jibun": jibun,
                 "location": location,
                 "ldong_id": ldong.ldong_code,
@@ -462,7 +490,7 @@ def _fetch_month_deals(
     *,
     ym: str,
     api_keys: tuple[str, ...],
-    vworld_key: str | None,
+    geocoding_enabled: bool,
     lawds: list[str],
     ldong_by_id: dict[str, Ldong],
     ldong_name_lookup: dict[tuple[str, str], str],
@@ -516,7 +544,7 @@ def _fetch_month_deals(
                     ldong_by_id=ldong_by_id,
                     ldong_name_lookup=ldong_name_lookup,
                     map_by_ldong=map_by_ldong,
-                    vworld_key=vworld_key,
+                    geocoding_enabled=geocoding_enabled,
                     options=options,
                     geocode_cache=geocode_cache,
                 )
@@ -542,16 +570,42 @@ def _fetch_month_deals(
 
 
 def _upsert_records(records: list[dict[str, Any]]) -> dict[str, int]:
-    loaded = created = updated = 0
-    for record in records:
-        _, was_created = RentDeal.objects.update_or_create(
-            id=record["id"],
-            defaults=record["defaults"],
-        )
-        loaded += 1
-        created += int(was_created)
-        updated += int(not was_created)
-    return {"loaded": loaded, "created": created, "updated": updated}
+    records_by_id = {record["id"]: record for record in records}
+    if not records_by_id:
+        return {"loaded": 0, "created": 0, "updated": 0}
+
+    record_ids = list(records_by_id)
+    existing_ids = set(RentDeal.objects.filter(id__in=record_ids).values_list("id", flat=True))
+    RentDeal.objects.bulk_create(
+        [RentDeal(id=record_id, **record["defaults"]) for record_id, record in records_by_id.items()],
+        batch_size=5000,
+        update_conflicts=True,
+        update_fields=[
+            "housing_type",
+            "contract_date",
+            "contract_end_date",
+            "contract_type",
+            "renewal_request_right_used",
+            "area_m2",
+            "deposit",
+            "monthly_rent",
+            "previous_deposit",
+            "previous_monthly_rent",
+            "floor",
+            "construction_year",
+            "house_name",
+            "jibun",
+            "location",
+            "ldong",
+            "adong",
+        ],
+        unique_fields=["id"],
+    )
+    return {
+        "loaded": len(record_ids),
+        "created": len(set(record_ids) - existing_ids),
+        "updated": len(set(record_ids) & existing_ids),
+    }
 
 
 def _conversion_rate_payload(obj: RentConversionRate | None) -> dict[str, Any]:
@@ -641,7 +695,7 @@ def update_rent_deals(options: RentDealsUpdateOptions) -> dict[str, Any]:
         }
 
     api_keys = env_key_ring("PUBLIC_DATA_API_KEY")
-    vworld_key = _optional_env("V_WORLD_API_KEY")
+    geocoding_enabled = options.geocode_missing
     ldongs = list(Ldong.objects.select_related("gu").all())
     ldong_by_id = {ldong.ldong_code: ldong for ldong in ldongs}
     ldong_name_lookup = {(ldong.gu_id, ldong.name): ldong.ldong_code for ldong in ldongs}
@@ -672,7 +726,7 @@ def update_rent_deals(options: RentDealsUpdateOptions) -> dict[str, Any]:
             fetched = _fetch_month_deals(
                 ym=ym,
                 api_keys=api_keys,
-                vworld_key=vworld_key,
+                geocoding_enabled=geocoding_enabled,
                 lawds=lawds,
                 ldong_by_id=ldong_by_id,
                 ldong_name_lookup=ldong_name_lookup,
@@ -753,7 +807,7 @@ def update_rent_deals(options: RentDealsUpdateOptions) -> dict[str, Any]:
         "months": month_results,
         "loaded_start": min(month_results) if month_results else None,
         "loaded_end": max(month_results) if month_results else None,
-        "vworld_enabled": bool(vworld_key),
+        "geocoding_enabled": geocoding_enabled,
         "public_data_key_count": len(api_keys),
     }
     return {
@@ -789,10 +843,11 @@ def update(options: RentDealsUpdateOptions) -> dict[str, Any]:
         if result["rent_deals"] and result["rent_deals"].get("completed"):
             state = load_state()
             rent_state = state.setdefault("datasets", {}).setdefault("rent_deals", {})
-            rent_state["map_snapshot"] = result["rent_deals"]["map"]["files"] | {
-                "loaded": result["rent_deals"]["map"]["loaded"],
-                "null_adong": result["rent_deals"]["map"]["null_adong"],
-            }
+            if not result["rent_deals"]["map"].get("skipped_write"):
+                rent_state["map_snapshot"] = result["rent_deals"]["map"]["files"] | {
+                    "loaded": result["rent_deals"]["map"]["loaded"],
+                    "null_adong": result["rent_deals"]["map"]["null_adong"],
+                }
             rent_state["rent_deals"] = {
                 "last_success_month": result["rent_deals"]["rent_deals"].get("loaded_end"),
                 "loaded_start": result["rent_deals"]["rent_deals"].get("loaded_start"),

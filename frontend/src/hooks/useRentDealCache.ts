@@ -29,8 +29,8 @@ const TYPE_MAP: Record<RentDealCacheTypeCode, ExploreDealType> = {
   V: 'yeonlip_dasedae',
   M: 'dagagu',
   H: 'danok',
+  S: 'danok_dagagu',
 };
-const MAX_VISIBLE_RENT_PINS = 2500;
 
 export type RentDealDisplayStage = 'hidden' | 'ldong' | 'grid' | 'cluster' | 'pin';
 
@@ -73,6 +73,9 @@ function expandDealTypesForFiltering(types: ExploreDealType[]): ExploreDealType[
   const expanded = [...types];
   if (types.includes('yeonlip') && types.includes('dasedae') && !expanded.includes('yeonlip_dasedae')) {
     expanded.push('yeonlip_dasedae');
+  }
+  if (types.includes('dagagu') && types.includes('danok') && !expanded.includes('danok_dagagu')) {
+    expanded.push('danok_dagagu');
   }
   return expanded;
 }
@@ -168,7 +171,6 @@ function parseGuPins(text: string, filters: MatchFilters, bbox: Bbox | null): Re
       lat,
       contract_ymd: contractYmd,
     });
-    if (pins.length >= MAX_VISIBLE_RENT_PINS) break;
   }
 
   return pins;

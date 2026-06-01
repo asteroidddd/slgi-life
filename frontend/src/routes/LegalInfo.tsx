@@ -276,12 +276,13 @@ const CONTENT: Record<LegalPage, LegalContent> = {
         rows: [
           {
             category: '지도·공간 기준',
-            source: 'V-World, 국토교통부, 국가데이터처',
+            source: 'V-World, 카카오맵 API, 국토교통부, 국가데이터처',
             usage: '배경지도, 검색, 좌표 변환, 행정동·법정동·자치구 경계 표시와 지역 매핑 기준으로 사용합니다. 지도 렌더링에는 Leaflet을 사용합니다.',
             links: [
               { label: 'WMTS API', href: 'https://www.vworld.kr/dev/v4dv_wmtsguide_s001.do' },
               { label: '검색 API', href: 'https://www.vworld.kr/dev/v4dv_search_s001.do' },
               { label: 'Geocoder API', href: 'https://www.vworld.kr/dev/v4dv_geocoderguide2_s001.do' },
+              { label: '카카오맵 API', href: 'https://apis.map.kakao.com/' },
               { label: '법정동 경계', href: 'https://www.vworld.kr/dtmk/dtmk_ntads_s002.do?dsId=30603' },
               { label: '행정동 경계', href: 'https://www.vworld.kr/dtmk/dtmk_ntads_s002.do?dsId=30017' },
               { label: '자치구 경계', href: 'https://www.vworld.kr/dtmk/dtmk_ntads_s002.do?dsId=30015' },
@@ -327,8 +328,8 @@ const CONTENT: Record<LegalPage, LegalContent> = {
               { label: '전국 약국 정보 조회 서비스', href: 'https://www.data.go.kr/data/15000576/openapi.do' },
               { label: '의료기관별상세정보서비스', href: 'https://www.data.go.kr/data/15001699/openapi.do' },
               { label: '병원정보서비스', href: 'https://www.data.go.kr/data/15001698/openapi.do' },
-              { label: '응급의료기관 API', href: 'https://www.data.go.kr/data/15000563/openapi.do' },
-              { label: '명절 비상 진료기관 API', href: 'https://www.data.go.kr/data/15000480/openapi.do' },
+              { label: '전국 응급의료기관 정보 조회 서비스', href: 'https://www.data.go.kr/data/15000563/openapi.do' },
+              { label: '전국 명절 비상 진료기관 정보 조회 서비스', href: 'https://www.data.go.kr/data/15000480/openapi.do' },
             ],
           },
           {

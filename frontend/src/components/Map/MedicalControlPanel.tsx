@@ -17,7 +17,25 @@ const MEDICAL_ICONS: Record<MedicalCategory, string> = {
 };
 
 const MEDICAL_ORDER: MedicalCategory[] = ['hospital', 'dental', 'pharmacy', 'emergency'];
-const SPECIALTY_PREVIEW = ['전체', '내과', '외과', '소아청소년과', '이비인후과', '피부과'];
+const DEFAULT_SPECIALTY_GROUPS = [
+  '일반',
+  '내과',
+  '외과',
+  '이비인후과',
+  '안과',
+  '피부과',
+  '비뇨기과',
+  '가정의학과',
+  '산부인과',
+  '소아과',
+  '정신과',
+  '성형외과',
+  '신경과',
+  '신경외과',
+  '재활',
+  '기타',
+  '한의원',
+];
 
 function specialtyLabel(selected: Set<string>): string {
   if (selected.size === 0) return '병원';
@@ -30,33 +48,42 @@ export type { MedicalCategory };
 
 export default function MedicalControlPanel({
   categories,
+  specialtyGroups,
+  selectedSpecialtyGroups,
   openNow,
   onToggleCategory,
+  onToggleSpecialtyGroup,
+  onResetSpecialtyGroups,
   onToggleOpenNow,
   onReset,
 }: {
   categories: Set<MedicalCategory>;
+  specialtyGroups: string[];
+  selectedSpecialtyGroups: Set<string>;
   openNow: boolean;
   onToggleCategory: (key: MedicalCategory) => void;
+  onToggleSpecialtyGroup: (name: string) => void;
+  onResetSpecialtyGroups: () => void;
   onToggleOpenNow: () => void;
   onReset: () => void;
 }) {
   const [specialtyOpen, setSpecialtyOpen] = useState(false);
-  const [selectedSpecialties, setSelectedSpecialties] = useState<Set<string>>(() => new Set());
   const hospitalActive = categories.has('hospital');
+  const specialtyOptions = [
+    '전체',
+    ...Array.from(new Set((specialtyGroups.length ? specialtyGroups : DEFAULT_SPECIALTY_GROUPS).filter(Boolean))),
+  ];
 
   const resetSpecialties = () => {
-    setSelectedSpecialties(new Set());
+    onResetSpecialtyGroups();
   };
 
   const toggleSpecialty = (name: string) => {
-    setSelectedSpecialties((prev) => {
-      if (name === '전체') return new Set();
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      return next;
-    });
+    if (name === '전체') {
+      onResetSpecialtyGroups();
+      return;
+    }
+    onToggleSpecialtyGroup(name);
   };
 
   return (
@@ -108,7 +135,7 @@ export default function MedicalControlPanel({
                   className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-left text-[13px] font-semibold"
                 >
                   <span aria-hidden="true" className="inline-flex h-4 w-4 shrink-0 items-center justify-center">{MEDICAL_ICONS[key]}</span>
-                  <span className="block min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap" title={specialtyLabel(selectedSpecialties)}>{specialtyLabel(selectedSpecialties)}</span>
+                  <span className="block min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap" title={specialtyLabel(selectedSpecialtyGroups)}>{specialtyLabel(selectedSpecialtyGroups)}</span>
                 </button>
                 <button
                   type="button"
@@ -124,15 +151,18 @@ export default function MedicalControlPanel({
                 </button>
               </div>
               {specialtyOpen ? (
-                <div className="absolute left-[calc(100%+8px)] top-0 z-[720] grid w-[150px] gap-1 rounded-card border border-border bg-surface/95 p-2 shadow-xl backdrop-blur">
-                  {SPECIALTY_PREVIEW.map((name) => {
-                    const selected = name === '전체' ? selectedSpecialties.size === 0 : selectedSpecialties.has(name);
+                <div className="absolute left-[calc(100%+8px)] top-0 z-[720] grid max-h-[calc(100vh-96px)] w-[196px] gap-1 overflow-y-auto rounded-card border border-border bg-surface/95 p-2 shadow-xl backdrop-blur">
+                  <p className="m-0 rounded-[6px] bg-surface-alt px-2 py-1.5 text-[11px] font-semibold leading-4 text-text-muted">
+                    HIRA 진료과목 및 전문의 수 자료 기준입니다. 실제 진료 가능 여부와 다를 수 있어 참고용입니다.
+                  </p>
+                  {specialtyOptions.map((name) => {
+                    const selected = name === '전체' ? selectedSpecialtyGroups.size === 0 : selectedSpecialtyGroups.has(name);
                     return (
                       <button
                         key={name}
                         type="button"
                         onClick={() => toggleSpecialty(name)}
-                        className={`flex h-8 items-center justify-between rounded-[var(--map-control-radius)] px-2 text-left text-[12px] font-semibold transition ${selected ? 'bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]' : 'text-text-muted hover:bg-surface-alt hover:text-text'}`}
+                        className={`flex h-7 items-center justify-between rounded-[var(--map-control-radius)] px-2 text-left text-[12px] font-semibold transition ${selected ? 'bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]' : 'text-text-muted hover:bg-surface-alt hover:text-text'}`}
                       >
                         <span className="truncate">{name}</span>
                         {selected ? <span className="ml-1 shrink-0 text-[12px]">✓</span> : null}

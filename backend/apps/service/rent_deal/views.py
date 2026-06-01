@@ -35,6 +35,7 @@ ALL_DEAL_TYPES: tuple[str, ...] = (
     "yeonlip_dasedae",
     "dagagu",
     "danok",
+    "danok_dagagu",
     "villa",
 )
 DEFAULT_DEAL_TYPES: tuple[str, ...] = (
@@ -64,6 +65,7 @@ TYPE_CODE_TO_DEAL_TYPE = {
     "V": "yeonlip_dasedae",
     "M": "dagagu",
     "H": "danok",
+    "S": "danok_dagagu",
 }
 CACHE_COLUMNS = ("id", "t", "d", "m", "c", "a", "lng", "lat", "dt")
 SUMMARY_CACHE_VERSION = 1
@@ -79,11 +81,11 @@ LISTING_TYPE_GROUPS: dict[str, tuple[str, tuple[str, ...]]] = {
     "아파트": ("아파트", ("아파트",)),
     "officetel": ("오피스텔", ("오피스텔",)),
     "오피스텔": ("오피스텔", ("오피스텔",)),
-    "villa_house": ("빌라·주택", ("연립다세대", "다가구", "단독")),
-    "villa": ("빌라·주택", ("연립다세대", "다가구", "단독")),
-    "빌라": ("빌라·주택", ("연립다세대", "다가구", "단독")),
-    "빌라·주택": ("빌라·주택", ("연립다세대", "다가구", "단독")),
-    "빌라/주택": ("빌라·주택", ("연립다세대", "다가구", "단독")),
+    "villa_house": ("빌라·주택", ("연립다세대", "다가구", "단독", "단독다가구")),
+    "villa": ("빌라·주택", ("연립다세대", "다가구", "단독", "단독다가구")),
+    "빌라": ("빌라·주택", ("연립다세대", "다가구", "단독", "단독다가구")),
+    "빌라·주택": ("빌라·주택", ("연립다세대", "다가구", "단독", "단독다가구")),
+    "빌라/주택": ("빌라·주택", ("연립다세대", "다가구", "단독", "단독다가구")),
 }
 
 
@@ -226,6 +228,10 @@ def _expand_deal_types(deal_types: tuple[str, ...]) -> tuple[str, ...]:
         if key not in seen:
             out.append(key)
             seen.add(key)
+    if "yeonlip" in seen and "dasedae" in seen and "yeonlip_dasedae" not in seen:
+        out.append("yeonlip_dasedae")
+    if "dagagu" in seen and "danok" in seen and "danok_dagagu" not in seen:
+        out.append("danok_dagagu")
     return tuple(out)
 
 

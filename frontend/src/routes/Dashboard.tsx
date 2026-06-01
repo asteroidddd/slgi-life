@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAdongScores, useLdongScores } from '@/hooks/useAdongs';
 import { getDashboardRegionAtPoint, getDashboardRegionIntro } from '@/lib/api';
 import { dashboardLayoutVars } from '@/lib/dashboardTransition';
+import { getSavedMapView } from '@/lib/mapViewMemory';
 import { DEFAULT_WEIGHTS } from '@/types/api';
 import type { AdongScore } from '@/types/api';
 
@@ -139,7 +140,9 @@ export default function Dashboard() {
       document.documentElement.style.setProperty('--map-transition-height', `${rect.height}px`);
     }
     setClosing(true);
-    window.setTimeout(() => navigate('/?mode=plain'), 360);
+    const savedMode = getSavedMapView()?.mode;
+    const path = savedMode && savedMode !== 'heatmap' ? `/?mode=${savedMode}` : '/';
+    window.setTimeout(() => navigate(path), 360);
   }, [navigate]);
 
   useEffect(() => {

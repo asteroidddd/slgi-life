@@ -16,6 +16,7 @@ import type {
   DashboardRegionIntro,
   AmenityBboxResponse,
   MedicalFacilitiesResponse,
+  MedicalSpecialtyGroupsResponse,
   MapSearchResponse,
   MatchFilters,
   FavoriteItem,
@@ -369,6 +370,7 @@ export async function getAmenitiesBbox(params: {
 export async function getMedicalFacilities(params: {
   bbox: [number, number, number, number];
   categories?: string[];
+  specialtyGroups?: string[];
   openNow?: boolean;
   limit?: number;
 }): Promise<MedicalFacilitiesResponse> {
@@ -376,8 +378,21 @@ export async function getMedicalFacilities(params: {
     params: {
       bbox: params.bbox.join(','),
       category: params.categories?.join(','),
+      specialty_group: params.specialtyGroups?.join(','),
       open_now: params.openNow ? 'true' : undefined,
       limit: params.limit,
+    },
+  });
+  return data;
+}
+
+
+export async function getMedicalSpecialtyGroups(params: {
+  category?: string;
+} = {}): Promise<MedicalSpecialtyGroupsResponse> {
+  const { data } = await api.get<MedicalSpecialtyGroupsResponse>('/medical/specialty-groups', {
+    params: {
+      category: params.category,
     },
   });
   return data;

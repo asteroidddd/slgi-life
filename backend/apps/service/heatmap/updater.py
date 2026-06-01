@@ -10,7 +10,7 @@ from datetime import date, timedelta
 from typing import Any, Iterable
 
 from django.db import connection, transaction
-from django.db.models import Count
+from django.db.models import Count, Min
 from django.utils import timezone
 
 from apps.public_data.bus.models import BusStop
@@ -35,6 +35,7 @@ AMENITY_PARK_WEIGHT = 0.283
 LIFE_CATEGORIES = {
     "convenience",
     "mart",
+    "daiso",
     "restaurant",
     "cafe",
     "nightlife",
@@ -44,10 +45,8 @@ LIFE_CATEGORIES = {
     "gym",
     "book_stationery",
     "study_cafe",
-    "pc_room",
     "etc",
     "library",
-    "university",
 }
 MEDICAL_CATEGORIES = {"hospital", "dental", "pharmacy"}
 
@@ -436,16 +435,12 @@ def _transit_scores(
     adongs: dict[str, Unit],
 ) -> tuple[dict[str, float], dict[str, float], dict[str, float], dict[str, float]]:
     nearest_adong = {
-        adong_id: distance
-        for adong_id, distance in NearestSubwayAdong.objects.filter(rank=1).values_list(
-            "adong_id", "distance_m"
-        )
+        row["adong_id"]: row["distance_m"]
+        for row in NearestSubwayAdong.objects.values("adong_id").annotate(distance_m=Min("distance_m"))
     }
     nearest_ldong = {
-        ldong_id: distance
-        for ldong_id, distance in NearestSubwayLdong.objects.filter(rank=1).values_list(
-            "ldong_id", "distance_m"
-        )
+        row["ldong_id"]: row["distance_m"]
+        for row in NearestSubwayLdong.objects.values("ldong_id").annotate(distance_m=Min("distance_m"))
     }
 
     adong_bus = {

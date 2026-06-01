@@ -17,6 +17,7 @@ TYPE_CODE_BY_HOUSING_TYPE = {
     "연립다세대": "V",
     "다가구": "M",
     "단독": "H",
+    "단독다가구": "S",
 }
 
 
@@ -140,8 +141,8 @@ def _validate_source_ranges(stats: dict[str, Any]) -> None:
     max_deposit = stats.get("max_deposit") or 0
     max_monthly_rent = stats.get("max_monthly_rent") or 0
     max_converted_rent = stats.get("max_converted_rent") or 0
-    if max_id_length > 20:
-        raise ValueError(f"rent_deal.id max length {max_id_length} exceeds varchar(20).")
+    if max_id_length > 60:
+        raise ValueError(f"rent_deal.id max length {max_id_length} exceeds varchar(60).")
     if max_deposit > INT4_MAX:
         raise ValueError(
             f"rent_deal.deposit max {max_deposit} exceeds IntegerField limit {INT4_MAX}."
@@ -164,12 +165,13 @@ def _validate_housing_types(type_counts: dict[str, int]) -> None:
 
 def ensure_rent_deal_cache_table() -> None:
     with connection.cursor() as cursor:
-        cursor.execute(
-            """
-            ALTER TABLE rent_deal_cache
-                ADD COLUMN IF NOT EXISTS ldong_code varchar(20) NULL,
-                ADD COLUMN IF NOT EXISTS adong_code varchar(20) NULL,
-                ADD COLUMN IF NOT EXISTS gu_code varchar(20) NULL;
+            cursor.execute(
+                """
+                ALTER TABLE rent_deal_cache
+                    ALTER COLUMN id TYPE varchar(60),
+                    ADD COLUMN IF NOT EXISTS ldong_code varchar(20) NULL,
+                    ADD COLUMN IF NOT EXISTS adong_code varchar(20) NULL,
+                    ADD COLUMN IF NOT EXISTS gu_code varchar(20) NULL;
             CREATE INDEX IF NOT EXISTS rent_deal_cache_match_filter_idx
                 ON rent_deal_cache (type_code, contract_ymd, adong_code)
                 INCLUDE (area_m2, converted_rent, deposit, monthly_rent)
@@ -265,6 +267,7 @@ def rebuild_rent_deal_cache(*, dry_run: bool = False) -> dict[str, Any]:
                         WHEN '연립다세대' THEN 'V'
                         WHEN '다가구' THEN 'M'
                         WHEN '단독' THEN 'H'
+                        WHEN '단독다가구' THEN 'S'
                     END,
                     r.deposit::integer,
                     r.monthly_rent::smallint,

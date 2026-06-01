@@ -596,11 +596,6 @@ html[data-theme='dark'] {
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-@keyframes compare-chip-in {
-  from { opacity: 0; transform: translateX(8px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
 @keyframes criteria-coach-in {
   from { opacity: 0; transform: translateX(-4px); }
   to   { opacity: 1; transform: translateX(0); }
@@ -1040,6 +1035,15 @@ html[data-theme='dark'] {
   width: 20px;
   height: 20px;
   stroke-width: 2.2;
+}
+
+select {
+  color-scheme: light dark;
+}
+
+select option {
+  background-color: var(--color-surface);
+  color: var(--color-text);
 }
 
 .ai-map-marker-icon {

@@ -30,12 +30,16 @@ INFRA_GROUPS = [
     {"key": "study", "label": "학습", "categories": ["library", "book_stationery", "study_cafe"]},
     {"key": "medical", "label": "의료", "categories": ["hospital", "dental", "pharmacy"]},
 ]
+for group in INFRA_GROUPS:
+    if group["key"] == "food" and "daiso" not in group["categories"]:
+        group["categories"].insert(group["categories"].index("mart") + 1, "daiso")
 VISUAL_CATEGORIES = [category for group in INFRA_GROUPS for category in group["categories"]]
-FOOD_CATEGORIES = ["restaurant", "cafe", "convenience", "mart", "nightlife"]
+FOOD_CATEGORIES = ["restaurant", "cafe", "convenience", "mart", "daiso", "nightlife"]
 MEDICAL_CATEGORIES = ["pharmacy", "hospital", "dental"]
 CATEGORY_LABELS = {
+    "daiso": "다이소",
     "convenience": "편의점",
-    "mart": "마트",
+    "mart": "슈퍼마켓",
     "restaurant": "음식점",
     "cafe": "카페",
     "hospital": "병원",
@@ -44,7 +48,7 @@ CATEGORY_LABELS = {
     "park": "공원",
     "library": "도서관",
     "nightlife": "주점",
-    "gym": "체육시설",
+    "gym": "헬스장",
     "beauty": "미용",
     "laundry": "세탁",
     "book_stationery": "서점/문구",
@@ -444,33 +448,56 @@ def build_transit_parts(config: RegionConfig, regions: dict[str, dict[str, Any]]
     station_counts = {row["code"]: row["count"] for row in fetchall(f"SELECT {config.code_col} AS code, COUNT(DISTINCT name)::int AS count FROM subway_station WHERE {config.code_col} = ANY(%s) AND location IS NOT NULL GROUP BY {config.code_col}", [codes])}
     station_names: dict[str, list[str]] = defaultdict(list)
     station_items: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    nearest_table = "nearest_subway_adong" if config.region_type == "adong" else "nearest_subway_ldong"
     for row in fetchall(
         f"""
-        SELECT {config.code_col} AS code,
-               name,
-               array_remove(array_agg(DISTINCT line ORDER BY line), NULL) AS lines
-        FROM subway_station
-        WHERE {config.code_col} = ANY(%s) AND location IS NOT NULL AND name IS NOT NULL AND name <> ''
-        GROUP BY {config.code_col}, name
-        ORDER BY {config.code_col}, name
+        SELECT n.{config.code_col} AS code,
+               n.station_name AS name,
+               MIN(n.distance_m)::float AS distance_m,
+               array_remove(array_agg(DISTINCT s.line ORDER BY s.line), NULL) AS lines
+        FROM {nearest_table} n
+        LEFT JOIN subway_station s ON s.name = n.station_name
+        WHERE n.{config.code_col} = ANY(%s)
+          AND n.station_name IS NOT NULL
+          AND n.station_name <> ''
+          AND n.distance_m <= 1000.0
+        GROUP BY n.{config.code_col}, n.station_name
+        ORDER BY n.{config.code_col}, MIN(n.distance_m), n.station_name
         """,
         [codes],
     ):
         station_names[row["code"]].append(row["name"])
-        station_items[row["code"]].append({"name": row["name"], "lines": row.get("lines") or []})
+        station_items[row["code"]].append(
+            {
+                "name": row["name"],
+                "distance_m": as_float(row.get("distance_m"), 0),
+                "lines": row.get("lines") or [],
+            }
+        )
     seoul_bus_density = sum(bus_counts.values()) / total_area
     seoul_station_density = sum(station_counts.values()) / total_area
     subway_rows = fetchall(
         f"""
-        WITH normalized AS (
-            SELECT s.{config.code_col} AS code,
+        WITH nearby AS (
+            SELECT n.{config.code_col} AS code,
+                   n.station_name,
+                   MIN(n.distance_m)::float AS distance_m
+            FROM {nearest_table} n
+            WHERE n.{config.code_col} = ANY(%s)
+              AND n.station_name IS NOT NULL
+              AND n.station_name <> ''
+              AND n.distance_m <= 1000.0
+            GROUP BY n.{config.code_col}, n.station_name
+        ),
+        normalized AS (
+            SELECT n.code,
                    CASE WHEN c.day_type = '평일' THEN '평일' ELSE '주말' END AS day_type,
                    c.time,
                    c.congestion::float AS congestion,
-                   CASE WHEN c.day_type = '주말' THEN 2.0 ELSE 1.0 END AS weight
-            FROM subway_congestion c
-            JOIN subway_station s ON s.id = c.station_id::text
-            WHERE s.{config.code_col} = ANY(%s)
+                   (1.0 / (GREATEST(n.distance_m, 0.0) + 200.0)) AS weight
+            FROM nearby n
+            JOIN subway_station s ON s.name = n.station_name
+            JOIN subway_congestion c ON s.id = c.station_id::text
         )
         SELECT code, day_type, to_char(time, 'HH24:MI') AS time,
                ROUND((SUM(congestion * weight) / NULLIF(SUM(weight), 0))::numeric, 1)::float AS congestion
@@ -531,12 +558,18 @@ def build_transit_parts(config: RegionConfig, regions: dict[str, dict[str, Any]]
                 quicktake("버스 많음" if bus_tone == "good" else "버스 적음" if bus_tone == "bad" else "버스 보통", bus_tone),
             ],
             "station_names": sorted(station_names.get(code, [])),
-            "station_items": sorted(station_items.get(code, []), key=lambda item: item["name"]),
+            "station_items": sorted(
+                station_items.get(code, []),
+                key=lambda item: (
+                    item["distance_m"] if isinstance(item.get("distance_m"), (int, float)) else float("inf"),
+                    item["name"],
+                ),
+            ),
             "metrics": [
                 metric("subway_station_density", "지하철역 밀도", round(station_density, 2) if station_density is not None else None, "곳/km²", tone=station_tone, badge="많음" if station_tone == "good" else "적음" if station_tone == "bad" else "보통", description=fmt_delta(station_delta, "서울 평균")),
                 metric("bus_stop_density", "버스정류장 밀도", round(bus_density, 2) if bus_density is not None else None, "곳/km²", tone=bus_tone, badge="많음" if bus_tone == "good" else "적음" if bus_tone == "bad" else "보통", description=fmt_delta(bus_delta, "서울 평균")),
             ],
-            "basis": {"comparison": "서울 전체 면적당 교통시설 밀도 기준", "route_preview": "disabled"},
+            "basis": {"comparison": "서울 전체 면적당 교통시설 밀도 기준", "route_preview": "disabled", "station_list": f"{nearest_table} 1km boundary cache"},
         }
         lines = []
         for mode, mode_label in (("subway", "지하철"), ("bus", "버스")):
@@ -562,7 +595,14 @@ def build_transit_parts(config: RegionConfig, regions: dict[str, dict[str, Any]]
                 "series": lines,
                 "subway": next((line["items"] for line in lines if line["key"] == "subway_weekday"), []),
                 "bus": next((line["items"] for line in lines if line["key"] == "bus_weekday"), []),
-                "basis": {"subway_day_types": ["평일", "토요일", "일요일", "휴일"], "bus_day_types": ["평일", "주말"], "subway_axis": "05:30~익일 00:30", "bus_axis": "04:00~익일 03:00"},
+                "basis": {
+                    "subway_day_types": ["평일", "토요일", "일요일", "휴일"],
+                    "bus_day_types": ["평일", "주말"],
+                    "subway_axis": "05:30~익일 00:30",
+                    "bus_axis": "04:00~익일 03:00",
+                    "subway_method": "1km 이내 역 혼잡도 거리 가중 평균",
+                    "subway_weight": "1 / (distance_m + 200)",
+                },
             },
         }
     return out

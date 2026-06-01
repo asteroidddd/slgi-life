@@ -7,7 +7,7 @@ import type { Feature, MultiPolygon, Polygon } from 'geojson';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { api } from '@/lib/api';
-import { getVWorldMaxNativeZoom, getVWorldTileUrl } from '@/lib/vworld';
+import { VWORLD_MAX_ZOOM, getVWorldMaxNativeZoom, getVWorldTileUrl } from '@/lib/vworld';
 import { useAdongGeoJson, useLdongGeoJson } from '@/hooks/useAdongGeoJson';
 
 import 'leaflet/dist/leaflet.css';
@@ -140,6 +140,7 @@ interface CongestionResponse {
 
 interface TransitStationItem {
   name: string;
+  distance_m?: number | null;
   lines?: string[];
 }
 
@@ -314,7 +315,8 @@ function readableCategory(value?: string) {
   const map: Record<string, string> = {
     restaurant: '음식점',
     convenience: '편의점',
-    mart: '마트',
+    mart: '슈퍼마켓',
+    daiso: '다이소',
     cafe: '카페',
     nightlife: '주점',
     park: '공원',
@@ -325,7 +327,7 @@ function readableCategory(value?: string) {
     subway_station: '지하철역',
     library: '도서관',
     university: '대학교',
-    gym: '체육시설',
+    gym: '헬스장',
     beauty: '미용',
     laundry: '세탁',
     book_stationery: '서점/문구',
@@ -420,25 +422,47 @@ function MetricGrid({
   );
 }
 
+function formatStationDistance(distance?: number | null) {
+  if (typeof distance !== 'number' || !Number.isFinite(distance)) return null;
+  if (distance <= 0) return '동 내';
+  if (distance < 1000) return `${Math.round(distance)}m`;
+  return `${(distance / 1000).toFixed(1)}km`;
+}
+
 function TransitStationList({ stations, stationItems }: { stations?: string[]; stationItems?: TransitStationItem[] }) {
-  const rows = (stationItems?.length
+  const rows: TransitStationItem[] = (stationItems?.length
     ? stationItems
-    : Array.from(new Set(stations ?? [])).map((name) => ({ name, lines: [] as string[] }))
-  ).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+    : Array.from(new Set(stations ?? [])).map((name): TransitStationItem => ({
+        name,
+        lines: [],
+        distance_m: null,
+      }))
+  ).sort((a, b) => {
+    const distanceA = typeof a.distance_m === 'number' ? a.distance_m : Number.POSITIVE_INFINITY;
+    const distanceB = typeof b.distance_m === 'number' ? b.distance_m : Number.POSITIVE_INFINITY;
+    if (distanceA !== distanceB) return distanceA - distanceB;
+    return a.name.localeCompare(b.name, 'ko');
+  });
   const visible = rows.slice(0, 5);
   return (
     <article className="h-full min-h-0 overflow-hidden rounded-card border border-border bg-surface-alt p-4">
-      <p className="m-0 pr-16 text-[12px] font-bold text-text-muted">동 내 지하철역</p>
+      <p className="m-0 pr-16 text-[12px] font-bold text-text-muted">1km 이내 지하철역</p>
       <div className="mt-2 grid gap-1 overflow-hidden">
-        {visible.length ? visible.map((station) => (
-          <div key={station.name} className="grid grid-cols-[1fr_auto] items-center gap-2 px-0 py-0.5">
-            <span className="min-w-0 truncate text-[12px] font-bold text-text">{station.name}</span>
-            <span className="max-w-[94px] truncate text-right text-[11px] font-semibold text-text-muted">
-              {station.lines?.length ? station.lines.join(', ') : '-'}
-            </span>
-          </div>
-        )) : (
-          <span className="text-[12px] font-semibold text-text-muted">해당 동 내 역 없음</span>
+        {visible.length ? visible.map((station) => {
+          const distanceLabel = formatStationDistance(station.distance_m);
+          return (
+            <div key={station.name} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-0 py-0.5">
+              <span className="min-w-0 truncate text-[12px] font-bold text-text">{station.name}</span>
+              <span className="flex min-w-0 items-center justify-end gap-1.5 text-right">
+                {distanceLabel ? <span className="shrink-0 text-[11px] font-bold text-text">{distanceLabel}</span> : null}
+                <span className="max-w-[74px] truncate text-[11px] font-semibold text-text-muted">
+                  {station.lines?.length ? station.lines.join(', ') : '-'}
+                </span>
+              </span>
+            </div>
+          );
+        }) : (
+          <span className="text-[12px] font-semibold text-text-muted">1km 이내 역 없음</span>
         )}
         {rows.length > visible.length ? (
           <div className="px-0 py-0.5 text-[12px] font-bold text-text-muted">...</div>
@@ -701,7 +725,7 @@ function CongestionLineChart({ series, mode }: { series?: CongestionSeries[]; mo
 }
 
 const INFRA_GROUPS = [
-  { key: 'food', label: '식생활', categories: ['restaurant', 'cafe', 'convenience', 'mart', 'nightlife'] },
+  { key: 'food', label: '식생활', categories: ['restaurant', 'cafe', 'convenience', 'mart', 'daiso', 'nightlife'] },
   { key: 'culture', label: '문화', categories: ['park', 'gym', 'beauty', 'oliveyoung', 'laundry'] },
   { key: 'study', label: '학습', categories: ['library', 'book_stationery', 'study_cafe'] },
   { key: 'medical', label: '의료', categories: ['hospital', 'dental', 'pharmacy'] },
@@ -874,30 +898,55 @@ function safetyLabel(item: SafetyGradeItem) {
   return map[item.key] ?? item.key.replace('score_', '');
 }
 
+function formatSafetyGrade(value?: number | null, unit = '등급') {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '-';
+  const formatted = Number.isInteger(value) ? value.toString() : value.toFixed(1);
+  return `${formatted}${unit}`;
+}
+
+function normalizeSafetySeoulText(text: string) {
+  return text
+    .replace(/전체 구 평균/g, '서울 기준')
+    .replace(/서울 평균 안전 점수/g, '서울 기준 안전 점수')
+    .replace(/서울 평균 안전 지표/g, '서울 기준 안전 지표');
+}
+
 function safetyTooltip(item: SafetyGradeItem) {
+  const unit = item.unit || '등급';
+  const rawText = formatSafetyGrade(item.raw_value, unit);
+  const seoulRawText = formatSafetyGrade(item.seoul_raw_value, unit);
   const parts = [
-    `${safetyLabel(item)} · ${item.score == null ? '-' : `${item.score.toFixed(1)}점`}`,
-    item.raw_value == null ? null : `원자료 ${item.raw_value}${item.unit ?? ''}`,
-    item.seoul_raw_value == null ? null : `서울 ${item.seoul_raw_value}${item.unit ?? ''}`,
-    item.interpretation,
+    safetyLabel(item),
+    `선택 지역: ${rawText}`,
+    `서울 기준: ${seoulRawText}`,
   ].filter(Boolean);
   return parts.join('\n');
 }
 
 function SafetyRadarChart({ items }: { items: SafetyGradeItem[] }) {
   const data = items.filter((item) => typeof item.score === 'number').slice(0, 6);
+  const [hoveredItem, setHoveredItem] = useState<SafetyGradeItem | null>(null);
   const size = 220;
   const center = size / 2;
   const maxRadius = 78;
-  const levels = [0.25, 0.5, 0.75, 1];
+  const levels = [0, 1, 2, 3, 4, 5];
   const angleFor = (index: number) => (-Math.PI / 2) + (index / data.length) * Math.PI * 2;
-  const pointFor = (index: number, ratio: number) => {
+  const pointFor = (index: number, value: number) => {
     const angle = angleFor(index);
-    const radius = maxRadius * ratio;
+    const radius = maxRadius * Math.max(0, Math.min(1, value / 5));
     return {
       x: center + Math.cos(angle) * radius,
       y: center + Math.sin(angle) * radius,
     };
+  };
+  const safetyValue = (raw?: number | null, score?: number | null) => {
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+      return Math.max(0, Math.min(5, 6 - raw));
+    }
+    if (typeof score === 'number' && Number.isFinite(score)) {
+      return Math.max(0, Math.min(5, score / 20));
+    }
+    return 0;
   };
 
   if (data.length < 3) {
@@ -910,49 +959,85 @@ function SafetyRadarChart({ items }: { items: SafetyGradeItem[] }) {
 
   const polygon = data
     .map((item, index) => {
-      const point = pointFor(index, Math.max(0, Math.min(1, Number(item.score) / 100)));
+      const point = pointFor(index, safetyValue(item.raw_value, item.score));
+      return `${point.x.toFixed(1)},${point.y.toFixed(1)}`;
+    })
+    .join(' ');
+  const seoulPolygon = data
+    .map((item, index) => {
+      const point = pointFor(index, safetyValue(item.seoul_raw_value, item.seoul_score));
       return `${point.x.toFixed(1)},${point.y.toFixed(1)}`;
     })
     .join(' ');
 
   return (
-    <div className="group relative grid min-h-[190px] place-items-center">
-      <div className="pointer-events-none absolute right-2 top-2 z-[1800] hidden w-[250px] rounded-[6px] border border-border bg-surface p-3 text-[12px] font-semibold leading-5 text-text-muted shadow-lg group-hover:block">
-        레이더 면적이 클수록 안전 점수가 높습니다. 원자료 등급은 1등급이 가장 안전하고 5등급이 낮으며, 차트는 1등급=100점, 5등급=20점으로 변환했습니다.
-      </div>
+    <div className="relative grid min-h-[190px] place-items-center">
       <svg viewBox={`0 0 ${size} ${size}`} className="h-[210px] w-full max-w-[260px]" role="img" aria-label="안전 점수 레이더 차트">
-        {levels.map((level) => (
-          <polygon
-            key={level}
-            points={data.map((_, index) => {
-              const point = pointFor(index, level);
-              return `${point.x.toFixed(1)},${point.y.toFixed(1)}`;
-            }).join(' ')}
-            fill="none"
-            stroke="var(--color-border)"
-            strokeWidth="1"
-          />
-        ))}
+        {levels.map((level) => {
+          if (level === 0) {
+            return <circle key={level} cx={center} cy={center} r="2" fill="var(--color-border)" />;
+          }
+          return (
+            <polygon
+              key={level}
+              points={data.map((_, index) => {
+                const point = pointFor(index, level);
+                return `${point.x.toFixed(1)},${point.y.toFixed(1)}`;
+              }).join(' ')}
+              fill="none"
+              stroke="var(--color-border)"
+              strokeWidth="1"
+            />
+          );
+        })}
         {data.map((_, index) => {
-          const point = pointFor(index, 1);
+          const point = pointFor(index, 5);
           return <line key={index} x1={center} y1={center} x2={point.x} y2={point.y} stroke="var(--color-border)" strokeWidth="1" />;
         })}
+        <polygon points={seoulPolygon} fill="rgba(107,114,128,0.12)" stroke="#9ca3af" strokeWidth="2" strokeDasharray="5 4" />
         <polygon points={polygon} fill="rgba(239,68,68,0.16)" stroke="var(--color-danger)" strokeWidth="3" />
         {data.map((item, index) => {
-          const point = pointFor(index, Math.max(0, Math.min(1, Number(item.score) / 100)));
-          const labelPoint = pointFor(index, 1.18);
+          const point = pointFor(index, safetyValue(item.raw_value, item.score));
+          const seoulPoint = pointFor(index, safetyValue(item.seoul_raw_value, item.seoul_score));
+          const labelPoint = pointFor(index, 5.9);
+          const tooltipText = safetyTooltip(item);
           return (
-            <g key={item.key}>
-              <circle cx={point.x} cy={point.y} r="4" fill="var(--color-danger)">
-                <title>{safetyTooltip(item)}</title>
+            <g
+              key={item.key}
+              onMouseEnter={() => setHoveredItem(item)}
+              onMouseLeave={() => setHoveredItem(null)}
+              onFocus={() => setHoveredItem(item)}
+              onBlur={() => setHoveredItem(null)}
+              tabIndex={0}
+            >
+              <circle cx={seoulPoint.x} cy={seoulPoint.y} r="3.5" fill="#9ca3af">
+                <title>{tooltipText}</title>
               </circle>
-              <text x={labelPoint.x} y={labelPoint.y} textAnchor="middle" dominantBaseline="middle" className="fill-text-muted text-[11px] font-bold">
+              <circle cx={point.x} cy={point.y} r="4" fill="var(--color-danger)">
+                <title>{tooltipText}</title>
+              </circle>
+              <circle cx={point.x} cy={point.y} r="12" fill="transparent" style={{ pointerEvents: 'all' }}>
+                <title>{tooltipText}</title>
+              </circle>
+              <text x={labelPoint.x} y={labelPoint.y} textAnchor="middle" dominantBaseline="middle" className="fill-text-muted text-[11px] font-bold" style={{ pointerEvents: 'all' }}>
                 {safetyLabel(item)}
+                <title>{tooltipText}</title>
               </text>
             </g>
           );
         })}
       </svg>
+      {hoveredItem ? (
+        <div className="pointer-events-none absolute right-2 top-2 z-[90] min-w-[170px] rounded-[6px] border border-border bg-surface px-3 py-2 text-left text-[12px] font-semibold leading-5 text-text shadow-lg">
+          <strong className="block text-text">{safetyLabel(hoveredItem)}</strong>
+          <span className="block text-text-muted">선택 지역: {formatSafetyGrade(hoveredItem.raw_value, hoveredItem.unit || '등급')}</span>
+          <span className="block text-text-muted">서울 기준: {formatSafetyGrade(hoveredItem.seoul_raw_value, hoveredItem.unit || '등급')}</span>
+        </div>
+      ) : null}
+      <div className="mt-[-8px] flex gap-3 text-[11px] font-bold text-text-muted">
+        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[var(--color-danger)]" />선택 지역</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#9ca3af]" />서울 기준</span>
+      </div>
     </div>
   );
 }
@@ -1070,10 +1155,10 @@ function SafetyWmsOverlay({
       const south = crs.latLngToPoint(L.latLng(bounds.getSouth(), center.lng), 0);
       const yDistance = Math.abs(south.y - north.y);
       if (size.y > 0 && yDistance > 0) {
-        const verticalZoom = Math.min(20, Math.log2(SAFETY_WMS_REFERENCE_HEIGHT / yDistance));
+        const verticalZoom = Math.min(VWORLD_MAX_ZOOM, Math.log2(SAFETY_WMS_REFERENCE_HEIGHT / yDistance));
         map.setView(center, verticalZoom, { animate: false });
       } else {
-        map.fitBounds(bounds, { animate: false, padding: [0, 0], maxZoom: 20 });
+        map.fitBounds(bounds, { animate: false, padding: [0, 0], maxZoom: VWORLD_MAX_ZOOM });
       }
       const nextSize = map.getSize();
       const visible = map.getBounds();
@@ -1161,6 +1246,7 @@ function SafetyWmsMap({ regionLevel, slug, meta }: { regionLevel: RegionLevel; s
   }, [regionBounds, selectedFeature]);
   const path = slug ? endpoint('safety/crime-zone', regionLevel, slug) : null;
   const selectedKey = `${regionLevel}-${meta?.region?.code ?? slug ?? 'none'}`;
+  const maxZoom = getVWorldMaxNativeZoom(theme);
 
   if (!viewportBounds || !path) {
     return (
@@ -1177,6 +1263,7 @@ function SafetyWmsMap({ regionLevel, slug, meta }: { regionLevel: RegionLevel; s
       </div>
       <MapContainer
         bounds={viewportBounds}
+        maxZoom={maxZoom}
         zoomControl={false}
         dragging={false}
         scrollWheelZoom={false}
@@ -1189,7 +1276,8 @@ function SafetyWmsMap({ regionLevel, slug, meta }: { regionLevel: RegionLevel; s
       >
         <TileLayer
           url={getVWorldTileUrl(theme)}
-          maxNativeZoom={getVWorldMaxNativeZoom(theme)}
+          maxZoom={maxZoom}
+          maxNativeZoom={maxZoom}
         />
         <SafetyWmsOverlay path={path} regionBounds={viewportBounds} selectedFeature={selectedFeature} fallbackBbox={bbox} selectedKey={selectedKey} />
       </MapContainer>
@@ -1231,6 +1319,13 @@ export default function DashboardSections({ region, regionLevel, slug }: Dashboa
   const transitInfo = '지하철역과 버스정류장은 지역 면적당 시설 밀도를 서울 평균과 비교합니다. 혼잡도는 버스/지하철과 평일/주말을 분리해 표시합니다.';
   const infraInfo = '생활 인프라는 면적당 시설 밀도와 녹지율을 서울 평균과 비교하고, 식생활·문화·학습·의료 그룹의 밀도와 시설 구성을 함께 봅니다.';
   const safetyInfo = '지역 안전 점수는 자치구 단위로 산출되는 안전등급을 기반으로 만들어졌습니다. 범죄주의구간은 지도 레이어에서 실제 위치를 확인해야 합니다.';
+  const safetySummary = normalizeSafetySeoulText(
+    safetyOverview.data?.summary ?? '서울 기준 안전 지표와 생활안전지도 범죄주의구간 레이어를 함께 참고합니다.',
+  );
+  const safetyQuicktakes = safetyOverview.data?.quicktakes?.map((item) => ({
+    ...item,
+    label: normalizeSafetySeoulText(item.label),
+  }));
 
   return (
     <div className="mt-5 grid gap-4" data-region={basePath ?? ''}>
@@ -1288,7 +1383,12 @@ export default function DashboardSections({ region, regionLevel, slug }: Dashboa
             <TransitStationList stations={transitOverview.data?.station_names} stationItems={transitOverview.data?.station_items} />
           </div>
           <div className="col-start-2 row-start-1 min-h-0">
-            <Card title="지하철 혼잡도 흐름" hint="평일/주말 · 공통축 04:00~익일 03:00" className="h-full !min-h-[176px]">
+            <Card
+              title="지하철 혼잡도 흐름"
+              hint="평일/주말 · 공통축 04:00~익일 03:00"
+              info="1km 이내 역 혼잡도를 거리 가중 평균으로 계산합니다. 가중치 = 1 / (거리 + 200m)"
+              className="h-full !min-h-[176px]"
+            >
               <CongestionLineChart series={congestion.data?.series} mode="subway" />
             </Card>
           </div>
@@ -1332,10 +1432,10 @@ export default function DashboardSections({ region, regionLevel, slug }: Dashboa
         <SectionHeader
           kicker="안전"
           title={safetyOverview.data?.headline ?? `안전 점수는 ${typeof safetyScore === 'number' ? Math.round(safetyScore) : '-'}점입니다`}
-          summary={safetyOverview.data?.summary ?? '서울 평균 안전 지표와 생활안전지도 범죄주의구간 레이어를 함께 참고합니다.'}
+          summary={safetySummary}
           info={safetyInfo}
         >
-          <SummaryCluster quicktakes={safetyOverview.data?.quicktakes} />
+          <SummaryCluster quicktakes={safetyQuicktakes} />
         </SectionHeader>
         <div className="mt-4 grid grid-cols-[0.82fr_1.18fr] gap-3">
           <div className="grid gap-3">
@@ -1343,10 +1443,14 @@ export default function DashboardSections({ region, regionLevel, slug }: Dashboa
               className="grid grid-cols-2 gap-3"
               items={[
                 { label: '지역 안전 점수', value: metricValue(pickMetric(safetyMetrics, 'safety_score'), typeof safetyScore === 'number' ? Math.round(safetyScore).toString() : '-'), badge: pickMetric(safetyMetrics, 'safety_score')?.badge ?? '안전', tone: pickMetric(safetyMetrics, 'safety_score')?.tone, note: pickMetric(safetyMetrics, 'safety_score')?.description ?? '지역안전등급 평균 환산 점수' },
-                { label: '서울 평균 안전 점수', value: metricValue(pickMetric(safetyMetrics, 'seoul_safety_score')), badge: '서울', tone: pickMetric(safetyMetrics, 'seoul_safety_score')?.tone, note: pickMetric(safetyMetrics, 'seoul_safety_score')?.description ?? '서울 평균 안전 지표' },
+                { label: '서울 기준 안전 점수', value: metricValue(pickMetric(safetyMetrics, 'seoul_safety_score')), badge: '서울', tone: pickMetric(safetyMetrics, 'seoul_safety_score')?.tone, note: '서울 단위 안전등급 저장값 기준' },
               ]}
             />
-            <Card title="안전등급 구성" className="!min-h-[252px]">
+            <Card
+              title="안전등급 구성"
+              info="레이더 면적이 클수록 안전 수준이 높습니다. 원자료는 1등급이 가장 안전하고 5등급이 가장 낮습니다. 차트는 등급을 보기 쉽게 변환해 표시하며, 회색 영역은 서울 단위 저장값입니다."
+              className="!min-h-[252px]"
+            >
               <SafetyRadarChart items={safetyGrades.data?.items ?? []} />
             </Card>
           </div>

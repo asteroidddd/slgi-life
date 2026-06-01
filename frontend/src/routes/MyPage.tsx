@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 
 import { Button, Input, Select } from '@/components/ui';
+import ThemeToggle from '@/components/ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   deleteAIAPIKey,
@@ -61,6 +62,9 @@ export default function MyPage() {
       <Link to="/" className="app-floating-button absolute left-5 top-5 h-10 min-h-10 no-underline">
         맵으로 가기
       </Link>
+      <div className="absolute right-5 top-5">
+        <ThemeToggle />
+      </div>
 
       <section className="flex w-full max-w-[560px] flex-col gap-5 rounded-card border border-border bg-surface p-8 shadow-sm" aria-labelledby="mypage-title">
         {requiresEmail ? (
@@ -420,6 +424,7 @@ function AIKeyEditor({ onBack }: { onBack: () => void }) {
   const [priority, setPriority] = useState(1);
   const [apiKey, setApiKey] = useState('');
   const [passphrase, setPassphrase] = useState('');
+  const [passphraseConfirm, setPassphraseConfirm] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
 
@@ -429,6 +434,7 @@ function AIKeyEditor({ onBack }: { onBack: () => void }) {
     onSuccess: () => {
       setApiKey('');
       setPassphrase('');
+      setPassphraseConfirm('');
       setMessage('API KEY를 저장했습니다. 30분 동안 사용할 수 있습니다.');
       invalidate();
     },
@@ -454,6 +460,10 @@ function AIKeyEditor({ onBack }: { onBack: () => void }) {
     event.preventDefault();
     if (!apiKey.trim() || !passphrase) {
       setMessage('API KEY와 복호화 문구를 입력해주세요.');
+      return;
+    }
+    if (passphrase !== passphraseConfirm) {
+      setMessage('복호화 문구가 서로 다릅니다.');
       return;
     }
     saveMutation.mutate({ provider, api_key: apiKey.trim(), passphrase, priority });
@@ -526,6 +536,15 @@ function AIKeyEditor({ onBack }: { onBack: () => void }) {
           value={passphrase}
           onChange={(e) => setPassphrase(e.target.value)}
           placeholder="키를 사용할 때 필요한 문구"
+        />
+        <Input
+          label="복호화 문구 확인"
+          type="password"
+          name="slgi-ai-passphrase-confirm"
+          autoComplete="new-password"
+          value={passphraseConfirm}
+          onChange={(e) => setPassphraseConfirm(e.target.value)}
+          placeholder="같은 문구를 한 번 더 입력"
         />
         <div className="grid grid-cols-2 gap-2">
           <Button type="submit" variant="primary" size="sm" loading={saveMutation.isPending}>저장</Button>

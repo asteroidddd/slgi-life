@@ -20,6 +20,7 @@ Store schema.dbml 정합 (sub-plan 4.5B):
 """
 
 from django.contrib.gis.db import models as gis_models
+from django.contrib.postgres.indexes import GistIndex
 from django.db import models
 
 
@@ -143,3 +144,24 @@ class Store(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} ({self.branch_name})" if self.branch_name else self.name
+
+
+class DaisoStore(models.Model):
+    """Daiso raw store table for amenity generation."""
+
+    id = models.CharField(max_length=64, primary_key=True, help_text="Stable Daiso store id")
+    name = models.CharField(max_length=200, help_text="Daiso store name")
+    address = models.CharField(max_length=255, help_text="Store address")
+    location = gis_models.PointField(srid=4326, help_text="Store location (WGS84)")
+
+    class Meta:
+        db_table = "daiso_store"
+        verbose_name = "Daiso store"
+        verbose_name_plural = "Daiso stores"
+        ordering = ["name", "address"]
+        indexes = [
+            GistIndex(fields=["location"], name="daiso_store_location_gist_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return self.name

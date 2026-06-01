@@ -6,11 +6,14 @@ from apps.accounts.profile.models import get_user_profile
 from apps.accounts.profile.validators import validate_school_name
 from apps.accounts.social.models import SocialAccount
 from apps.accounts.user.models import User
+from apps.public_data.univ.models import Univ
 
 
 class MeSerializer(serializers.ModelSerializer):
     home_lat = serializers.SerializerMethodField()
     home_lng = serializers.SerializerMethodField()
+    school_lat = serializers.SerializerMethodField()
+    school_lng = serializers.SerializerMethodField()
     auth_provider = serializers.SerializerMethodField()
     nickname = serializers.SerializerMethodField()
     school = serializers.SerializerMethodField()
@@ -28,6 +31,8 @@ class MeSerializer(serializers.ModelSerializer):
             "auth_provider",
             "nickname",
             "school",
+            "school_lat",
+            "school_lng",
             "year",
             "address",
             "home_lat",
@@ -49,6 +54,21 @@ class MeSerializer(serializers.ModelSerializer):
 
     def get_school(self, obj: User) -> str:
         return self._profile(obj).school
+
+    def _school_location(self, obj: User):
+        school = self._profile(obj).school
+        if not school:
+            return None
+        univ = Univ.objects.filter(name=school).only("location").first()
+        return univ.location if univ else None
+
+    def get_school_lat(self, obj: User) -> float | None:
+        location = self._school_location(obj)
+        return location.y if location else None
+
+    def get_school_lng(self, obj: User) -> float | None:
+        location = self._school_location(obj)
+        return location.x if location else None
 
     def get_year(self, obj: User) -> int | None:
         return self._profile(obj).year

@@ -11,19 +11,15 @@ from apps.public_data.bus.models import BusStop
 from apps.public_data.library.models import Library
 from apps.public_data.medical.models import MedicalFacility
 from apps.public_data.park.models import Park
-from apps.public_data.store.models import Store
+from apps.public_data.regions.models import Adong, Ldong
+from apps.public_data.store.models import DaisoStore, Store
 from apps.public_data.subway.models import SubwayStation
-from apps.public_data.univ.models import Univ
 from apps.service.amenities.models import Amenity, AmenityAdong, AmenityLdong
 
 
 BATCH_SIZE = 5000
-MEDICAL_STORE_CATEGORY_CODES = {
-    "G21501",
-    "Q10101", "Q10102", "Q10103", "Q10104",
-    "Q10201", "Q10202", "Q10203", "Q10204", "Q10205", "Q10206",
-    "Q10207", "Q10208", "Q10209", "Q10210", "Q10211",
-}
+MEDICAL_STORE_CATEGORY_CODES = {"G21501"}
+MEDICAL_STORE_MAIN_CATEGORY_CODES = {"Q1"}
 MEDICAL_AMENITY_EXCLUDED_TYPES = {"\uae30\ud0c0", "\uae30\ud0c0(\uad6c\uae09\ucc28)", "\uc694\uc591\ubcd1\uc6d0", "\uc870\uc0b0\uc6d0"}
 MEDICAL_AMENITY_CATEGORY_BY_TYPE = {
     "\uc57d\uad6d": "pharmacy",
@@ -31,25 +27,24 @@ MEDICAL_AMENITY_CATEGORY_BY_TYPE = {
     "\uce58\uacfc\uc758\uc6d0": "dental",
 }
 
-STORE_MEDICAL_AMENITY_CATEGORIES = {"hospital", "dental", "pharmacy"}
+OLIVEYOUNG_KEYWORDS = ("\uc62c\ub9ac\ube0c\uc601", "oliveyoung")
 
-STORE_CATEGORY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("convenience", ("\ud3b8\uc758\uc810", "\uc288\ud37c", "\uc288\ud37c\ub9c8\ucf13", "24\uc2dc")),
-    ("mart", ("\ub9c8\ud2b8", "\ub300\ud615\ub9c8\ud2b8", "\uc2dd\uc790\uc7ac", "\ud560\uc778\uc810")),
-    ("restaurant", ("\uc74c\uc2dd", "\ud55c\uc2dd", "\uc911\uc2dd", "\uc77c\uc2dd", "\ubd84\uc2dd", "\uc591\uc2dd", "\uc2dd\ub2f9", "\ub808\uc2a4\ud1a0\ub791")),
-    ("cafe", ("\ucee4\ud53c", "\uce74\ud398", "\ub2e4\ubc29", "\uc74c\ub8cc")),
-    ("nightlife", ("\uc8fc\uc810", "\ud638\ud504", "\ub9e5\uc8fc", "\uc18c\uc8fc", "\ubc14 ", "bar", "\ud3ec\ucc28", "\uc220\uc9d1")),
-    ("hospital", ("\ubcd1\uc6d0", "\uc758\uc6d0", "\ud55c\uc758\uc6d0", "\uc758\ub8cc")),
-    ("dental", ("\uce58\uacfc",)),
-    ("pharmacy", ("\uc57d\uad6d",)),
-    ("laundry", ("\uc138\ud0c1", "\ube68\ub798\ubc29", "\ud06c\ub9ac\ub2dd")),
-    ("beauty", ("\ubbf8\uc6a9", "\ud5e4\uc5b4", "\ub124\uc77c", "\ud53c\ubd80", "\ubdf0\ud2f0")),
-    ("oliveyoung", ("\uc62c\ub9ac\ube0c\uc601", "oliveyoung")),
-    ("gym", ("\ud5ec\uc2a4", "\uccb4\uc721", "\ud53c\ud2b8\ub2c8\uc2a4", "\uc694\uac00", "\ud544\ub77c\ud14c\uc2a4", "\uc6b4\ub3d9")),
-    ("book_stationery", ("\uc11c\uc810", "\ubb38\uad6c", "\ubb38\ubc29\uad6c", "\ud32c\uc2dc")),
-    ("study_cafe", ("\uc2a4\ud130\ub514\uce74\ud398", "\ub3c5\uc11c\uc2e4", "study cafe")),
-    ("pc_room", ("pc\ubc29", "\ud53c\uc528\ubc29", "\uc778\ud130\ub137\ucef4\ud4e8\ud130\uac8c\uc784\uc2dc\uc124")),
-)
+STORE_CATEGORY_BY_SUBCATEGORY_CODE = {
+    "G20405": "convenience",
+    "G20404": "mart",
+    "I21201": "cafe",
+    "S20901": "laundry",
+    "S20902": "laundry",
+    "R10307": "gym",
+    "G21301": "book_stationery",
+    "G21302": "book_stationery",
+    "R10202": "study_cafe",
+}
+STORE_CATEGORY_BY_MIDDLE_CATEGORY_CODE = {
+    "I211": "nightlife",
+    "S207": "beauty",
+}
+RESTAURANT_EXCLUDED_SUBCATEGORY_CODES = {"I21201", "I20701"}
 
 
 @dataclass(frozen=True)
@@ -84,38 +79,38 @@ def _medical_category(facility_type: str) -> str | None:
         return None
     return MEDICAL_AMENITY_CATEGORY_BY_TYPE.get(facility_type, "hospital")
 
+def _is_medical_store_category(category_id: str | None, category_main_category_code: str | None) -> bool:
+    if category_id and (category_id in MEDICAL_STORE_CATEGORY_CODES or category_id.startswith("Q1")):
+        return True
+    return category_main_category_code in MEDICAL_STORE_MAIN_CATEGORY_CODES
+
+
+def _is_oliveyoung(name: Any) -> bool:
+    text = str(name or "").lower()
+    return any(keyword.lower() in text for keyword in OLIVEYOUNG_KEYWORDS)
+
+
 def _store_category_from_values(
     *,
     name: Any,
     category_id: str | None,
-    category_subcategory_name: Any,
-    category_middle_category_name: Any,
-    category_main_category_name: Any,
-    ksci_subcategory_name: Any,
-    ksci_class_name: Any,
-    ksci_subclass_name: Any,
-    ksci_middle_category_name: Any,
-    ksci_main_category_name: Any,
-) -> str:
-    if category_id == "R10202":
-        return "study_cafe"
-    haystack = " ".join(
-        str(value or "")
-        for value in (
-            name,
-            category_subcategory_name,
-            category_middle_category_name,
-            category_main_category_name,
-            ksci_subcategory_name,
-            ksci_class_name,
-            ksci_subclass_name,
-            ksci_middle_category_name,
-            ksci_main_category_name,
-        )
-    ).lower()
-    for category, keywords in STORE_CATEGORY_KEYWORDS:
-        if any(keyword.lower() in haystack for keyword in keywords):
-            return category
+    category_middle_category_code: str | None,
+    category_main_category_code: str | None,
+) -> str | None:
+    if _is_medical_store_category(category_id, category_main_category_code):
+        return None
+    if _is_oliveyoung(name):
+        return "oliveyoung"
+    if category_id in STORE_CATEGORY_BY_SUBCATEGORY_CODE:
+        return STORE_CATEGORY_BY_SUBCATEGORY_CODE[category_id]
+    if category_middle_category_code in STORE_CATEGORY_BY_MIDDLE_CATEGORY_CODE:
+        return STORE_CATEGORY_BY_MIDDLE_CATEGORY_CODE[category_middle_category_code]
+    if (
+        category_main_category_code == "I2"
+        and category_id not in RESTAURANT_EXCLUDED_SUBCATEGORY_CODES
+        and category_middle_category_code != "I211"
+    ):
+        return "restaurant"
     return "etc"
 
 
@@ -123,18 +118,13 @@ def _iter_store_rows() -> Iterator[AmenitySourceRow]:
     qs = (
         Store.objects.filter(location__isnull=False)
         .exclude(category_id__in=MEDICAL_STORE_CATEGORY_CODES)
+        .exclude(category__main_category_code__in=MEDICAL_STORE_MAIN_CATEGORY_CODES)
         .values_list(
             "id",
             "name",
             "category_id",
-            "category__subcategory_name",
-            "category__middle_category_name",
-            "category__main_category_name",
-            "ksci__subcategory_name",
-            "ksci__class_name",
-            "ksci__subclass_name",
-            "ksci__middle_category_name",
-            "ksci__main_category_name",
+            "category__middle_category_code",
+            "category__main_category_code",
             "location",
             "adong_id",
             "ldong_id",
@@ -145,14 +135,8 @@ def _iter_store_rows() -> Iterator[AmenitySourceRow]:
         store_id,
         name,
         category_id,
-        category_subcategory_name,
-        category_middle_category_name,
-        category_main_category_name,
-        ksci_subcategory_name,
-        ksci_class_name,
-        ksci_subclass_name,
-        ksci_middle_category_name,
-        ksci_main_category_name,
+        category_middle_category_code,
+        category_main_category_code,
         location,
         adong_id,
         ldong_id,
@@ -160,16 +144,10 @@ def _iter_store_rows() -> Iterator[AmenitySourceRow]:
         category = _store_category_from_values(
             name=name,
             category_id=category_id,
-            category_subcategory_name=category_subcategory_name,
-            category_middle_category_name=category_middle_category_name,
-            category_main_category_name=category_main_category_name,
-            ksci_subcategory_name=ksci_subcategory_name,
-            ksci_class_name=ksci_class_name,
-            ksci_subclass_name=ksci_subclass_name,
-            ksci_middle_category_name=ksci_middle_category_name,
-            ksci_main_category_name=ksci_main_category_name,
+            category_middle_category_code=category_middle_category_code,
+            category_main_category_code=category_main_category_code,
         )
-        if category in STORE_MEDICAL_AMENITY_CATEGORIES:
+        if not category:
             continue
         yield AmenitySourceRow(
             category=category,
@@ -179,6 +157,37 @@ def _iter_store_rows() -> Iterator[AmenitySourceRow]:
             source_id=str(store_id),
             adong_ids=(adong_id,) if adong_id else (),
             ldong_ids=(ldong_id,) if ldong_id else (),
+        )
+
+
+def _region_ids_for_point(point: Point) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    adong_id = (
+        Adong.objects.filter(boundary__covers=point)
+        .order_by("area_m2")
+        .values_list("adong_code", flat=True)
+        .first()
+    )
+    ldong_id = (
+        Ldong.objects.filter(boundary__covers=point)
+        .order_by("area_m2")
+        .values_list("ldong_code", flat=True)
+        .first()
+    )
+    return ((adong_id,) if adong_id else (), (ldong_id,) if ldong_id else ())
+
+
+def _iter_daiso_rows() -> Iterator[AmenitySourceRow]:
+    qs = DaisoStore.objects.filter(location__isnull=False).values_list("id", "name", "location")
+    for daiso_id, name, location in qs.iterator(chunk_size=BATCH_SIZE):
+        adong_ids, ldong_ids = _region_ids_for_point(location)
+        yield AmenitySourceRow(
+            category="daiso",
+            name=_clean_name(name, daiso_id),
+            location=location,
+            source_table="daiso_store",
+            source_id=str(daiso_id),
+            adong_ids=adong_ids,
+            ldong_ids=ldong_ids,
         )
 
 
@@ -236,17 +245,6 @@ def _iter_library_rows() -> Iterator[AmenitySourceRow]:
         yield AmenitySourceRow("library", _clean_name(name, library_id), location, "library", str(library_id), (adong_id,) if adong_id else (), (ldong_id,) if ldong_id else ())
 
 
-def _iter_univ_rows() -> Iterator[AmenitySourceRow]:
-    adongs_by_univ: dict[str, list[str]] = {}
-    ldongs_by_univ: dict[str, list[str]] = {}
-    for univ_id, adong_id in Univ.objects.filter(adong_links__isnull=False).values_list("id", "adong_links__adong_id"):
-        adongs_by_univ.setdefault(univ_id, []).append(adong_id)
-    for univ_id, ldong_id in Univ.objects.filter(ldong_links__isnull=False).values_list("id", "ldong_links__ldong_id"):
-        ldongs_by_univ.setdefault(univ_id, []).append(ldong_id)
-    for univ_id, name, location in Univ.objects.filter(location__isnull=False).values_list("id", "name", "location").iterator(chunk_size=BATCH_SIZE):
-        yield AmenitySourceRow("university", _clean_name(name, univ_id), location, "univ", str(univ_id), tuple(adongs_by_univ.get(univ_id, ())), tuple(ldongs_by_univ.get(univ_id, ())))
-
-
 def _iter_subway_rows() -> Iterator[AmenitySourceRow]:
     qs = SubwayStation.objects.filter(location__isnull=False).values_list("id", "name", "line", "location", "adong_id", "ldong_id")
     for station_id, name, line, location, adong_id, ldong_id in qs.iterator(chunk_size=BATCH_SIZE):
@@ -261,10 +259,10 @@ def _iter_bus_rows() -> Iterator[AmenitySourceRow]:
 
 def iter_source_rows() -> Iterator[AmenitySourceRow]:
     yield from _iter_store_rows()
+    yield from _iter_daiso_rows()
     yield from _iter_medical_rows()
     yield from _iter_park_rows()
     yield from _iter_library_rows()
-    yield from _iter_univ_rows()
     yield from _iter_subway_rows()
     yield from _iter_bus_rows()
 

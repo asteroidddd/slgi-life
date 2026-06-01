@@ -35,7 +35,11 @@ from apps.public_data.rent_deal.updater import (  # noqa: E402
     RentDealsUpdateOptions,
     update as update_rent_deals,
 )
-from apps.public_data.store.updater import StoresUpdateOptions, update as update_stores  # noqa: E402
+from apps.public_data.store.updater import (  # noqa: E402
+    StoresUpdateOptions,
+    update as update_stores,
+    update_daiso_stores,
+)
 from apps.public_data.subway.updater import SubwayUpdateOptions, update as update_subway  # noqa: E402
 from apps.public_data.univ.updater import UnivUpdateOptions, update as update_univ  # noqa: E402
 
@@ -49,6 +53,7 @@ DATASET_ORDER = (
     "bus",
     "subway",
     "stores",
+    "daiso",
     "medical",
     "parks",
     "library",
@@ -158,6 +163,7 @@ def _run_dataset(dataset: str, args: argparse.Namespace, *, dry_run: bool) -> di
                 limit=args.limit,
                 start_ym=args.start_ym,
                 end_ym=args.end_ym,
+                geocode_missing=not args.skip_geocode,
                 deadline_monotonic=_deadline(args),
             )
         )
@@ -167,6 +173,16 @@ def _run_dataset(dataset: str, args: argparse.Namespace, *, dry_run: bool) -> di
                 dry_run=dry_run,
                 force=args.force,
                 limit=args.limit,
+                delete_missing=not args.skip_delete_missing,
+            )
+        )
+    if dataset == "daiso":
+        return update_daiso_stores(
+            StoresUpdateOptions(
+                dry_run=dry_run,
+                force=args.force,
+                limit=args.limit,
+                delete_missing=not args.skip_delete_missing,
             )
         )
     if dataset == "medical":
@@ -215,6 +231,8 @@ def main() -> int:
     parser.add_argument("--end-ym", help="Override monthly dataset end month: YYYYMM.")
     parser.add_argument("--limit", type=int, help="Stop after roughly this many checked rows.")
     parser.add_argument("--force", action="store_true", help="Force file-based snapshot reload.")
+    parser.add_argument("--skip-geocode", action="store_true", help="Skip optional geocoding for rent_deals.")
+    parser.add_argument("--skip-delete-missing", action="store_true", help="Skip full-table delete-missing cleanup for stores.")
     parser.add_argument("--include-hira-specialties", action="store_true", help="Fetch HIRA specialty details for medical dataset.")
     args = parser.parse_args()
 

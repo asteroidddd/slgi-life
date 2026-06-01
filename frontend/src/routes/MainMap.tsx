@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueries, useQuery } from '@tanstack/react-query';
 
@@ -24,6 +24,7 @@ import {
   HomeMarker,
   MapClickSelectLayer,
   MapStateProbe,
+  SavedLocationFlyToLayer,
   SearchFlyTo,
   SelectedPlacePinLayer,
   hasValidCoordinate,
@@ -38,9 +39,10 @@ import { useAdongMatchCounts } from '@/hooks/useAdongMatchCounts';
 import { useAdongScores, useLdongScores } from '@/hooks/useAdongs';
 import { useRentDealCache } from '@/hooks/useRentDealCache';
 import { useStudioMatchFilters } from '@/hooks/useStudioMatchFilters';
-import { getAmenitiesBbox, getDashboardLdongAtPoint, getMapSearch, getMedicalFacilities, getRentDealDetail } from '@/lib/api';
+import { getAmenitiesBbox, getDashboardLdongAtPoint, getMapSearch, getMedicalFacilities, getMedicalSpecialtyGroups, getRentDealDetail } from '@/lib/api';
 import { setDashboardMiniMapTransitionTarget } from '@/lib/dashboardTransition';
 import { HEATMAP_COLORS_ORDERED } from '@/lib/colors';
+import { getSavedMapView, saveMapView } from '@/lib/mapViewMemory';
 import { DEFAULT_WEIGHTS } from '@/types/api';
 import type {
   ExploreDealType,
@@ -94,11 +96,11 @@ function ActiveModeGuide({ mapMode, regionLevel }: { mapMode: MapMode; regionLev
 type FacilityKey =
   | 'subway_station'
   | 'bus_stop'
-  | 'university'
   | 'park'
   | 'library'
   | 'convenience'
   | 'mart'
+  | 'daiso'
   | 'restaurant'
   | 'cafe'
   | 'nightlife'
@@ -107,8 +109,7 @@ type FacilityKey =
   | 'oliveyoung'
   | 'gym'
   | 'book_stationery'
-  | 'study_cafe'
-  | 'pc_room';
+  | 'study_cafe';
 
 interface AiMapTarget {
   label: string;
@@ -164,6 +165,7 @@ const DEAL_TYPE_LABELS: Record<ExploreDealType, string> = {
   yeonlip_dasedae: '연립다세대',
   dagagu: '다가구',
   danok: '단독',
+  danok_dagagu: '단독다가구',
   officetel: '오피스텔',
   apt: '아파트',
 };
@@ -181,31 +183,30 @@ const PERIOD_LABELS: Record<ExplorePeriod, string> = {
 const FACILITY_LABELS: Record<FacilityKey, string> = {
   subway_station: '지하철역',
   bus_stop: '버스정류장',
-  university: '대학',
   park: '공원',
   library: '도서관',
   convenience: '편의점',
-  mart: '마트',
+  mart: '슈퍼마켓',
+  daiso: '다이소',
   restaurant: '음식점',
   cafe: '카페',
   nightlife: '주점',
   laundry: '세탁',
   beauty: '미용',
   oliveyoung: '올리브영',
-  gym: '체육시설',
+  gym: '헬스장',
   book_stationery: '서점/문구',
   study_cafe: '스터디카페',
-  pc_room: 'PC방',
 };
 
 const FACILITY_ORDER: FacilityKey[] = [
   'subway_station',
   'bus_stop',
-  'university',
   'park',
   'library',
   'convenience',
   'mart',
+  'daiso',
   'restaurant',
   'cafe',
   'nightlife',
@@ -215,7 +216,6 @@ const FACILITY_ORDER: FacilityKey[] = [
   'gym',
   'book_stationery',
   'study_cafe',
-  'pc_room',
 ];
 
 const MEDICAL_CATEGORY_ORDER: MedicalCategory[] = ['hospital', 'dental', 'pharmacy', 'emergency'];
@@ -223,11 +223,11 @@ const MEDICAL_CATEGORY_ORDER: MedicalCategory[] = ['hospital', 'dental', 'pharma
 const FACILITY_ICONS: Record<FacilityKey, string> = {
   subway_station: '🚇',
   bus_stop: '🚌',
-  university: '🎓',
   park: '🌳',
   library: '📚',
   convenience: '🏪',
   mart: '🛒',
+  daiso: '<span style="color:#dc2626;font-size:14px;line-height:1">■</span>',
   restaurant: '🍜',
   cafe: '☕',
   nightlife: '🍺',
@@ -237,7 +237,6 @@ const FACILITY_ICONS: Record<FacilityKey, string> = {
   gym: '🏋',
   book_stationery: '✏',
   study_cafe: '📖',
-  pc_room: '🖥️',
 };
 
 const RANGE_ALL = {
@@ -273,8 +272,12 @@ export default function MainMap() {
   const [medicalCategories, setMedicalCategories] = useState<Set<MedicalCategory>>(
     () => new Set(),
   );
+  const [medicalSpecialtyGroups, setMedicalSpecialtyGroups] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [medicalOpenNow, setMedicalOpenNow] = useState(false);
   const [mapState, setMapState] = useState<MapState | null>(null);
+  const savedMapView = useMemo(() => getSavedMapView(), []);
   const [popup, setPopup] = useState<SelectedPopup>(null);
   const [searchText, setSearchText] = useState('');
   const [searchResults, setSearchResults] = useState<MapSearchItem[]>([]);
@@ -299,6 +302,7 @@ export default function MainMap() {
   const [realEstateHelperOpen, setRealEstateHelperOpen] = useState(false);
   const [locateRequest, setLocateRequest] = useState(0);
   const [homeRequest, setHomeRequest] = useState(0);
+  const [schoolRequest, setSchoolRequest] = useState(0);
   const [showHomeMarker, setShowHomeMarker] = useState(() => {
     try {
       return window.localStorage.getItem(HOME_MARKER_VISIBILITY_STORAGE_KEY) !== 'false';
@@ -307,8 +311,14 @@ export default function MainMap() {
     }
   });
   const toastTimer = useRef<number | null>(null);
+  const mapModeRef = useRef(mapMode);
+  const mapStateRef = useRef<MapState | null>(null);
 
   const { filters, patch, reset } = useStudioMatchFilters();
+
+  useEffect(() => {
+    mapModeRef.current = mapMode;
+  }, [mapMode]);
   const adongScoresQuery = useAdongScores(DEFAULT_WEIGHTS);
   const ldongScoresQuery = useLdongScores(DEFAULT_WEIGHTS);
   const scoresData = regionLevel === 'ldong' ? (ldongScoresQuery.data ?? []) : (adongScoresQuery.data ?? []);
@@ -361,6 +371,16 @@ export default function MainMap() {
     () => MEDICAL_CATEGORY_ORDER.filter((key) => medicalCategories.has(key)),
     [medicalCategories],
   );
+  const selectedMedicalSpecialtyGroups = useMemo(
+    () => Array.from(medicalSpecialtyGroups),
+    [medicalSpecialtyGroups],
+  );
+  const medicalSpecialtyGroupsQuery = useQuery({
+    queryKey: ['medical', 'specialty-groups', 'hospital'],
+    queryFn: () => getMedicalSpecialtyGroups({ category: 'hospital' }),
+    enabled: mapMode === 'medical',
+    staleTime: 300_000,
+  });
   const medicalBbox = mapState?.bbox ?? null;
   const medicalFacilitiesQueries = useQueries({
     queries: selectedMedicalCategories.map((category) => ({
@@ -372,6 +392,7 @@ export default function MainMap() {
         medicalBbox?.lng2,
         medicalBbox?.lat2,
         category,
+        category === 'hospital' ? selectedMedicalSpecialtyGroups.join(',') : '',
         medicalOpenNow,
       ],
       queryFn: () => getMedicalFacilities({
@@ -382,6 +403,7 @@ export default function MainMap() {
           medicalBbox!.lat2,
         ],
         categories: [category],
+        specialtyGroups: category === 'hospital' ? selectedMedicalSpecialtyGroups : undefined,
         openNow: medicalOpenNow,
         limit: 800,
       }),
@@ -417,6 +439,11 @@ export default function MainMap() {
     && Number.isFinite(user.home_lat)
     && typeof user.home_lng === 'number'
     && Number.isFinite(user.home_lng);
+  const hasSchoolLocation = !!user
+    && typeof user.school_lat === 'number'
+    && Number.isFinite(user.school_lat)
+    && typeof user.school_lng === 'number'
+    && Number.isFinite(user.school_lng);
 
   useEffect(() => {
     const q = searchText.trim();
@@ -513,7 +540,42 @@ export default function MainMap() {
     });
   };
 
+  const toggleMedicalSpecialtyGroup = (name: string) => {
+    setPopup(null);
+    setMedicalCategories((prev) => {
+      const next = new Set(prev);
+      next.add('hospital');
+      return next;
+    });
+    setMedicalSpecialtyGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
+  const persistMapView = useCallback((state?: MapState | null) => {
+    const targetState = state ?? mapStateRef.current;
+    if (!targetState?.bbox || typeof targetState.zoom !== 'number') return;
+    saveMapView({
+      center: [
+        (targetState.bbox.lat1 + targetState.bbox.lat2) / 2,
+        (targetState.bbox.lng1 + targetState.bbox.lng2) / 2,
+      ],
+      zoom: targetState.zoom,
+      mode: mapModeRef.current,
+    });
+  }, []);
+
+  const handleMapStateChange = useCallback((state: MapState) => {
+    mapStateRef.current = state;
+    setMapState(state);
+    persistMapView(state);
+  }, [persistMapView]);
+
   const handleDashboardOpen = async () => {
+    persistMapView();
     const selectedTarget = selectedPlacePin ?? activeAiMapTarget;
     const centerTarget = mapState?.bbox
       ? {
@@ -591,6 +653,8 @@ export default function MainMap() {
         mode={heatmapMode}
         matchCounts={matchCounts}
         regionLevel={regionLevel}
+        initialCenter={savedMapView?.center}
+        initialZoom={savedMapView?.zoom}
         onAdongClick={mapMode === 'heatmap' ? (adong) => setPopup({ type: 'adong', adong }) : undefined}
       >
         <CurrentLocationLayer
@@ -611,6 +675,17 @@ export default function MainMap() {
             setSelectedSearchItem(null);
             setPopup(null);
             setSelectedPlacePin({ lat, lng, label: '\uc9d1', source: 'home' });
+          }}
+        />
+        <SavedLocationFlyToLayer
+          requestId={schoolRequest}
+          lat={user?.school_lat}
+          lng={user?.school_lng}
+          missingMessage="마이페이지에서 대학을 저장해주세요."
+          onError={(message) => flash(message)}
+          onLocated={() => {
+            setSelectedSearchItem(null);
+            setPopup(null);
           }}
         />
         <SearchFlyTo item={selectedSearchItem} />
@@ -636,11 +711,11 @@ export default function MainMap() {
             pins={filteredPins}
             selectedJibun={selectedJibun}
             onPinClick={handlePinClick}
-            onMapStateChange={setMapState}
+            onMapStateChange={handleMapStateChange}
             suppressTooltips={popup != null}
           />
         ) : (
-          <MapStateProbe onMapStateChange={setMapState} />
+          <MapStateProbe onMapStateChange={handleMapStateChange} />
         )}
         {mapMode === 'facility' ? (
           <AmenityLayer
@@ -905,12 +980,17 @@ export default function MainMap() {
         {mapMode === 'medical' ? (
           <MedicalControlPanel
             categories={medicalCategories}
+            specialtyGroups={medicalSpecialtyGroupsQuery.data?.items.map((item) => item.name) ?? []}
+            selectedSpecialtyGroups={medicalSpecialtyGroups}
             openNow={medicalOpenNow}
             onToggleCategory={toggleMedicalCategory}
+            onToggleSpecialtyGroup={toggleMedicalSpecialtyGroup}
+            onResetSpecialtyGroups={() => setMedicalSpecialtyGroups(new Set())}
             onToggleOpenNow={() => setMedicalOpenNow((value) => !value)}
             onReset={() => {
               setPopup(null);
               setMedicalCategories(new Set());
+              setMedicalSpecialtyGroups(new Set());
               setMedicalOpenNow(false);
             }}
           />
@@ -981,6 +1061,29 @@ export default function MainMap() {
           </svg>
         </button>
         <IconTooltip>집으로 이동</IconTooltip>
+        </span> : null}
+        {user ? <span className="group relative inline-flex">
+        <button
+          type="button"
+          aria-label="대학으로 이동"
+          title="대학으로 이동"
+          disabled={!hasSchoolLocation}
+          onClick={() => {
+            if (!hasSchoolLocation) {
+              flash('마이페이지에서 대학을 저장해주세요.');
+              return;
+            }
+            setSchoolRequest((v) => v + 1);
+          }}
+          className="map-icon-button border-border/60 bg-surface/55 shadow-sm backdrop-blur hover:bg-surface/80 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-surface/55"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 9.5 12 5l9 4.5-9 4.5-9-4.5Z" />
+            <path d="M7 11.5v4.25c0 1.2 2.24 2.25 5 2.25s5-1.05 5-2.25V11.5" />
+            <path d="M21 9.5v5" />
+          </svg>
+        </button>
+        <IconTooltip>대학으로 이동</IconTooltip>
         </span> : null}
         {user ? (
           <span className="group relative inline-flex">

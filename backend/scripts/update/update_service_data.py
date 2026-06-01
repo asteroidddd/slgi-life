@@ -112,7 +112,7 @@ def main() -> int:
     else:
         result = _run_target(args.target, dry_run=dry_run)
 
-    print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+    print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True, default=str))
     if result.get("status") == "partial":
         return 2
     if _contains_unsuccessful(result):

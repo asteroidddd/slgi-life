@@ -23,8 +23,9 @@ from django.db import models
 # CHECK 화이트리스트 — schema.dbml ck_amenity_category / ck_amenity_source_table
 # ---------------------------------------------------------------------------
 CATEGORY_CHOICES = [
+    ("daiso", "다이소"),
     ("convenience", "편의점"),
-    ("mart", "마트"),
+    ("mart", "슈퍼마켓"),
     ("restaurant", "음식점"),
     ("cafe", "카페"),
     ("hospital", "병원"),
@@ -34,20 +35,19 @@ CATEGORY_CHOICES = [
     ("laundry", "세탁소"),
     ("beauty", "미용"),
     ("oliveyoung", "올리브영"),
-    ("gym", "체육시설"),
+    ("gym", "헬스장"),
     ("nightlife", "주점"),
     ("book_stationery", "서점/문구"),
     ("study_cafe", "스터디카페/독서실"),
-    ("pc_room", "PC방"),
     ("etc", "기타"),
     ("park", "공원"),
     ("library", "도서관"),
-    ("university", "대학교"),
     ("subway_station", "지하철역"),
     ("bus_stop", "버스정류장"),
 ]
 
 SOURCE_TABLE_CHOICES = [
+    ("daiso_store", "daiso_store"),
     ("store", "store"),
     ("medical_facility", "medical_facility"),
     ("park", "park"),
@@ -63,6 +63,42 @@ SOURCE_TABLE_CHOICES = [
 # ---------------------------------------------------------------------------
 
 
+CATEGORY_CHOICES = [
+    ("convenience", "편의점"),
+    ("mart", "슈퍼마켓"),
+    ("daiso", "다이소"),
+    ("restaurant", "음식점"),
+    ("cafe", "카페"),
+    ("hospital", "병원"),
+    ("dental", "치과"),
+    ("pharmacy", "약국"),
+    ("pet", "반려동물"),
+    ("laundry", "세탁"),
+    ("beauty", "미용"),
+    ("oliveyoung", "올리브영"),
+    ("gym", "헬스장"),
+    ("nightlife", "주점"),
+    ("book_stationery", "서점/문구"),
+    ("study_cafe", "스터디카페/독서실"),
+    ("etc", "기타"),
+    ("park", "공원"),
+    ("library", "도서관"),
+    ("subway_station", "지하철역"),
+    ("bus_stop", "버스정류장"),
+]
+
+SOURCE_TABLE_CHOICES = [
+    ("store", "store"),
+    ("daiso_store", "daiso_store"),
+    ("medical_facility", "medical_facility"),
+    ("park", "park"),
+    ("library", "library"),
+    ("univ", "univ"),
+    ("subway_station", "subway_station"),
+    ("bus_stop", "bus_stop"),
+]
+
+
 class Amenity(models.Model):
     """편의시설 한 건 (화면용 derived).
 
@@ -73,7 +109,7 @@ class Amenity(models.Model):
     category = models.CharField(
         max_length=30,
         choices=CATEGORY_CHOICES,
-        help_text="시설 카테고리 (17종, ck_amenity_category)",
+        help_text="Facility category",
     )
     name = models.CharField(
         max_length=200,

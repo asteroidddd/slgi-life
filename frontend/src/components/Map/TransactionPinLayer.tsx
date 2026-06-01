@@ -107,6 +107,8 @@ function typeLabel(type: RentDealMapPin['deal_type']): string {
       return '다가구';
     case 'danok':
       return '단독';
+    case 'danok_dagagu':
+      return '단독다가구';
     default:
       return '거래';
   }

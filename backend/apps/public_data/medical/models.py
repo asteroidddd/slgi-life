@@ -154,6 +154,7 @@ class MedicalFacilitySpecialty(models.Model):
         on_delete=models.CASCADE,
     )
     specialty_name = models.CharField(max_length=100)
+    specialty_group = models.CharField(max_length=50, blank=True, default="")
     specialist_count = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -163,6 +164,7 @@ class MedicalFacilitySpecialty(models.Model):
         unique_together = [("mapping", "specialty_name")]
         indexes = [
             models.Index(fields=["specialty_name"], name="medical_specialty_name_idx"),
+            models.Index(fields=["specialty_group"], name="medical_specialty_group_idx"),
         ]
 
     def __str__(self) -> str:

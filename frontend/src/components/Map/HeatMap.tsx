@@ -71,6 +71,8 @@ export interface HeatMapProps {
    *  CircleMarker, useMap 사용 컴포넌트). 일반 DOM 노드는 작동 안 함. */
   children?: ReactNode;
   regionLevel?: 'adong' | 'ldong';
+  initialCenter?: [number, number];
+  initialZoom?: number;
 }
 
 function isFiniteScore(value: unknown): value is number {
@@ -117,6 +119,8 @@ export default function HeatMap({
   matchCounts,
   children,
   regionLevel = 'adong',
+  initialCenter,
+  initialZoom,
 }: HeatMapProps) {
   const { theme } = useTheme();
   const adongGeo = useAdongGeoJson();
@@ -279,18 +283,18 @@ export default function HeatMap({
   return (
     <div className="relative w-full h-full">
       <MapContainer
-        center={SEOUL_CITY_HALL}
-        zoom={INITIAL_ZOOM}
-        maxZoom={19}
+        center={initialCenter ?? SEOUL_CITY_HALL}
+        zoom={initialZoom ?? INITIAL_ZOOM}
+        maxZoom={getVWorldMaxNativeZoom(theme)}
         zoomControl={false}
         scrollWheelZoom
         className="w-full h-full bg-surface-alt"
       >
-        {/* Base는 z=19, midnight는 z=18까지 제공된다. Leaflet이 z=19에서 native z=18을 stretch한다. */}
+        {/* VWorld tiles are capped at z=18 across themes to avoid broken high-zoom tiles. */}
         <TileLayer
           attribution={VWORLD_ATTRIBUTION}
           url={getVWorldTileUrl(theme)}
-          maxZoom={19}
+          maxZoom={getVWorldMaxNativeZoom(theme)}
           maxNativeZoom={getVWorldMaxNativeZoom(theme)}
         />
         <ZoomControl position="topright" />

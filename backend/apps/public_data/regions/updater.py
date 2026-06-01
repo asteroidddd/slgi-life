@@ -61,6 +61,17 @@ def _file_snapshot() -> dict[str, Any]:
     return {"file_hash": digest.hexdigest(), "files": files}
 
 
+def _region_tables_populated() -> bool:
+    return (
+        Gu.objects.count() >= MIN_COUNTS["gu"]
+        and Ldong.objects.count() >= MIN_COUNTS["ldong"]
+        and Adong.objects.count() >= MIN_COUNTS["adong"]
+        and GuAdjacency.objects.exists()
+        and LdongAdjacency.objects.exists()
+        and AdongAdjacency.objects.exists()
+    )
+
+
 def _read_csv(name: str) -> list[dict[str, str]]:
     with (DATA_DIR / name).open(encoding="utf-8-sig", newline="") as f:
         return list(csv.DictReader(f))
@@ -360,14 +371,12 @@ def _update_regions(source: dict[str, Any], options: RegionsUpdateOptions) -> di
 
 def update_regions(options: RegionsUpdateOptions) -> dict[str, Any]:
     snapshot = _file_snapshot()
-    source = _source_data()
-    snapshot["counts"] = source["counts"]
-
     previous_snapshot = dataset_state("regions").get("snapshot", {})
     if (
         not options.force
         and not options.dry_run
         and previous_snapshot.get("file_hash") == snapshot["file_hash"]
+        and _region_tables_populated()
     ):
         return {
             "status": "success",
@@ -380,6 +389,9 @@ def update_regions(options: RegionsUpdateOptions) -> dict[str, Any]:
             "deleted_missing": {"gu": 0, "ldong": 0, "adong": 0},
             "adjacent_loaded": {"gu": 0, "ldong": 0, "adong": 0},
         }
+
+    source = _source_data()
+    snapshot["counts"] = source["counts"]
 
     result = _update_regions(source, options)
     result["files"] = snapshot

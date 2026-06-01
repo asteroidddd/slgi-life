@@ -16,6 +16,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.geocoding import geocode_address as _geocode_address
+
 
 DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 VWORLD_SEARCH_URL = "https://api.vworld.kr/req/search"
@@ -104,6 +106,28 @@ def _vworld_request(query: str, search_type: str, *, category: str | None = None
     return items
 
 
+def _geocoded_address_items(query: str) -> list[dict]:
+    result = _geocode_address(query, user_agent="capston-map-search/0.1")
+    if result.status != "success" or not result.point:
+        return []
+    lng = float(result.point.x)
+    lat = float(result.point.y)
+    provider = result.provider or "geocoder"
+    name = result.address_name or query
+    return [
+        {
+            "id": f"{provider}:address:{lng},{lat}",
+            "source": provider,
+            "type": "address",
+            "name": name,
+            "label": "address",
+            "address": name,
+            "lat": lat,
+            "lng": lng,
+        }
+    ]
+
+
 def _search_vworld(query: str, limit: int) -> list[dict]:
     calls: list[tuple[str, str | None]] = [
         ("place", None),
@@ -114,6 +138,12 @@ def _search_vworld(query: str, limit: int) -> list[dict]:
     ]
     items: list[dict] = []
     seen: set[tuple[str, str, str]] = set()
+    for item in _geocoded_address_items(query):
+        key = (item["type"], item["name"], f"{item['lng']:.6f},{item['lat']:.6f}")
+        seen.add(key)
+        items.append(item)
+        if len(items) >= limit:
+            return items
     for search_type, category in calls:
         for item in _vworld_request(query, search_type, category=category, size=5):
             key = (item["type"], item["name"], f"{item['lng']:.6f},{item['lat']:.6f}")

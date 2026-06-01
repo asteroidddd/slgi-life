@@ -12,7 +12,9 @@ export function getVWorldTileUrl(theme: ThemeMode): string {
   return `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY ?? ''}/${getVWorldLayer(theme)}/{z}/{y}/{x}.png`;
 }
 
-export function getVWorldMaxNativeZoom(theme: ThemeMode): number {
-  return theme === 'dark' ? 18 : 19;
+export const VWORLD_MAX_ZOOM = 18;
+
+export function getVWorldMaxNativeZoom(_theme: ThemeMode): number {
+  return VWORLD_MAX_ZOOM;
 }
 

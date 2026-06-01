@@ -159,6 +159,8 @@ export const CHART_COLORS = {
   dagagu: '#1863dc',
   /** 단독 (danok) — Slate Mid. */
   danok: '#6b7280',
+  /** 단독다가구 (danok_dagagu) — neutral bridge for unresolved source rows. */
+  danok_dagagu: '#4b5563',
   /** 오피스텔 (officetel) — Accent. */
   officetel: '#ff7759',
   /** 아파트 (apt) — Purple. 자취 4종과 구별되는 보라 계열. */

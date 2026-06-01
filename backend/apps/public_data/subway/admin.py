@@ -26,8 +26,7 @@ class SubwayStationAdmin(admin.ModelAdmin):
 
 @admin.register(NearestSubwayAdong)
 class NearestSubwayAdongAdmin(admin.ModelAdmin):
-    list_display = ("adong", "rank", "station_name", "distance_m")
-    list_filter = ("rank",)
+    list_display = ("adong", "station_name", "distance_m")
     search_fields = ("adong__name", "station_name")
     list_select_related = ("adong",)
     list_per_page = 100
@@ -35,8 +34,7 @@ class NearestSubwayAdongAdmin(admin.ModelAdmin):
 
 @admin.register(NearestSubwayLdong)
 class NearestSubwayLdongAdmin(admin.ModelAdmin):
-    list_display = ("ldong", "rank", "station_name", "distance_m")
-    list_filter = ("rank",)
+    list_display = ("ldong", "station_name", "distance_m")
     search_fields = ("ldong__name", "station_name")
     list_select_related = ("ldong",)
     list_per_page = 100

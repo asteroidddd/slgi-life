@@ -30,7 +30,7 @@ from django.contrib.postgres.indexes import GistIndex
 from django.db import models
 
 
-# housing_type 한글 5종 (CHECK ck_rent_deal_housing_type, schema.dbml line 161).
+# housing_type 한글 raw. 일부 과거 단독/다가구 원천 행은 세부 유형이 비어 단독다가구로 남는다.
 HOUSING_TYPE_CHOICES = [
     ("아파트", "아파트"),
     ("연립", "연립"),
@@ -38,6 +38,7 @@ HOUSING_TYPE_CHOICES = [
     ("연립다세대", "연립다세대"),
     ("다가구", "다가구"),
     ("단독", "단독"),
+    ("단독다가구", "단독다가구"),
     ("오피스텔", "오피스텔"),
 ]
 
@@ -51,6 +52,7 @@ HOUSING_TYPE_TO_DEAL_TYPE: dict[str, str] = {
     "연립다세대": "yeonlip_dasedae",
     "다가구": "dagagu",
     "단독": "danok",
+    "단독다가구": "danok_dagagu",
 }
 
 # 역방향 (영문 → 한글) — explore/match 등 deal_types 필터 정규화에 사용.
@@ -73,11 +75,11 @@ class RentDeal(models.Model):
         ),
     )
 
-    # 5종 한글 raw. schema.dbml CHECK ck_rent_deal_housing_type.
+    # 한글 raw. 일부 과거 단독/다가구 원천 행은 단독다가구로 남는다.
     housing_type = models.CharField(
         max_length=20,
         choices=HOUSING_TYPE_CHOICES,
-        help_text="아파트, 연립다세대, 다가구, 단독, 오피스텔 (5종)",
+        help_text="아파트, 연립, 다세대, 연립다세대, 다가구, 단독, 단독다가구, 오피스텔",
     )
 
     # 법정동 FK. regions snapshot 교체 시 임시 NULL 허용.

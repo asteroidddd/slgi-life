@@ -90,7 +90,6 @@ class NearestSubwayAdong(models.Model):
         db_column="adong_code",
         related_name="nearest_subways",
     )
-    rank = models.SmallIntegerField(help_text="1~3")
     station_name = models.CharField(max_length=100, help_text="지하철역 이름 (비정규화)")
     distance_m = models.FloatField(help_text="측지선 m (>= 0)")
 
@@ -98,12 +97,8 @@ class NearestSubwayAdong(models.Model):
         db_table = "nearest_subway_adong"
         verbose_name = "가까운 지하철역 (행정동, 사전계산)"
         verbose_name_plural = "가까운 지하철역 (행정동, 사전계산)"
-        unique_together = [("adong", "rank")]
+        unique_together = [("adong", "station_name")]
         constraints = [
-            models.CheckConstraint(
-                check=Q(rank__gte=1, rank__lte=3),
-                name="ck_nearest_subway_adong_rank",
-            ),
             models.CheckConstraint(
                 check=Q(distance_m__gte=0),
                 name="ck_nearest_subway_adong_distance",
@@ -112,10 +107,10 @@ class NearestSubwayAdong(models.Model):
         indexes = [
             models.Index(fields=["station_name"], name="ix_nearest_subway_adong_name"),
         ]
-        ordering = ["adong", "rank"]
+        ordering = ["adong", "distance_m", "station_name"]
 
     def __str__(self) -> str:
-        return f"{self.adong_id} #{self.rank} {self.station_name} ({self.distance_m:.0f}m)"
+        return f"{self.adong_id} {self.station_name} ({self.distance_m:.0f}m)"
 
 
 class NearestSubwayLdong(models.Model):
@@ -127,7 +122,6 @@ class NearestSubwayLdong(models.Model):
         db_column="ldong_code",
         related_name="nearest_subways",
     )
-    rank = models.SmallIntegerField(help_text="1~3")
     station_name = models.CharField(max_length=100, help_text="지하철역 이름 (비정규화)")
     distance_m = models.FloatField(help_text="측지선 m (>= 0)")
 
@@ -135,12 +129,8 @@ class NearestSubwayLdong(models.Model):
         db_table = "nearest_subway_ldong"
         verbose_name = "가까운 지하철역 (법정동, 사전계산)"
         verbose_name_plural = "가까운 지하철역 (법정동, 사전계산)"
-        unique_together = [("ldong", "rank")]
+        unique_together = [("ldong", "station_name")]
         constraints = [
-            models.CheckConstraint(
-                check=Q(rank__gte=1, rank__lte=3),
-                name="ck_nearest_subway_ldong_rank",
-            ),
             models.CheckConstraint(
                 check=Q(distance_m__gte=0),
                 name="ck_nearest_subway_ldong_distance",
@@ -149,10 +139,10 @@ class NearestSubwayLdong(models.Model):
         indexes = [
             models.Index(fields=["station_name"], name="ix_nearest_subway_ldong_name"),
         ]
-        ordering = ["ldong", "rank"]
+        ordering = ["ldong", "distance_m", "station_name"]
 
     def __str__(self) -> str:
-        return f"{self.ldong_id} #{self.rank} {self.station_name} ({self.distance_m:.0f}m)"
+        return f"{self.ldong_id} {self.station_name} ({self.distance_m:.0f}m)"
 
 
 # ---------------------------------------------------------------------------

@@ -5,7 +5,7 @@ sub-plan 4.5B 정합: Store dong FK 제거 → adong FK 단일.
 
 from django.contrib import admin
 
-from .models import BusinessCategory, KsciCategory, Store
+from .models import BusinessCategory, DaisoStore, KsciCategory, Store
 
 
 @admin.register(BusinessCategory)
@@ -43,5 +43,13 @@ class StoreAdmin(admin.ModelAdmin):
     list_filter = ("category__main_category_name",)
     search_fields = ("id", "name", "branch_name", "address")
     list_select_related = ("category", "ksci", "adong", "ldong")
+    readonly_fields = ("location",)
+    list_per_page = 50
+
+
+@admin.register(DaisoStore)
+class DaisoStoreAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "address")
+    search_fields = ("id", "name", "address")
     readonly_fields = ("location",)
     list_per_page = 50

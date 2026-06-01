@@ -18,8 +18,10 @@ from urllib.request import Request, urlopen
 
 from django.contrib.gis.geos import Point
 from django.db import connection, transaction
+from django.db.models import Q
 from openpyxl import load_workbook
 
+from apps.public_data.api_keys import env_key_ring, with_rate_limit_fallback
 from apps.public_data.exceptions import RateLimitedError, is_rate_limited_text
 from apps.public_data.regions.models import Adong, Ldong
 from apps.public_data.state import load_state, record_dataset_result, save_state
@@ -34,9 +36,9 @@ from apps.public_data.subway.models import (
 DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 LINE9_CONGESTION_PATH = DATA_DIR / "subway_line9_congestion.xlsx"
 SEOUL_STATION_URL = "http://openapi.seoul.go.kr:8088/{key}/json/subwayStationMaster/{start}/{end}/"
-SEOUL_CONGESTION_URL = "http://openapi.seoul.go.kr:8088/{key}/json/TbSeoulmetroStConInfo/{start}/{end}/"
+SEOUL_CONGESTION_URL = "http://openapi.seoul.go.kr:8088/{key}/json/subwConfusion/{start}/{end}/"
 PAGE_SIZE = 1000
-TOP_K_NEAREST = 3
+NEAREST_SUBWAY_DISTANCE_CAP_M = 1000.0
 
 
 @dataclass(frozen=True)
@@ -115,6 +117,12 @@ def _seoul_rows(service: str, url_template: str, api_key: str, options: SubwayUp
             url_template.format(key=api_key, start=start, end=end),
             timeout=options.request_timeout_seconds,
         )
+        if service not in payload and "RESULT" in payload:
+            result = payload.get("RESULT") or {}
+            if str(result.get("CODE", "")).startswith("ERROR"):
+                if is_rate_limited_text(result):
+                    raise RateLimitedError(f"Seoul API rate limited for {service}: {result}")
+                raise RuntimeError(f"Seoul API error for {service}: {result}")
         body = payload.get(service) or {}
         result = body.get("RESULT") or {}
         if str(result.get("CODE", "")).startswith("ERROR"):
@@ -143,13 +151,16 @@ def _find_region(point: Point) -> tuple[Ldong | None, Adong | None]:
 
 
 def _build_station_records(options: SubwayUpdateOptions) -> dict[str, Any]:
-    api_key = _require_env("SEOUL_API_KEY")
+    rows = with_rate_limit_fallback(
+        env_key_ring("SEOUL_API_KEY"),
+        lambda api_key: list(_seoul_rows("subwayStationMaster", SEOUL_STATION_URL, api_key, options)),
+    )
     records: list[dict[str, Any]] = []
     source_ids: set[str] = set()
     checked = skipped = 0
     skip_reasons = {"bad_coord": 0, "missing_required": 0}
 
-    for row in _seoul_rows("subwayStationMaster", SEOUL_STATION_URL, api_key, options):
+    for row in rows:
         checked += 1
         station_id = _normalize_id(_get(row, "STATN_ID", "STATION_CD", "FR_CODE", "BLDN_ID"))
         name = str(_get(row, "STATN_NM", "STATION_NM", "SBWY_STNS_NM", "BLDN_NM") or "").strip()
@@ -236,6 +247,20 @@ def update_stations(options: SubwayUpdateOptions) -> dict[str, Any]:
 
 def _parse_time_label(value: Any) -> time | None:
     text = str(value or "").strip()
+    time_key = re.search(r"TIME\s*(\d{2})(\d{2})", text, flags=re.IGNORECASE)
+    if time_key:
+        hour = int(time_key.group(1))
+        minute = int(time_key.group(2))
+        if 0 <= hour <= 23 and 0 <= minute <= 59:
+            return time(hour, minute)
+        return None
+    if re.fullmatch(r"\d{3,4}", text):
+        digits = text.zfill(4)
+        hour = int(digits[:2])
+        minute = int(digits[2:])
+        if 0 <= hour <= 23 and 0 <= minute <= 59:
+            return time(hour, minute)
+        return None
     match = re.search(r"(\d{1,2})\s*(?::|시)\s*(\d{2})?", text)
     if not match:
         return None
@@ -275,10 +300,10 @@ def _resolve_station_id(
     by_id: dict[str, str],
     by_name_line: dict[tuple[str, str], str],
 ) -> str | None:
-    station_id = _normalize_id(_get(row, "STATN_ID", "STATION_CD", "STN_ID", "역번호", "역ID"))
+    station_id = _normalize_id(_get(row, "STATN_ID", "STATION_CD", "STN_ID", "STTN_NO", "역번호", "역ID"))
     if station_id and station_id in by_id:
         return by_id[station_id]
-    name = _normalize_name(_get(row, "STATN_NM", "STATION_NM", "SBWY_STNS_NM", "역명"))
+    name = _normalize_name(_get(row, "STATN_NM", "STATION_NM", "SBWY_STNS_NM", "DPTRE_STTN", "역명"))
     line = _normalize_line(_get(row, "LINE", "LINE_NUM", "ROUTE", "호선"))
     if name and line:
         return by_name_line.get((name, line))
@@ -295,8 +320,8 @@ def _parse_congestion_row(
     if not station_id:
         return [], "station_not_found"
 
-    day_type = str(_get(row, "DAY_TYPE", "DOW", "WKND_SE", "요일구분") or "").strip()
-    direction = str(_get(row, "DIRECTION", "DIR", "UPDN_LINE", "상하구분") or "").strip()
+    day_type = str(_get(row, "DAY_TYPE", "DOW", "DOW_SE", "WKND_SE", "요일구분") or "").strip()
+    direction = str(_get(row, "DIRECTION", "DIR", "UPDN_LINE", "UP_DOWN_SE", "상하구분") or "").strip()
     express_yn = str(_get(row, "EXPRESS_YN", "EXPRESS", "TRAIN_SE", "급행여부") or "일반").strip()
     if not (day_type and direction):
         return [], "missing_required"
@@ -337,13 +362,16 @@ def _parse_congestion_row(
 
 
 def _build_api_congestion(options: SubwayUpdateOptions) -> dict[str, Any]:
-    api_key = _require_env("SEOUL_API_KEY")
+    rows = with_rate_limit_fallback(
+        env_key_ring("SEOUL_API_KEY"),
+        lambda api_key: list(_seoul_rows("subwConfusion", SEOUL_CONGESTION_URL, api_key, options)),
+    )
     by_id, by_name_line, _by_line9_name = _station_lookup()
     checked = skipped = loaded = 0
     skip_reasons = {"station_not_found": 0, "missing_required": 0, "missing_congestion": 0}
     records: list[SubwayCongestion] = []
 
-    for row in _seoul_rows("TbSeoulmetroStConInfo", SEOUL_CONGESTION_URL, api_key, options):
+    for row in rows:
         checked += 1
         parsed, reason = _parse_congestion_row(row, by_id=by_id, by_name_line=by_name_line)
         if reason:
@@ -454,64 +482,147 @@ def _dedupe_congestion(records: list[SubwayCongestion]) -> tuple[list[SubwayCong
     return list(by_key.values()), len(records) - len(by_key)
 
 
+def _congestion_key(record: SubwayCongestion) -> tuple[str, str, str, str, time]:
+    return (
+        str(record.station_id),
+        record.day_type,
+        record.direction,
+        record.express_yn,
+        record.time,
+    )
+
+
+def _line9_file_unchanged(file_meta: dict[str, Any]) -> bool:
+    previous = (
+        load_state()
+        .get("datasets", {})
+        .get("subway", {})
+        .get("congestion_snapshot", {})
+        .get("line9_file", {})
+    )
+    return bool(previous.get("file_hash") == file_meta.get("file_hash"))
+
+
+def _existing_congestion_keys() -> set[tuple[str, str, str, str, time]]:
+    return {
+        (str(station_id), day_type, direction, express_yn, slot)
+        for station_id, day_type, direction, express_yn, slot in SubwayCongestion.objects.values_list(
+            "station_id",
+            "day_type",
+            "direction",
+            "express_yn",
+            "time",
+        )
+    }
+
+
+def _delete_congestion_keys(keys: set[tuple[str, str, str, str, time]]) -> int:
+    deleted = 0
+    items = list(keys)
+    for start in range(0, len(items), 250):
+        query = Q()
+        for station_id, day_type, direction, express_yn, slot in items[start : start + 250]:
+            query |= Q(
+                station_id=station_id,
+                day_type=day_type,
+                direction=direction,
+                express_yn=express_yn,
+                time=slot,
+            )
+        if query:
+            count, _ = SubwayCongestion.objects.filter(query).delete()
+            deleted += count
+    return deleted
+
+
+def _bulk_upsert_congestion(records: list[SubwayCongestion]) -> int:
+    if not records:
+        return 0
+    SubwayCongestion.objects.bulk_create(
+        records,
+        batch_size=5000,
+        update_conflicts=True,
+        update_fields=["congestion"],
+        unique_fields=["station", "day_type", "direction", "express_yn", "time"],
+    )
+    return len(records)
+
+
 def update_congestion(options: SubwayUpdateOptions) -> dict[str, Any]:
     api = _build_api_congestion(options)
     line9 = _build_line9_congestion(options)
     completed = bool(api["completed"] and line9["completed"])
     records, duplicate_rows = _dedupe_congestion(api["records"] + line9["records"])
     replaced = 0
+    deleted_stale = 0
+    upserted = 0
+    line9_skipped_write = False
 
     if completed and not options.dry_run:
+        line9_keys = {_congestion_key(record) for record in line9["records"]}
+        line9_unchanged = bool(not options.force and _line9_file_unchanged(line9["file"]))
         with transaction.atomic():
-            replaced = SubwayCongestion.objects.count()
-            SubwayCongestion.objects.all().delete()
-            SubwayCongestion.objects.bulk_create(
-                records,
-                batch_size=5000,
-            )
+            existing_keys = _existing_congestion_keys()
+            replaced = len(existing_keys)
+            if line9_unchanged and line9_keys.issubset(existing_keys):
+                api_records = [
+                    record for record in records if _congestion_key(record) not in line9_keys
+                ]
+                final_keys = {_congestion_key(record) for record in api_records} | line9_keys
+                deleted_stale = _delete_congestion_keys(existing_keys - final_keys)
+                upserted = _bulk_upsert_congestion(api_records)
+                line9_skipped_write = True
+            else:
+                SubwayCongestion.objects.all().delete()
+                SubwayCongestion.objects.bulk_create(
+                    records,
+                    batch_size=5000,
+                )
+                upserted = len(records)
     elif options.dry_run:
         replaced = SubwayCongestion.objects.count()
 
+    line9["skipped_write"] = line9_skipped_write
     return {
         "status": "success" if completed else "partial",
         "completed": completed,
         "loaded": len(records) if (completed or options.dry_run) else 0,
         "duplicate_rows": duplicate_rows,
         "replaced_existing": replaced,
+        "deleted_stale": deleted_stale,
+        "upserted": upserted,
         "dry_run": options.dry_run,
         "congestion_api": {key: value for key, value in api.items() if key != "records"},
         "line9_file": {key: value for key, value in line9.items() if key != "records"},
     }
 
 
-def _nearest_rows(region_table: str, pk_column: str) -> list[tuple[str, int, str, float]]:
+def _nearest_rows(region_table: str, pk_column: str) -> list[tuple[str, str, float]]:
     sql = f"""
-        SELECT r.{pk_column}, nearest.name, nearest.distance_m
-        FROM {region_table} r
-        CROSS JOIN LATERAL (
-            SELECT s.name, ST_Distance(s.location::geography, r.location::geography) AS distance_m
-            FROM subway_station s
-            WHERE r.location IS NOT NULL
-            ORDER BY s.location <-> r.location
-            LIMIT %s
+        SELECT code, station_name, MIN(distance_m) AS distance_m
+        FROM (
+            SELECT
+                r.{pk_column} AS code,
+                s.name AS station_name,
+                CASE
+                    WHEN ST_Covers(r.boundary, s.location) THEN 0.0
+                    ELSE ST_Distance(r.boundary::geography, s.location::geography)
+                END AS distance_m
+            FROM {region_table} r
+            CROSS JOIN subway_station s
+            WHERE r.boundary IS NOT NULL
+              AND s.location IS NOT NULL
+              AND ST_DWithin(r.boundary::geography, s.location::geography, %s)
         ) nearest
-        ORDER BY r.{pk_column}, nearest.distance_m
+        WHERE distance_m <= %s
+        GROUP BY code, station_name
+        ORDER BY code, distance_m, station_name
     """
     with connection.cursor() as cur:
-        cur.execute(sql, [TOP_K_NEAREST])
+        cur.execute(sql, [NEAREST_SUBWAY_DISTANCE_CAP_M, NEAREST_SUBWAY_DISTANCE_CAP_M])
         raw = cur.fetchall()
 
-    out: list[tuple[str, int, str, float]] = []
-    current_code = None
-    rank = 0
-    for code, station_name, distance_m in raw:
-        if code != current_code:
-            current_code = code
-            rank = 1
-        else:
-            rank += 1
-        out.append((str(code), rank, str(station_name), float(distance_m)))
-    return out
+    return [(str(code), str(station_name), float(distance_m)) for code, station_name, distance_m in raw]
 
 
 def update_nearest(options: SubwayUpdateOptions) -> dict[str, Any]:
@@ -532,11 +643,10 @@ def update_nearest(options: SubwayUpdateOptions) -> dict[str, Any]:
                 [
                     NearestSubwayAdong(
                         adong_id=code,
-                        rank=rank,
                         station_name=station_name[:100],
                         distance_m=distance_m,
                     )
-                    for code, rank, station_name, distance_m in adong_rows
+                    for code, station_name, distance_m in adong_rows
                 ],
                 batch_size=3000,
             )
@@ -544,11 +654,10 @@ def update_nearest(options: SubwayUpdateOptions) -> dict[str, Any]:
                 [
                     NearestSubwayLdong(
                         ldong_id=code,
-                        rank=rank,
                         station_name=station_name[:100],
                         distance_m=distance_m,
                     )
-                    for code, rank, station_name, distance_m in ldong_rows
+                    for code, station_name, distance_m in ldong_rows
                 ],
                 batch_size=3000,
             )
@@ -564,6 +673,7 @@ def update_nearest(options: SubwayUpdateOptions) -> dict[str, Any]:
             "nearest_subway_adong": deleted_adong,
             "nearest_subway_ldong": deleted_ldong,
         },
+        "distance_cap_m": NEAREST_SUBWAY_DISTANCE_CAP_M,
         "dry_run": options.dry_run,
     }
 

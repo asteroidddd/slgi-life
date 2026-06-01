@@ -93,117 +93,6 @@ export const DEFAULT_WEIGHTS: Weights = {
   transit: 34,
 };
 
-/** Response of GET /api/adongs/:slug/detail — full detail page (SPEC 6.3).
- *  Source: docs/handoff/20260502-step6a-backend-detail.md
- */
-export interface AdongDetail {
-  // 1. Hero
-  slug: string;
-  name: string;
-  gu: string;
-  /** Weighted composite 0~100. */
-  score: number;
-  /** Rule-based one-line summary. */
-  summary: string;
-  /** Score difference vs Seoul average (baseline 65 in step 6A dummy). */
-  vs_seoul_avg_pct: number;
-  centroid: { lat: number; lng: number };
-
-  // 2. 부동산 시세
-  real_estate: {
-    monthly_trend: Array<{
-      /** 'YYYY-MM'. */
-      month: string;
-      /** Average monthly rent (만원). null when fewer than 3 deals that month. */
-      villa: number | null;
-      /** 다가구 — 옛 multi 통합값에서 분리. */
-      dagagu: number | null;
-      /** 단독 — 옛 multi 통합값에서 분리. */
-      danok: number | null;
-      officetel: number | null;
-    }>;
-    deposit_band_avg: Array<{
-      /** '0' | '500' | '1000' | '2000' | '3000+'. */
-      band: string;
-      /** 만원. */
-      avg_monthly_rent: number;
-    }>;
-    recent_deals: Array<{
-      /** 'YYYY-MM-DD'. */
-      date: string;
-      /** RentDeal.housing_type 한글 raw — 다세대/연립/연립다세대/다가구/단독/오피스텔. */
-      type: string;
-      area_m2: number;
-      /** 만원. */
-      deposit: number;
-      /** 만원. */
-      monthly_rent: number;
-    }>;
-    /** 자취 시장 KPI — apt 제외, 보증금 5억 이하, 최근 6개월 자취 거래 기준. */
-    studio_kpi: {
-      /** 평균 환산월세 (만원, 정수). 거래 0건이면 null. */
-      avg_converted_rent: number | null;
-      /** 최저 보증금 (만원). null = 거래 없음. */
-      min_deposit: number | null;
-      /** 평균 면적 (m², 1 decimal). null = 거래 없음. */
-      avg_area_m2: number | null;
-      /** 최근 6개월 자취 거래 건수. */
-      recent_count: number;
-    };
-    /** 유형별 평균 환산월세 (자취 4종, villa/dagagu/danok/officetel 순). */
-    type_avg: Array<{
-      deal_type: 'villa' | 'dagagu' | 'danok' | 'officetel';
-      /** 한글 라벨 — '연립다세대'·'다가구'·'단독'·'오피스텔'. */
-      label: string;
-      /** 평균 환산월세 (만원). 거래 3건 미만이면 null (회색 처리). */
-      avg_converted_rent: number | null;
-      /** 해당 유형 거래 건수 (최근 6개월, 자취 필터). */
-      count: number;
-    }>;
-    /** 면적-환산월세 산점도 — 최근 6개월 자취 거래 최대 200건. */
-    scatter: Array<{
-      deal_type: 'villa' | 'dagagu' | 'danok' | 'officetel';
-      area_m2: number;
-      converted_rent: number;
-    }>;
-  };
-
-  // 3. 편의시설 8개 카테고리
-  amenities: Array<{
-    /** '편의점' | '카페' | '음식점' | '마트' | '병원·약국' | '스터디카페' | '세탁소' | '올리브영'. */
-    category: string;
-    count: number;
-    density_per_km2: number;
-    /** 카테고리별 실 카운트 기반 TOP X% (1=최상위, 100=최하위). 산출 불가 시 null. */
-    percentile: number | null;
-    level: AmenityLevel;
-  }>;
-
-  // 4. 교통
-  transit: {
-    nearest_stations: Array<{
-      rank: number;
-      name: string;
-      line: string;
-      walking_min: number;
-      walking_distance_m: number;
-    }>;
-    bus: {
-      stop_count: number;
-      route_count: number;
-    };
-  };
-
-  // 5. 비슷한 동네
-  similar_dongs: Array<{
-    slug: string;
-    name: string;
-    gu: string;
-    /** 0~100 with 1 decimal. */
-    similarity_pct: number;
-  }>;
-}
-
 // -------- Dashboard Phase 2 — Population + Gu Metrics --------------------
 
 /** Single time-series row from GET /api/adongs/:slug/population. */
@@ -371,7 +260,7 @@ export interface AdongParksResponse {
 // -------- Explore (Phase 4.8 — 자취 시세 BI 대시보드) --------------------
 // GET /api/adongs/:slug/explore?<filters>
 
-export type ExploreDealType = 'yeonlip' | 'dasedae' | 'yeonlip_dasedae' | 'dagagu' | 'danok' | 'officetel' | 'apt';
+export type ExploreDealType = 'yeonlip' | 'dasedae' | 'yeonlip_dasedae' | 'dagagu' | 'danok' | 'danok_dagagu' | 'officetel' | 'apt';
 
 export type ExplorePeriod = '3m' | '6m' | '12m' | '24m' | 'all';
 
@@ -603,114 +492,10 @@ export interface MatchDetailResponse {
   period_total: number;
 }
 
-// -------- Preference learning (SPEC 6.5, 11.4) ---------------------------
-// Source: docs/handoff/20260502-step7a-backend-preference.md
-
-/** A single comparison card shown in the preference learning modal.
- *  Backend computes rent_avg / transit_min / amenity_label deterministically.
- */
-export interface PairCard {
-  slug: string;
-  name: string;
-  gu: string;
-  /** Average monthly rent (만원, score 기반 derived dummy). */
-  rent_avg: number;
-  /** 평균 환산월세 (만원, 정수). 월세 + 보증금 × 0.005, RentDeal 실거래 기반.
-   *  null 또는 undefined → 데이터 부족(거래 적재 안 된 동) 또는 백엔드가 아직
-   *  필드를 노출하지 않은 경우. UI는 두 케이스 모두 동일하게 폴백 표기 처리. */
-  rent_converted?: number | null;
-  /** Walking minutes to nearest subway station. */
-  transit_min: number;
-  /** Korean human-readable amenity coverage. */
-  amenity_label: '충분' | '보통' | '부족';
-  /** Composite score @ 33/33/34, two decimals. */
-  score: number;
-}
-
-/** A pair of adongs the user is asked to choose between. */
-export interface PreferencePair {
-  left: PairCard;
-  right: PairCard;
-}
-
-/** Response of GET /api/preference/pairs?count=N. */
-export interface PreferencePairsResponse {
-  pairs: PreferencePair[];
-}
-
-/** Body element for POST /api/preference/submit. */
-export interface SubmitComparison {
-  /** slug of the chosen (won) adong. */
-  won: string;
-  /** slug of the rejected (lost) adong. */
-  lost: string;
-}
-
-/** Response of POST /api/preference/submit.
- *  Integers in 0~100 that sum to exactly 100 — drop straight into Weights.
- */
-export interface PreferenceWeightsResponse {
-  w_rent: number;
-  w_amenity: number;
-  w_transit: number;
-}
-
-// -------- Compare (SPEC 6.4) ---------------------------------------------
-// Source: docs/handoff/20260502-step8a-backend-compare.md
-
-/** Korean-readable amenity coverage label used in the compare table. */
-export type CompareAmenityLabel = '충분' | '보통' | '부족';
-
-/** Korean-readable safety label used in the compare table. */
-export type CompareSafetyLabel = '높음' | '보통' | '낮음';
-
-/** A single compare-table column (one adong) — GET /api/compare row.
- *  Backend returns rows in the input slug order (preserved for column order).
- */
-export interface CompareItem {
-  slug: string;
-  name: string;
-  gu: string;
-  /** Weighted composite 0~100 (two decimals). */
-  score: number;
-  /** Raw average monthly rent in 만원 (정수, dummy: 120 - score_rent). */
-  rent_avg: number;
-  /** 환산월세 평균 in 만원 (정수). 월세 + 보증금 × 0.005, RentDeal 실거래 기반. null = 데이터 부족. */
-  rent_converted_avg: number | null;
-  /** Walking minutes to nearest subway station (정수). */
-  transit_min: number;
-  amenity_label: CompareAmenityLabel;
-  safety_label: CompareSafetyLabel;
-}
-
-/** Echoed weights — the values the backend actually applied. */
-export interface CompareWeights {
-  w_rent: number;
-  w_amenity: number;
-  w_transit: number;
-}
-
-/** GET /api/compare?slugs=A,B,C[&w_rent=&w_amenity=&w_transit=] response. */
-export interface CompareResponse {
-  weights: CompareWeights;
-  /** Same order as the input slugs (max 3). */
-  adongs: CompareItem[];
-}
-
 // -------- Auth + Users (SPEC 6.6, 9 — step 9) -----------------------------
 // Source: docs/handoff/20260502-step9a-backend-users.md
 //   세션 쿠키 기반 (axios withCredentials: true).
 //   카카오/소셜 X — 표준 username/password.
-
-/** Stored preference weights as integer percents (sum = 100, ±1).
- *  Same shape as `Weights` but with backend field names.
- *  Use `mePreferenceToWeights` / `weightsToMePreference` to convert.
- */
-export interface MePreference {
-  w_rent: number;
-  w_amenity: number;
-  w_transit: number;
-}
 
 /** Bare user — used in many response shapes. */
 export interface User {
@@ -729,6 +514,8 @@ export interface MeResponse extends User {
   email: string;
   auth_provider: 'kakao' | 'password';
   address: string;
+  school_lat: number | null;
+  school_lng: number | null;
   home_lat: number | null;
   home_lng: number | null;
   address_geocode_status: string;
@@ -795,7 +582,7 @@ export interface ApiErrorDetail {
 /** Backend whitelist for the `deal_type` query parameter.
  *  `all` is a sentinel meaning "no filter" — never appears in `RentDealPin.deal_type`.
  */
-export type TransactionDealType = 'apt' | 'officetel' | 'yeonlip' | 'dasedae' | 'yeonlip_dasedae' | 'villa' | 'dagagu' | 'danok';
+export type TransactionDealType = 'apt' | 'officetel' | 'yeonlip' | 'dasedae' | 'yeonlip_dasedae' | 'villa' | 'dagagu' | 'danok' | 'danok_dagagu';
 
 /** Same as `TransactionDealType` but with the `all` sentinel for filter UI. */
 export type TransactionDealTypeFilter = TransactionDealType | 'all';
@@ -827,7 +614,7 @@ export interface RentDealPin {
   gu: string;
 }
 
-export type RentDealCacheTypeCode = 'A' | 'O' | 'Y' | 'D' | 'V' | 'M' | 'H';
+export type RentDealCacheTypeCode = 'A' | 'O' | 'Y' | 'D' | 'V' | 'M' | 'H' | 'S';
 
 export type RentDealCacheRow = [
   id: string,
@@ -955,91 +742,6 @@ export interface TransactionFilters {
   to: string | null;
 }
 
-// -------- Kernel score (Phase 2 — POST /api/score/point) -----------------
-// Source: docs/handoff/20260503-phase2a-kernel-score.md
-//   POST body: { lat, lng, weights:{rent,amenity,transit}, school?:string }
-//   - Backend normalizes weights (sum need not be 1.0).
-//   - school is optional; backend's SCHOOL_COORDS dict has 16 keys
-//     (캠퍼스 정문 좌표). Unknown school → commute_min: null (not an error).
-
-/** Weights body for kernel score. Float values (0~1 range typical, but any
- *  non-negative value works — backend normalizes by sum). */
-export interface KernelScoreWeights {
-  rent: number;
-  amenity: number;
-  transit: number;
-}
-
-/** Request body for POST /api/score/point. */
-export interface KernelScoreRequest {
-  lat: number;
-  lng: number;
-  weights: KernelScoreWeights;
-  /** Optional school name (e.g. "동국대"). Unknown name → commute_min null. */
-  school?: string;
-}
-
-/** Categories returned in `nearest` rows. Subway is special-cased
- *  (carries `line` field). Others mirror Amenity.category. */
-export type NearestFacilityCategory =
-  | 'subway'
-  | 'convenience'
-  | 'cafe'
-  | 'hospital'
-  | 'park'
-  | 'mart'
-  | 'pharmacy'
-  | 'study_cafe'
-  | string;
-
-/** Single nearest facility row in the kernel score response. */
-export interface NearestFacility {
-  category: NearestFacilityCategory;
-  name: string;
-  /** Subway only. */
-  line?: string;
-  /** Walking minutes (rounded). */
-  walk_min: number;
-  /** Distance in meters (integer). */
-  distance_m: number;
-}
-
-/** 1km-radius facility counts. Keys are amenity categories. */
-export interface RadiusCounts {
-  convenience: number;
-  cafe: number;
-  hospital: number;
-  park: number;
-  mart: number;
-  pharmacy: number;
-  /** Forward-compat: backend may add categories. */
-  [k: string]: number;
-}
-
-/** Debug-only metadata. Phase 2b frontend may ignore. */
-export interface KernelScoreMeta {
-  dong_slug: string | null;
-  dong_name: string | null;
-  bus_count_1km: number;
-}
-
-/** Response of POST /api/score/point. */
-export interface KernelScoreResponse {
-  /** 0~100, two decimals. */
-  score: number;
-  breakdown: {
-    rent: number;
-    amenity: number;
-    transit: number;
-  };
-  nearest: NearestFacility[];
-  radius_counts: RadiusCounts;
-  /** Walking + train minutes to school (haversine + 22 km/h). null when
-   *  school omitted or unknown. */
-  commute_min: number | null;
-  _meta?: KernelScoreMeta;
-}
-
 export interface SchoolOption {
   id: string;
   name: string;
@@ -1049,25 +751,6 @@ export interface SchoolOption {
 export interface SchoolOptionsResponse {
   schools: SchoolOption[];
 }
-
-/** Fallback only. Runtime school selects are loaded from the Univ DB. */
-export const KERNEL_SCHOOL_OPTIONS = [
-  '동국대',
-  '한양대',
-  '고려대',
-  '연세대',
-  '서강대',
-  '이화여대',
-  '홍익대',
-  '서울대',
-  '중앙대',
-  '건국대',
-  '성균관대',
-  '경희대',
-  '한국외대',
-  '서울시립대',
-] as const;
-export type KernelSchool = (typeof KERNEL_SCHOOL_OPTIONS)[number];
 
 // -------- AI Agent (POST /api/agent/query) --------------------------------
 
@@ -1197,10 +880,23 @@ export interface MedicalFacilityItem {
 export interface MedicalFacilitiesResponse {
   categories: string[];
   specialties: string[];
+  specialty_groups?: string[];
   open_now: boolean;
   bbox: [number, number, number, number] | null;
   radius: number | null;
   limit: number;
   count: number;
   items: MedicalFacilityItem[];
+}
+
+export interface MedicalSpecialtyGroupItem {
+  name: string;
+  rows: number | null;
+  facilities: number | null;
+  description?: string;
+}
+
+export interface MedicalSpecialtyGroupsResponse {
+  count: number;
+  items: MedicalSpecialtyGroupItem[];
 }

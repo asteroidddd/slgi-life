@@ -165,12 +165,15 @@ def _find_region(point: Point) -> tuple[Ldong | None, Adong | None]:
 
 
 def update_bus_stops(options: BusUpdateOptions) -> dict[str, Any]:
-    api_key = _require_env("SEOUL_API_KEY")
+    seoul_rows = with_rate_limit_fallback(
+        env_key_ring("SEOUL_API_KEY"),
+        lambda api_key: list(_seoul_bus_stop_rows(api_key, options)),
+    )
     checked = created = updated = skipped = 0
     skip_reasons = {"bad_coord": 0, "missing_required": 0}
     records: list[dict[str, Any]] = []
 
-    for row in _seoul_bus_stop_rows(api_key, options):
+    for row in seoul_rows:
         checked += 1
         stop_id = _normalize_id(_get(row, "NODE_ID", "STTN_ID", "BUSSTOP_ID"))
         name = str(_get(row, "STOPS_NM", "STTN_NM", "BUSSTOP_NM") or "").strip()
@@ -250,8 +253,8 @@ def _missing_congestion_dates(start: date, end: date, completed_dates: set[str])
 
 def _congestion_window(options: BusUpdateOptions) -> tuple[date | None, date | None, dict[str, Any]]:
     today = date.today()
-    retention_start = today - timedelta(days=BUS_CONGESTION_RETENTION_DAYS)
     default_end = today - timedelta(days=BUS_CONGESTION_LAG_DAYS)
+    retention_start = default_end - timedelta(days=BUS_CONGESTION_RETENTION_DAYS - 1)
 
     previous = dataset_state("bus").get("bus_congestion", {})
     last_success_date = _parse_date(previous.get("last_success_date")) if previous else None
@@ -320,6 +323,7 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
     skip_reasons = {"bad_row": 0, "missing_bus_stop": 0}
     processed_dates: list[str] = []
     completed_dates_for_state: list[str] = []
+    empty_dates: list[str] = []
     completed = False
     deleted_old = 0
     stop_reason = None
@@ -399,9 +403,12 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
                     break
                 if not day_completed:
                     break
-            if not day_completed or checked == day_started_checked:
+            if not day_completed:
                 completed = False
                 break
+            if checked == day_started_checked:
+                empty_dates.append(day.isoformat())
+                continue
 
             if not options.dry_run:
                 with transaction.atomic():
@@ -419,10 +426,12 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
             processed_dates.append(day.isoformat())
             completed_dates_for_state.append(day.isoformat())
         else:
-            completed = len(completed_dates_for_state) == len(target_dates)
+            completed = len(completed_dates_for_state) + len(empty_dates) == len(target_dates)
 
         if not options.dry_run and completed:
-            cutoff = date.today() - timedelta(days=BUS_CONGESTION_RETENTION_DAYS)
+            cutoff = (date.today() - timedelta(days=BUS_CONGESTION_LAG_DAYS)) - timedelta(
+                days=BUS_CONGESTION_RETENTION_DAYS - 1
+            )
             deleted_old, _ = BusCongestion.objects.filter(date__lt=cutoff).delete()
     except RateLimitedError as exc:
         return {
@@ -435,6 +444,7 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
             "deleted_old": 0,
             "processed_dates": processed_dates,
             "completed_dates": completed_dates_for_state,
+            "empty_dates": empty_dates,
             "dry_run": options.dry_run,
             "window": window_meta | {"start": start.isoformat(), "end": end.isoformat()},
             "skip_reasons": skip_reasons,
@@ -453,6 +463,7 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
         "deleted_old": deleted_old if not options.dry_run else 0,
         "processed_dates": processed_dates,
         "completed_dates": completed_dates_for_state,
+        "empty_dates": empty_dates,
         "dry_run": options.dry_run,
         "window": window_meta | {"start": start.isoformat(), "end": end.isoformat()},
         "skip_reasons": skip_reasons,
@@ -502,8 +513,8 @@ def update(options: BusUpdateOptions) -> dict[str, Any]:
                     "lag_days": BUS_CONGESTION_LAG_DAYS,
                 }
             )
-            if window.get("end") and result["bus_congestion"].get("completed"):
-                previous_congestion["last_success_date"] = window["end"]
+            if result["bus_congestion"].get("completed") and current_dates:
+                previous_congestion["last_success_date"] = max(current_dates)
                 previous_congestion["last_completed_at"] = bus_state.get("last_success_at")
             save_state(state)
     return result

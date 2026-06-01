@@ -224,6 +224,38 @@ export function HomeLocationLayer({
   return null;
 }
 
+export function SavedLocationFlyToLayer({
+  requestId,
+  lat,
+  lng,
+  missingMessage,
+  onError,
+  onLocated,
+}: {
+  requestId: number;
+  lat?: number | null;
+  lng?: number | null;
+  missingMessage: string;
+  onError: (message: string) => void;
+  onLocated?: (lat: number, lng: number) => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (requestId === 0) return;
+    if (typeof lat !== 'number' || typeof lng !== 'number' || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      onError(missingMessage);
+      return;
+    }
+    map.flyTo([lat, lng], Math.max(map.getZoom(), 15), { duration: 0.6 });
+    onLocated?.(lat, lng);
+  // Intentionally depend only on requestId: parent passes inline callbacks.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, requestId]);
+
+  return null;
+}
+
 export function MapStateProbe({ onMapStateChange }: { onMapStateChange: (state: MapState) => void }) {
   const map = useMap();
   useEffect(() => {

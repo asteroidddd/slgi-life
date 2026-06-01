@@ -148,6 +148,8 @@ export default function DashboardMiniMap({
     [regionLevel, regions.length, selectedSlug],
   );
 
+  const maxZoom = getVWorldMaxNativeZoom(theme);
+
   const styleFn = useCallback(
     (feature?: Feature<Geometry, AdongFeatureProps>) => {
       const code = featureCode(feature as DongFeature);
@@ -224,6 +226,7 @@ export default function DashboardMiniMap({
       <MapContainer
         center={center}
         zoom={MINI_ZOOM}
+        maxZoom={maxZoom}
         zoomSnap={0}
         zoomDelta={0.25}
         zoomControl={false}
@@ -235,9 +238,10 @@ export default function DashboardMiniMap({
         <TileLayer
           url={getVWorldTileUrl(theme)}
           attribution={VWORLD_ATTRIBUTION}
-          maxNativeZoom={getVWorldMaxNativeZoom(theme)}
+          maxZoom={maxZoom}
+          maxNativeZoom={maxZoom}
         />
-        <MiniMapViewport center={center} zoom={MINI_ZOOM} bounds={selectedBounds} />
+        <MiniMapViewport center={center} zoom={MINI_ZOOM} bounds={selectedBounds} maxZoom={maxZoom} />
         {selectedMask ? <GeoJSON key={selectedMaskKey} data={selectedMask} style={REGION_MASK_STYLE} interactive={false} /> : null}
         <GeoJSON
           key={layerKey}
@@ -270,7 +274,7 @@ export default function DashboardMiniMap({
   );
 }
 
-function MiniMapViewport({ center, zoom, bounds }: { center: [number, number]; zoom: number; bounds: LatLngBounds | null }) {
+function MiniMapViewport({ center, zoom, bounds, maxZoom }: { center: [number, number]; zoom: number; bounds: LatLngBounds | null; maxZoom: number }) {
   const map = useMap();
   useEffect(() => {
     if (bounds) {
@@ -281,14 +285,14 @@ function MiniMapViewport({ center, zoom, bounds }: { center: [number, number]; z
       const south = crs.latLngToPoint(L.latLng(bounds.getSouth(), boundsCenter.lng), 0);
       const yDistance = Math.abs(south.y - north.y);
       if (size.y > 0 && yDistance > 0) {
-        const verticalZoom = Math.min(20, Math.log2(size.y / yDistance));
+        const verticalZoom = Math.min(maxZoom, Math.log2(size.y / yDistance));
         map.setView(boundsCenter, verticalZoom, { animate: true });
       } else {
-        map.fitBounds(bounds, { animate: true, padding: [0, 0], maxZoom: 20 });
+        map.fitBounds(bounds, { animate: true, padding: [0, 0], maxZoom });
       }
       return;
     }
-    map.setView(center, zoom, { animate: true });
-  }, [bounds, center, map, zoom]);
+    map.setView(center, Math.min(zoom, maxZoom), { animate: true });
+  }, [bounds, center, map, maxZoom, zoom]);
   return null;
 }

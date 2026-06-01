@@ -10,16 +10,18 @@ from dataclasses import dataclass
 from datetime import datetime, time
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from django.contrib.gis.geos import Point
 from django.db import transaction
 
+from apps.public_data.api_keys import env_key_ring, with_rate_limit_fallback
 from apps.public_data.exceptions import RateLimitedError, is_rate_limited_text
 from apps.public_data.library.models import Library, LibraryHours
 from apps.public_data.regions.models import Adong, Ldong
 from apps.public_data.state import load_state, record_dataset_result, save_state
+from apps.common.geocoding import geocode_address as _shared_geocode_address
+from apps.common.geocoding import has_geocoding_key
 
 
 SEOUL_OPEN_DATA_BASE_URL = "http://openapi.seoul.go.kr:8088"
@@ -27,7 +29,6 @@ SEOUL_LIBRARY_SERVICES = {
     "SeoulPublicLibraryInfo": "공공도서관",
     "SeoulSmallLibraryInfo": "작은도서관",
 }
-VWORLD_SEARCH_URL = "https://api.vworld.kr/req/search"
 PAGE_SIZE = 1000
 
 DAY_TYPES = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
@@ -65,11 +66,6 @@ def _require_env(name: str) -> str:
     if not value:
         raise RuntimeError(f"{name} is required")
     return value
-
-
-def _optional_env(name: str) -> str | None:
-    value = os.environ.get(name, "").strip()
-    return value or None
 
 
 def _get(row: dict[str, Any], *keys: str) -> Any:
@@ -153,40 +149,15 @@ def _address_from_row(row: dict[str, Any]) -> str:
 
 
 def _geocode_address(address: str, options: LibraryUpdateOptions) -> Point | None:
-    key = _optional_env("V_WORLD_API_KEY")
-    if not key or not address:
+    if not address:
         return None
-    for category in ("road", "parcel"):
-        query = urlencode(
-            {
-                "service": "search",
-                "request": "search",
-                "version": "2.0",
-                "query": address,
-                "type": "address",
-                "category": category,
-                "format": "json",
-                "crs": "EPSG:4326",
-                "size": "1",
-                "page": "1",
-                "key": key,
-            }
-        )
-        payload = _request_json(
-            f"{VWORLD_SEARCH_URL}?{query}",
-            timeout=options.request_timeout_seconds,
-        )
-        items = payload.get("response", {}).get("result", {}).get("items", [])
-        if not items:
-            continue
-        point = items[0].get("point") or {}
-        try:
-            lon = float(point.get("x"))
-            lat = float(point.get("y"))
-        except (TypeError, ValueError):
-            continue
-        return Point(lon, lat, srid=4326)
-    return None
+    result = _shared_geocode_address(
+        address,
+        request_timeout=options.request_timeout_seconds,
+        request_interval=options.request_interval_seconds,
+        user_agent="capston-public-data-updater/0.1",
+    )
+    return result.point if result.status == "success" else None
 
 
 def _fix_time_text(value: str) -> str:
@@ -408,7 +379,7 @@ def _row_to_record(
             point = geocoded
             ldong, adong = _find_region(point)
             skip_reasons["geocode_used"] += 1
-        elif address and not _optional_env("V_WORLD_API_KEY"):
+        elif address and not has_geocoding_key():
             skip_reasons["geocode_missing_key"] += 1
         elif address:
             skip_reasons["geocode_failed"] += 1
@@ -454,7 +425,7 @@ def _row_to_record(
 
 
 def update_libraries(options: LibraryUpdateOptions) -> dict[str, Any]:
-    api_key = _require_env("SEOUL_API_KEY")
+    seoul_keys = env_key_ring("SEOUL_API_KEY")
     checked = loaded = created = updated = skipped = hour_rows = 0
     skip_reasons = {
         "bad_coord": 0,
@@ -472,7 +443,11 @@ def update_libraries(options: LibraryUpdateOptions) -> dict[str, Any]:
     completed = False
 
     for service in SEOUL_LIBRARY_SERVICES:
-        for row in _seoul_rows(api_key, service, options):
+        service_rows = with_rate_limit_fallback(
+            seoul_keys,
+            lambda api_key, service=service: list(_seoul_rows(api_key, service, options)),
+        )
+        for row in service_rows:
             checked += 1
             service_stats[service]["checked"] += 1
             source_id = str(_get(row, "LBRRY_SEQ_NO", "LBRRY_ID") or "").strip()

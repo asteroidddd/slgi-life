@@ -36,6 +36,10 @@ def _file_meta(path: Path) -> dict[str, Any]:
     }
 
 
+def _univ_tables_populated() -> bool:
+    return Univ.objects.exists() and UnivLdong.objects.exists() and UnivAdong.objects.exists()
+
+
 def _read_geojson(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8-sig") as f:
         return json.load(f)
@@ -116,16 +120,12 @@ def _build_records(features: list[dict[str, Any]], options: UnivUpdateOptions) -
 
 def update_univ(options: UnivUpdateOptions) -> dict[str, Any]:
     meta = _file_meta(DATA_PATH)
-    features = _read_geojson(DATA_PATH).get("features", [])
-    meta["feature_count"] = len(features)
-    if len(features) < MIN_FEATURE_COUNT:
-        raise RuntimeError(f"refusing university update from incomplete file: {len(features)} features")
-
     previous_snapshot = dataset_state("univ").get("snapshot", {})
     if (
         not options.force
         and not options.dry_run
         and previous_snapshot.get("file_hash") == meta["file_hash"]
+        and _univ_tables_populated()
     ):
         return {
             "status": "success",
@@ -138,6 +138,11 @@ def update_univ(options: UnivUpdateOptions) -> dict[str, Any]:
             "relations": {"univ_ldong": 0, "univ_adong": 0},
             "deleted_missing": 0,
         }
+
+    features = _read_geojson(DATA_PATH).get("features", [])
+    meta["feature_count"] = len(features)
+    if len(features) < MIN_FEATURE_COUNT:
+        raise RuntimeError(f"refusing university update from incomplete file: {len(features)} features")
 
     built = _build_records(features, options)
     completed = bool(built["completed"] and built["records"])
@@ -225,7 +230,11 @@ def update(options: UnivUpdateOptions) -> dict[str, Any]:
 
     if not options.dry_run:
         record_dataset_result("univ", result)
-        if result["univ"] and result["univ"].get("completed"):
+        if (
+            result["univ"]
+            and result["univ"].get("completed")
+            and not result["univ"].get("skipped_write")
+        ):
             state = load_state()
             univ_state = state.setdefault("datasets", {}).setdefault("univ", {})
             univ_state["snapshot"] = result["univ"]["files"] | {

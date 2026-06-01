@@ -5,9 +5,11 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import socket
 import time as sleep_time
 from dataclasses import dataclass
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -22,20 +24,25 @@ from apps.public_data.api_keys import env_key_ring, with_rate_limit_fallback
 from apps.public_data.exceptions import RateLimitedError, is_rate_limited_code, is_rate_limited_text
 from apps.public_data.regions.models import Adong, Ldong
 from apps.public_data.state import dataset_state, load_state, record_dataset_result, save_state
-from apps.public_data.store.models import BusinessCategory, KsciCategory, Store
+from apps.public_data.store.models import BusinessCategory, DaisoStore, KsciCategory, Store
+from apps.common.geocoding import geocode_address
 
 
 DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 BUSINESS_CATEGORY_PATH = DATA_DIR / "store_business_category.xlsx"
 KSCI_CATEGORY_PATH = DATA_DIR / "KSIC_10th.xlsx"
 STORE_API_URL = "https://apis.data.go.kr/B553077/api/open/sdsc2/storeListInDong"
+DAISO_BASE_URL = "https://www.daiso.co.kr"
+DAISO_SEOUL = "서울"
 PAGE_SIZE = 1000
-MEDICAL_STORE_CATEGORY_CODES = {
-    "G21501",
-    "Q10101", "Q10102", "Q10103", "Q10104",
-    "Q10201", "Q10202", "Q10203", "Q10204", "Q10205", "Q10206",
-    "Q10207", "Q10208", "Q10209", "Q10210", "Q10211",
-}
+MEDICAL_STORE_CATEGORY_CODES = {"G21501"}
+MEDICAL_STORE_MAIN_CATEGORY_CODES = {"Q1"}
+DAISO_REQUEST_DELAY_SECONDS = 0.15
+DAISO_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/125.0 Safari/537.36"
+)
 
 
 @dataclass(frozen=True)
@@ -43,8 +50,90 @@ class StoresUpdateOptions:
     dry_run: bool = True
     force: bool = False
     limit: int | None = None
+    delete_missing: bool = True
     request_interval_seconds: float = 0.2
     request_timeout_seconds: float = 40.0
+
+
+@dataclass(frozen=True)
+class DaisoCrawlStore:
+    name: str
+    address: str
+    latitude: str = ""
+    longitude: str = ""
+
+
+class DaisoStoreHTMLParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.stores: list[DaisoCrawlStore] = []
+        self._in_store = False
+        self._store_depth = 0
+        self._current_attrs: dict[str, str] = {}
+        self._field: str | None = None
+        self._name_parts: list[str] = []
+        self._address_parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attrs_dict = {key: value or "" for key, value in attrs}
+        class_names = set(attrs_dict.get("class", "").split())
+
+        if tag == "div" and "bx-store" in class_names:
+            self._in_store = True
+            self._store_depth = 1
+            self._current_attrs = attrs_dict
+            self._field = None
+            self._name_parts = []
+            self._address_parts = []
+            return
+
+        if not self._in_store:
+            return
+
+        if tag == "div":
+            self._store_depth += 1
+        if tag == "h4" and "place" in class_names:
+            self._field = "name"
+        elif tag == "p" and "addr" in class_names:
+            self._field = "address"
+
+    def handle_endtag(self, tag: str) -> None:
+        if not self._in_store:
+            return
+        if tag in {"h4", "p"}:
+            self._field = None
+        if tag == "div":
+            self._store_depth -= 1
+            if self._store_depth == 0:
+                self._finish_store()
+
+    def handle_data(self, data: str) -> None:
+        if not self._in_store or self._field is None:
+            return
+        cleaned = _normalize_text(data)
+        if not cleaned:
+            return
+        if self._field == "name":
+            self._name_parts.append(cleaned)
+        elif self._field == "address":
+            self._address_parts.append(cleaned)
+
+    def _finish_store(self) -> None:
+        name = _normalize_text(" ".join(self._name_parts))
+        address = _normalize_text(" ".join(self._address_parts))
+        if name and address:
+            self.stores.append(
+                DaisoCrawlStore(
+                    name=name,
+                    address=address,
+                    latitude=self._current_attrs.get("data-lat", ""),
+                    longitude=self._current_attrs.get("data-lng", ""),
+                )
+            )
+        self._in_store = False
+        self._store_depth = 0
+        self._current_attrs = {}
+        self._field = None
 
 
 def _require_env(name: str) -> str:
@@ -137,14 +226,34 @@ def _ksci_rows() -> list[dict[str, str]]:
     return rows
 
 
+def _catalog_tables_populated() -> bool:
+    return BusinessCategory.objects.exists() and KsciCategory.objects.exists()
+
+
 def _load_catalog(options: StoresUpdateOptions, snapshot: dict[str, Any]) -> dict[str, Any]:
+    previous_hash = dataset_state("stores").get("catalog_snapshot", {}).get("file_hash")
+    skipped_write = bool(
+        previous_hash == snapshot["file_hash"]
+        and not options.force
+        and not options.dry_run
+        and _catalog_tables_populated()
+    )
+    if skipped_write:
+        return {
+            "status": "success",
+            "completed": True,
+            "checked": {"business_category": 0, "ksci_category": 0},
+            "loaded": {"business_category": 0, "ksci_category": 0},
+            "skipped_write": True,
+            "reason": "file_hash_unchanged",
+            "files": snapshot,
+        }
+
     business_rows = _business_rows()
     ksci_rows = _ksci_rows()
-    previous_hash = dataset_state("stores").get("catalog_snapshot", {}).get("file_hash")
-    skipped_write = bool(previous_hash == snapshot["file_hash"] and not options.force and not options.dry_run)
     loaded_business = loaded_ksci = 0
 
-    if not skipped_write and not options.dry_run:
+    if not options.dry_run:
         with transaction.atomic():
             BusinessCategory.objects.bulk_create(
                 [
@@ -201,7 +310,7 @@ def _load_catalog(options: StoresUpdateOptions, snapshot: dict[str, Any]) -> dic
         "completed": True,
         "checked": {"business_category": len(business_rows), "ksci_category": len(ksci_rows)},
         "loaded": {"business_category": loaded_business, "ksci_category": loaded_ksci},
-        "skipped_write": skipped_write,
+        "skipped_write": False,
         "files": snapshot,
     }
 
@@ -243,22 +352,31 @@ def _response_items(payload: dict[str, Any]) -> tuple[int, list[dict[str, Any]]]
     return total, items if isinstance(items, list) else []
 
 
+def _fetch_gu_page(
+    api_key: str,
+    gu_code: str,
+    page: int,
+    options: StoresUpdateOptions,
+) -> tuple[int, list[dict[str, Any]]]:
+    payload = _request_json(
+        {
+            "serviceKey": api_key,
+            "divId": "signguCd",
+            "key": gu_code,
+            "pageNo": str(page),
+            "numOfRows": str(PAGE_SIZE),
+            "type": "json",
+        },
+        options,
+    )
+    return _response_items(payload)
+
+
 def _fetch_gu_rows(api_key: str, gu_code: str, options: StoresUpdateOptions) -> list[dict[str, Any]]:
     page = 1
     collected: list[dict[str, Any]] = []
     while True:
-        payload = _request_json(
-            {
-                "serviceKey": api_key,
-                "divId": "signguCd",
-                "key": gu_code,
-                "pageNo": str(page),
-                "numOfRows": str(PAGE_SIZE),
-                "type": "json",
-            },
-            options,
-        )
-        total, rows = _response_items(payload)
+        total, rows = _fetch_gu_page(api_key, gu_code, page, options)
         collected.extend(rows)
         if not rows or not total or page * PAGE_SIZE >= total:
             return collected
@@ -267,6 +385,20 @@ def _fetch_gu_rows(api_key: str, gu_code: str, options: StoresUpdateOptions) -> 
 
 def _fetch_gu_rows_with_fallback(api_keys: tuple[str, ...], gu_code: str, options: StoresUpdateOptions) -> list[dict[str, Any]]:
     return with_rate_limit_fallback(api_keys, lambda api_key: _fetch_gu_rows(api_key, gu_code, options))
+
+
+def _iter_gu_rows_with_fallback(api_keys: tuple[str, ...], gu_code: str, options: StoresUpdateOptions):
+    page = 1
+    while True:
+        total, rows = with_rate_limit_fallback(
+            api_keys,
+            lambda api_key: _fetch_gu_page(api_key, gu_code, page, options),
+        )
+        for row in rows:
+            yield row
+        if not rows or not total or page * PAGE_SIZE >= total:
+            return
+        page += 1
 
 
 def _normalize_adong_code(value: Any) -> str | None:
@@ -278,13 +410,26 @@ def _normalize_adong_code(value: Any) -> str | None:
     return text
 
 
-def _point(row: dict[str, Any]) -> Point | None:
-    lon = row.get("lon") or row.get("lonVal") or row.get("x")
-    lat = row.get("lat") or row.get("latVal") or row.get("y")
+def _point_from_values(lon: Any, lat: Any) -> Point | None:
     try:
         return Point(float(lon), float(lat), srid=4326)
     except (TypeError, ValueError):
         return None
+
+
+def _point(row: dict[str, Any]) -> Point | None:
+    return _point_from_values(
+        row.get("lon") or row.get("lonVal") or row.get("x"),
+        row.get("lat") or row.get("latVal") or row.get("y"),
+    )
+
+
+def _is_medical_store_category(category_id: str, category_main_category_code: str) -> bool:
+    return (
+        category_id in MEDICAL_STORE_CATEGORY_CODES
+        or category_id.startswith("Q1")
+        or category_main_category_code in MEDICAL_STORE_MAIN_CATEGORY_CODES
+    )
 
 
 def _find_region(point: Point, ldong_id: str | None, adong_id: str | None) -> tuple[Ldong | None, Adong | None]:
@@ -310,7 +455,8 @@ def _build_store_record(
     if not point:
         return None, store_id, "missing_location"
     category_id = str(row.get("indsSclsCd") or "").strip()
-    if category_id in MEDICAL_STORE_CATEGORY_CODES:
+    category_main_category_code = str(row.get("indsLclsCd") or "").strip()
+    if _is_medical_store_category(category_id, category_main_category_code):
         return None, store_id, "medical_category"
     if category_id not in category_ids:
         return None, store_id, "unknown_category"
@@ -402,56 +548,308 @@ def _fetch_and_build_stores(options: StoresUpdateOptions) -> dict[str, Any]:
     }
 
 
-def update_stores_data(options: StoresUpdateOptions) -> dict[str, Any]:
-    built = _fetch_and_build_stores(options)
-    loaded = created = updated = deleted_missing = 0
-    if not options.dry_run and built["completed"]:
-        records_by_id = {record["id"]: record for record in built["records"]}
-        records = list(records_by_id.values())
-        record_ids = list(records_by_id)
-        existing_ids = set(Store.objects.filter(id__in=record_ids).values_list("id", flat=True))
-        with transaction.atomic():
-            Store.objects.bulk_create(
-                [Store(id=record["id"], **record["defaults"]) for record in records],
-                batch_size=2000,
-                update_conflicts=True,
-                update_fields=[
-                    "name",
-                    "branch_name",
-                    "address",
-                    "location",
-                    "category",
-                    "ksci",
-                    "ldong",
-                    "adong",
-                ],
-                unique_fields=["id"],
-            )
-            loaded = len(records)
-            created = len(set(record_ids) - existing_ids)
-            updated = len(set(record_ids) & existing_ids)
-            if options.limit is None:
-                missing_qs = Store.objects.exclude(id__in=built["source_ids"])
-                deleted_missing = missing_qs.count()
-                missing_qs.delete()
-    elif not built["completed"]:
-        loaded = 0
-    else:
-        loaded = len(built["records"])
+def _upsert_store_records(records: list[dict[str, Any]]) -> dict[str, int]:
+    records_by_id = {record["id"]: record for record in records}
+    records = list(records_by_id.values())
+    record_ids = list(records_by_id)
+    if not records:
+        return {"loaded": 0, "created": 0, "updated": 0}
+
+    existing_ids = set(Store.objects.filter(id__in=record_ids).values_list("id", flat=True))
+    Store.objects.bulk_create(
+        [Store(id=record["id"], **record["defaults"]) for record in records],
+        batch_size=2000,
+        update_conflicts=True,
+        update_fields=[
+            "name",
+            "branch_name",
+            "address",
+            "location",
+            "category",
+            "ksci",
+            "ldong",
+            "adong",
+        ],
+        unique_fields=["id"],
+    )
+    return {
+        "loaded": len(records),
+        "created": len(set(record_ids) - existing_ids),
+        "updated": len(set(record_ids) & existing_ids),
+    }
+
+
+def _stream_and_write_stores(options: StoresUpdateOptions) -> dict[str, Any]:
+    api_keys = env_key_ring("PUBLIC_DATA_API_KEY")
+    gu_codes = list(Ldong.objects.values_list("gu_id", flat=True).distinct().order_by("gu_id"))
+    category_ids = set(BusinessCategory.objects.values_list("subcategory_code", flat=True))
+    ksci_ids = set(KsciCategory.objects.values_list("ksci_code", flat=True))
+    if not gu_codes:
+        raise RuntimeError("regions must be loaded before updating stores")
+    if not category_ids:
+        raise RuntimeError("business categories must be loaded before updating stores")
+
+    checked = loaded = created = updated = skipped = deleted_missing = 0
+    source_ids: set[str] = set()
+    seen_ids: set[str] = set()
+    batch: list[dict[str, Any]] = []
+    skip_reasons = {
+        "missing_id": 0,
+        "missing_location": 0,
+        "unknown_category": 0,
+        "region_not_found": 0,
+        "medical_category": 0,
+    }
+
+    def flush_batch() -> None:
+        nonlocal loaded, created, updated, batch
+        if not batch:
+            return
+        if options.dry_run:
+            loaded += len(batch)
+        else:
+            with transaction.atomic():
+                stats = _upsert_store_records(batch)
+            loaded += stats["loaded"]
+            created += stats["created"]
+            updated += stats["updated"]
+        batch = []
+
+    for gu_code in gu_codes:
+        for row in _iter_gu_rows_with_fallback(api_keys, gu_code, options):
+            if options.limit is not None and checked >= options.limit:
+                flush_batch()
+                return {
+                    "status": "partial",
+                    "completed": False,
+                    "checked": checked,
+                    "loaded": loaded,
+                    "created": created,
+                    "updated": updated,
+                    "skipped": skipped,
+                    "deleted_missing": 0,
+                    "dry_run": options.dry_run,
+                    "gu_count": len(gu_codes),
+                    "skip_reasons": skip_reasons,
+                    "delete_missing": False,
+                    "reason": "limit_reached",
+                }
+            checked += 1
+            record, source_id, reason = _build_store_record(row, category_ids=category_ids, ksci_ids=ksci_ids)
+            if options.delete_missing and source_id:
+                source_ids.add(source_id)
+            if not record:
+                skipped += 1
+                if reason:
+                    skip_reasons[reason] += 1
+                continue
+            if record["id"] in seen_ids:
+                continue
+            seen_ids.add(record["id"])
+            batch.append(record)
+            if len(batch) >= 2000:
+                flush_batch()
+
+    flush_batch()
+    if not options.dry_run and options.delete_missing:
+        missing_qs = Store.objects.exclude(id__in=source_ids)
+        deleted_missing = missing_qs.count()
+        missing_qs.delete()
 
     return {
-        "status": "success" if built["completed"] else "partial",
-        "completed": built["completed"],
-        "checked": built["checked"],
+        "status": "success",
+        "completed": True,
+        "checked": checked,
         "loaded": loaded,
         "created": created,
         "updated": updated,
-        "skipped": built["skipped"],
+        "skipped": skipped,
         "deleted_missing": deleted_missing,
         "dry_run": options.dry_run,
-        "gu_count": built["gu_count"],
-        "skip_reasons": built["skip_reasons"],
+        "gu_count": len(gu_codes),
+        "skip_reasons": skip_reasons,
+        "delete_missing": options.delete_missing,
     }
+
+
+def _normalize_text(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _daiso_request_text(path: str, params: dict[str, str], options: StoresUpdateOptions) -> str:
+    if DAISO_REQUEST_DELAY_SECONDS:
+        sleep_time.sleep(DAISO_REQUEST_DELAY_SECONDS)
+    req = Request(
+        f"{DAISO_BASE_URL}{path}?{urlencode(params)}",
+        headers={"User-Agent": DAISO_USER_AGENT},
+    )
+    try:
+        with urlopen(req, timeout=options.request_timeout_seconds) as response:
+            charset = response.headers.get_content_charset() or "utf-8"
+            return response.read().decode(charset, errors="replace")
+    except (HTTPError, URLError, TimeoutError, socket.timeout) as exc:
+        raise RuntimeError(f"Daiso request failed: {type(exc).__name__}") from exc
+
+
+def _daiso_request_json(path: str, params: dict[str, str], options: StoresUpdateOptions) -> list[dict[str, Any]]:
+    body = _daiso_request_text(path, params, options)
+    try:
+        parsed = json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("Daiso returned malformed JSON") from exc
+    if not isinstance(parsed, list):
+        raise RuntimeError(f"Daiso returned unexpected JSON: {type(parsed).__name__}")
+    return parsed
+
+
+def _daiso_get_values(path: str, params: dict[str, str], options: StoresUpdateOptions) -> list[str]:
+    rows = _daiso_request_json(path, params, options)
+    values = [_normalize_text(str(row.get("value", ""))) for row in rows]
+    return [value for value in values if value]
+
+
+def _parse_daiso_stores(html: str) -> list[DaisoCrawlStore]:
+    parser = DaisoStoreHTMLParser()
+    parser.feed(html)
+    parser.close()
+    return parser.stores
+
+
+def _crawl_daiso_stores(options: StoresUpdateOptions) -> list[DaisoCrawlStore]:
+    stores_by_key: dict[tuple[str, str], DaisoCrawlStore] = {}
+    districts = _daiso_get_values("/cs/ajax/sido_search", {"sido": DAISO_SEOUL}, options)
+    for district in districts:
+        subdistricts = _daiso_get_values(
+            "/cs/ajax/gugun_search",
+            {"sido": DAISO_SEOUL, "gugun": district},
+            options,
+        )
+        if not subdistricts:
+            subdistricts = [""]
+        for subdistrict in subdistricts:
+            params = {"sido": DAISO_SEOUL, "gugun": district}
+            if subdistrict:
+                params["dong"] = subdistrict
+            html = _daiso_request_text("/cs/ajax/shop_search", params, options)
+            for store in _parse_daiso_stores(html):
+                stores_by_key[(store.name, store.address)] = store
+    return sorted(stores_by_key.values(), key=lambda item: (item.name, item.address))
+
+
+def _daiso_id(name: str, address: str) -> str:
+    digest = hashlib.sha1(f"{name}\0{address}".encode("utf-8")).hexdigest()
+    return f"daiso_{digest[:32]}"
+
+
+def _daiso_location(store: DaisoCrawlStore, options: StoresUpdateOptions) -> tuple[Point | None, str]:
+    point = _point_from_values(store.longitude, store.latitude)
+    if point:
+        return point, "source_coord"
+    result = geocode_address(
+        store.address,
+        request_timeout=min(options.request_timeout_seconds, 10.0),
+        request_interval=options.request_interval_seconds,
+        user_agent="capston-daiso-updater/0.1",
+        prefer_kakao=True,
+    )
+    if result.status == "success" and result.point:
+        return result.point, result.provider or "geocode"
+    return None, result.error or "geocode_failed"
+
+
+def _upsert_daiso_records(records: list[dict[str, Any]]) -> dict[str, int]:
+    records_by_id = {record["id"]: record for record in records}
+    records = list(records_by_id.values())
+    record_ids = list(records_by_id)
+    if not records:
+        return {"loaded": 0, "created": 0, "updated": 0}
+    existing_ids = set(DaisoStore.objects.filter(id__in=record_ids).values_list("id", flat=True))
+    DaisoStore.objects.bulk_create(
+        [DaisoStore(id=record["id"], **record["defaults"]) for record in records],
+        batch_size=500,
+        update_conflicts=True,
+        update_fields=["name", "address", "location"],
+        unique_fields=["id"],
+    )
+    return {
+        "loaded": len(records),
+        "created": len(set(record_ids) - existing_ids),
+        "updated": len(set(record_ids) & existing_ids),
+    }
+
+
+def update_daiso_stores(options: StoresUpdateOptions) -> dict[str, Any]:
+    crawled = _crawl_daiso_stores(options)
+    if not crawled:
+        raise RuntimeError("refusing empty Daiso crawl result")
+    checked = loaded = created = updated = skipped = deleted_missing = 0
+    source_ids: set[str] = set()
+    records: list[dict[str, Any]] = []
+    skip_reasons: dict[str, int] = {
+        "missing_location": 0,
+    }
+    location_sources: dict[str, int] = {}
+
+    for store in crawled:
+        checked += 1
+        store_id = _daiso_id(store.name, store.address)
+        source_ids.add(store_id)
+        point, location_source = _daiso_location(store, options)
+        location_sources[location_source] = location_sources.get(location_source, 0) + 1
+        if not point:
+            skipped += 1
+            skip_reasons["missing_location"] += 1
+            continue
+        records.append(
+            {
+                "id": store_id,
+                "defaults": {
+                    "name": store.name[:200],
+                    "address": store.address[:255],
+                    "location": point,
+                },
+            }
+        )
+        if options.limit is not None and checked >= options.limit:
+            break
+
+    if options.dry_run:
+        loaded = len(records)
+    else:
+        with transaction.atomic():
+            stats = _upsert_daiso_records(records)
+            loaded = stats["loaded"]
+            created = stats["created"]
+            updated = stats["updated"]
+        if options.delete_missing:
+            missing_qs = DaisoStore.objects.exclude(id__in=source_ids)
+            deleted_missing = missing_qs.count()
+            missing_qs.delete()
+
+    result = {
+        "dataset": "daiso",
+        "dry_run": options.dry_run,
+        "status": "success",
+        "completed": options.limit is None or checked < options.limit,
+        "checked": checked,
+        "loaded": loaded,
+        "created": created,
+        "updated": updated,
+        "skipped": skipped,
+        "deleted_missing": deleted_missing,
+        "skip_reasons": skip_reasons,
+        "location_sources": location_sources,
+    }
+    if options.limit is not None and checked >= options.limit:
+        result["status"] = "partial"
+        result["reason"] = "limit_reached"
+    if not options.dry_run:
+        record_dataset_result("daiso", result)
+    return result
+
+
+def update_stores_data(options: StoresUpdateOptions) -> dict[str, Any]:
+    return _stream_and_write_stores(options)
 
 
 def update_stores(options: StoresUpdateOptions) -> dict[str, Any]:
@@ -492,9 +890,10 @@ def update(options: StoresUpdateOptions) -> dict[str, Any]:
         if result["stores"] and result["stores"].get("completed"):
             state = load_state()
             stores_state = state.setdefault("datasets", {}).setdefault("stores", {})
-            stores_state["catalog_snapshot"] = result["stores"]["catalog"]["files"] | {
-                "loaded": result["stores"]["catalog"]["loaded"],
-            }
+            if not result["stores"]["catalog"].get("skipped_write"):
+                stores_state["catalog_snapshot"] = result["stores"]["catalog"]["files"] | {
+                    "loaded": result["stores"]["catalog"]["loaded"],
+                }
             stores_state["stores_snapshot"] = {
                 "last_success_date": None,
                 "checked": result["stores"]["stores"]["checked"],

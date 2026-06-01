@@ -3,7 +3,7 @@ RentDeal 관련 뷰.
 
 엔드포인트:
 - GET /api/transactions/bbox?bbox=lng1,lat1,lng2,lat2
-                            &deal_type=apt|officetel|villa|dagagu|danok|all
+                            &deal_type=apt|officetel|villa|dagagu|danok|danok_dagagu|all
                             &from=YYYY-MM-DD&to=YYYY-MM-DD
                             &limit=200
   → 메인 지도 bbox 내 실거래 핀 (SPEC 6.1)
@@ -67,6 +67,7 @@ ALLOWED_DEAL_TYPES = {
     "villa",
     "dagagu",
     "danok",
+    "danok_dagagu",
     "all",
 }
 
@@ -166,7 +167,7 @@ def _parse_deal_type(raw: Optional[str]) -> str:
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
             required=False,
-            description="apt | officetel | villa | dagagu | danok | all (기본: all)",
+            description="apt | officetel | villa | dagagu | danok | danok_dagagu | all (기본: all)",
         ),
         OpenApiParameter(
             name="from",

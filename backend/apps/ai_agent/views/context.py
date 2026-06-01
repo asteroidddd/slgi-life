@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from apps.ai_agent.models import UserAIContextPreference
+from apps.accounts.profile.models import get_user_profile
 
 from .common import AgentAuthMixin, coerce_bool
 
@@ -16,22 +17,24 @@ def get_context_preference(user) -> UserAIContextPreference:
 
 
 def serialize_context_preference(user, preference: UserAIContextPreference) -> dict:
+    profile = get_user_profile(user)
     return {
         "share_school_with_ai": preference.share_school_with_ai,
         "share_home_location_with_ai": preference.share_home_location_with_ai,
-        "school_available": bool(getattr(user, "school", "")),
-        "home_location_available": bool(getattr(user, "home_location", None)),
+        "school_available": bool(profile.school.strip()),
+        "home_location_available": bool(profile.home_location),
     }
 
 
 def build_user_context(user) -> dict:
     preference = get_context_preference(user)
+    profile = get_user_profile(user)
     context: dict = {}
-    school = str(getattr(user, "school", "") or "").strip()
+    school = profile.school.strip()
     if preference.share_school_with_ai and school:
         context["school"] = school
 
-    home_location = getattr(user, "home_location", None)
+    home_location = profile.home_location
     if preference.share_home_location_with_ai and home_location:
         context["home_location"] = {
             "lat": float(home_location.y),

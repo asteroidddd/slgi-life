@@ -57,7 +57,7 @@ Rules:
 - 도서관: library, library_hours, adong, gu
 - 공원: park, park_adong, adong, gu
 - 카페/편의점/헬스장/병원/약국 등 일반 시설 수: amenity, amenity_adong, adong, gu
-  (amenity.category 값: cafe/convenience/gym/hospital/pharmacy/laundry/studycafe/mart/restaurant)
+  (amenity.category 값: cafe/convenience/daiso/gym/hospital/pharmacy/laundry/study_cafe/mart/restaurant 등. PC방/대학은 amenity 카테고리로 사용하지 않음)
 - 특정 업종 상세 조회(store 코드 필요 시): store, adong, gu
 - 지하철: subway_station, subway_congestion, adong, gu
 - 지하철 접근성/거리: nearest_subway_adong, adong, gu
@@ -107,9 +107,9 @@ Rules:
     → ldong.name으로 WHERE 조건 적용 → ldong.gu_code = gu.gu_code
 
 ▶ 지하철 접근성 (nearest_subway_adong 활용):
-  nearest_subway_adong(WHERE rank=1) → nearest_subway_adong.adong_code = adong.adong_code
+  nearest_subway_adong → nearest_subway_adong.adong_code = adong.adong_code
   → adong.gu_code = gu.gu_code
-  (rank=1이 최근접역, distance_m으로 평균 거리 비교 가능)
+  (동 경계 기준 1km 이내 역 목록. station_name 중복은 최소 distance_m 기준)
 
 [DB 스키마]
 {schema_context}
@@ -170,8 +170,8 @@ Personalization SQL rules:
    단, PostGIS 함수 인자로는 허용: ST_Distance(..., location::geography), ST_DWithin(..., location::geography, ...), ST_Y(location), ST_X(location)
 3. 대용량 테이블(rent_deal, bus_congestion)은 WHERE + LIMIT 필수
 4. 월세/전세 구분 — rent_deal에 별도 컬럼 없음. monthly_rent 값으로 구분:
-   - 월세 조회: monthly_rent > {monthly_rent_min} AND housing_type IN ('오피스텔', '연립다세대', '단독', '다가구')
-   - 전세 조회: monthly_rent = 0 AND deposit > 0 AND housing_type IN ('오피스텔', '연립다세대', '단독', '다가구')
+   - 월세 조회: monthly_rent > {monthly_rent_min} AND housing_type IN ('오피스텔', '연립다세대', '단독', '다가구', '단독다가구')
+   - 전세 조회: monthly_rent = 0 AND deposit > 0 AND housing_type IN ('오피스텔', '연립다세대', '단독', '다가구', '단독다가구')
    - 질문에 월세/전세 언급 없으면 월세(monthly_rent > {monthly_rent_min})로 처리
    자취생 대상 서비스이므로 housing_type 필터 필수 (아파트 제외 — 고가 아파트가 섞이면 평균 왜곡)
 5. 대학 이름: LIKE 사용, exact match(=) 금지

@@ -84,6 +84,9 @@ AI_SCHEMA_EXCLUDED_TABLES = {
     "user_ai_api_key",
     "user_ai_context_preference",
     "user_favorite",
+    "rent_deal_geocode_cache",
+    "region_amenity_category_cache",
+    "region_park_area_cache",
 }
 AI_SCHEMA_FALLBACK_TABLES = {
     "adjacent_adong",

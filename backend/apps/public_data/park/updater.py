@@ -38,6 +38,10 @@ def _file_meta(path: Path) -> dict[str, Any]:
     }
 
 
+def _park_tables_populated() -> bool:
+    return Park.objects.exists() and ParkLdong.objects.exists() and ParkAdong.objects.exists()
+
+
 def _read_geojson(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8-sig") as f:
         return json.load(f)
@@ -157,16 +161,12 @@ def _build_records(features: list[dict[str, Any]], options: ParksUpdateOptions) 
 
 def update_parks(options: ParksUpdateOptions) -> dict[str, Any]:
     meta = _file_meta(DATA_PATH)
-    features = _read_geojson(DATA_PATH).get("features", [])
-    meta["feature_count"] = len(features)
-    if len(features) < MIN_FEATURE_COUNT:
-        raise RuntimeError(f"refusing park update from incomplete file: {len(features)} features")
-
     previous_snapshot = dataset_state("parks").get("snapshot", {})
     if (
         not options.force
         and not options.dry_run
         and previous_snapshot.get("file_hash") == meta["file_hash"]
+        and _park_tables_populated()
     ):
         return {
             "status": "success",
@@ -179,6 +179,11 @@ def update_parks(options: ParksUpdateOptions) -> dict[str, Any]:
             "relations": {"park_ldong": 0, "park_adong": 0},
             "deleted_missing": 0,
         }
+
+    features = _read_geojson(DATA_PATH).get("features", [])
+    meta["feature_count"] = len(features)
+    if len(features) < MIN_FEATURE_COUNT:
+        raise RuntimeError(f"refusing park update from incomplete file: {len(features)} features")
 
     built = _build_records(features, options)
     completed = bool(built["completed"] and built["records"])

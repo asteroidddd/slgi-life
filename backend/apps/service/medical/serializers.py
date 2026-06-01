@@ -79,7 +79,7 @@ class MedicalHolidayCareSerializer(serializers.ModelSerializer):
 class MedicalFacilitySpecialtySerializer(serializers.ModelSerializer):
     class Meta:
         model = MedicalFacilitySpecialty
-        fields = ("specialty_name", "specialist_count")
+        fields = ("specialty_name", "specialty_group", "specialist_count")
 
 
 class MedicalFacilityDetailSerializer(MedicalFacilityListSerializer):
