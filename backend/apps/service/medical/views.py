@@ -69,8 +69,6 @@ DAY_NAME_TO_DAY_TYPE = {
     "Saturday": "sat",
     "Sunday": "sun",
 }
-DEFAULT_LIMIT = 500
-MAX_LIMIT = 1000
 DEFAULT_RADIUS_M = 1000
 MAX_RADIUS_M = 5000
 
@@ -106,16 +104,6 @@ def _parse_bool(raw: str | None, key: str) -> bool:
     if raw in ("true", "1", "yes"):
         return True
     raise ValidationError({key: f"{key} must be true or false."})
-
-
-def _parse_limit(raw: str | None) -> int:
-    if raw in (None, ""):
-        return DEFAULT_LIMIT
-    try:
-        value = int(raw)
-    except ValueError as exc:
-        raise ValidationError({"limit": "limit must be an integer."}) from exc
-    return max(1, min(value, MAX_LIMIT))
 
 
 def _parse_bbox(raw: str | None) -> tuple[float, float, float, float] | None:
@@ -241,7 +229,6 @@ class MedicalFacilityListView(APIView):
             or request.query_params.get("specialty_groups")
         )
         open_now = _parse_bool(request.query_params.get("open_now"), "open_now")
-        limit = _parse_limit(request.query_params.get("limit"))
         bbox = _parse_bbox(request.query_params.get("bbox"))
         point = _parse_point(request.query_params)
         radius = _parse_radius(request.query_params.get("radius"))
@@ -263,7 +250,7 @@ class MedicalFacilityListView(APIView):
         else:
             qs = qs.order_by("type", "name", "hpid")
 
-        items = list(qs.distinct()[:limit])
+        items = list(qs.distinct())
         return Response(
             {
                 "categories": categories,
@@ -272,7 +259,7 @@ class MedicalFacilityListView(APIView):
                 "open_now": open_now,
                 "bbox": bbox,
                 "radius": radius if point else None,
-                "limit": limit,
+                "limit": None,
                 "count": len(items),
                 "items": MedicalFacilityListSerializer(
                     items,

@@ -42,6 +42,8 @@ services:
       GEOS_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu/libgeos_c.so
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend/scripts/update/.state:/app/scripts/update/.state
     depends_on:
       db:
         condition: service_healthy

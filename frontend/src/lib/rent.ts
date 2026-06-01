@@ -22,6 +22,21 @@ export function convertToMonthly(deposit: number, monthlyRent: number): number {
   return monthlyRent + deposit * MONTHLY_CONVERSION_RATE;
 }
 
+/** 만원 단위 금액을 억/만 혼합 표기로 바꾼다.
+ *  예: 15000 -> "1억 5,000만", 80 -> "80만". */
+export function formatManwonAmount(value: number | null | undefined): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '-';
+  const rounded = Math.round(value);
+  const sign = rounded < 0 ? '-' : '';
+  const absValue = Math.abs(rounded);
+  if (absValue < 10000) return `${sign}${absValue.toLocaleString()}만`;
+
+  const eok = Math.trunc(absValue / 10000);
+  const man = absValue % 10000;
+  if (man === 0) return `${sign}${eok.toLocaleString()}억`;
+  return `${sign}${eok.toLocaleString()}억 ${man.toLocaleString()}만`;
+}
+
 /** 표시용 환산월세 라벨 — 정수 만원으로 반올림 + "만원" 단위 부착.
  *  예: deposit=1000, monthlyRent=80 → "85만원" (= 80 + 5).
  *  예: deposit=20000, monthlyRent=0  → "100만원" (전세 케이스). */

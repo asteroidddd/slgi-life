@@ -211,11 +211,9 @@ function matchFiltersToParams(filters: MatchFilters): Record<string, string | nu
 export async function getTransactionsBbox(
   bbox: Bbox,
   filters: TransactionFilters,
-  limit: number = 200
 ): Promise<TransactionsBboxResponse> {
   const params: Record<string, string | number> = {
     bbox: `${bbox.lng1},${bbox.lat1},${bbox.lng2},${bbox.lat2}`,
-    limit,
   };
   // 'all' is a valid filter token on the backend (no filter applied), but we
   // still send it explicitly so the URL is deterministic for caching.
@@ -354,13 +352,11 @@ export type {
 export async function getAmenitiesBbox(params: {
   bbox: [number, number, number, number];
   categories?: string[];
-  limit?: number;
 }): Promise<AmenityBboxResponse> {
   const { data } = await api.get<AmenityBboxResponse>('/amenities/bbox', {
     params: {
       bbox: params.bbox.join(','),
       categories: params.categories?.join(','),
-      limit: params.limit,
     },
   });
   return data;
@@ -372,7 +368,6 @@ export async function getMedicalFacilities(params: {
   categories?: string[];
   specialtyGroups?: string[];
   openNow?: boolean;
-  limit?: number;
 }): Promise<MedicalFacilitiesResponse> {
   const { data } = await api.get<MedicalFacilitiesResponse>('/medical/facilities', {
     params: {
@@ -380,7 +375,6 @@ export async function getMedicalFacilities(params: {
       category: params.categories?.join(','),
       specialty_group: params.specialtyGroups?.join(','),
       open_now: params.openNow ? 'true' : undefined,
-      limit: params.limit,
     },
   });
   return data;

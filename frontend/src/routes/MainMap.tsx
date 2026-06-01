@@ -84,7 +84,7 @@ function ActiveModeGuide({ mapMode, regionLevel }: { mapMode: MapMode; regionLev
   if (mapMode === 'facility') {
     return (
       <ModeGuide title={'\uc2dc\uc124'}>
-        {'선택한 생활시설을 지도에 표시합니다.\n표시할 시설이 없으면 아무 것도 선택하지 않은 상태입니다.\n시설 정보는 최신 상태가 아닐 수 있습니다.'}
+        {'선택한 생활시설을 지도에 표시합니다.\n지도 성능상 시설 핀은 카테고리별 최대 1,000개까지 표시됩니다.\n시설 정보는 최신 상태가 아닐 수 있습니다.'}
       </ModeGuide>
     );
   }
@@ -361,7 +361,6 @@ export default function MainMap() {
         activeFacilityBbox!.lat2,
       ],
       categories: selectedFacilityCategories,
-      limit: 800,
     }),
     enabled: mapMode === 'facility' && activeFacilityBbox != null && selectedFacilityCategories.length > 0,
     staleTime: 60_000,
@@ -411,7 +410,6 @@ export default function MainMap() {
         categories: [category],
         specialtyGroups: category === 'hospital' ? selectedMedicalSpecialtyGroups : undefined,
         openNow: medicalOpenNow,
-        limit: 800,
       }),
       enabled: mapMode === 'medical' && medicalBbox != null,
       staleTime: 60_000,

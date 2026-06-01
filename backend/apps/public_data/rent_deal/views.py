@@ -5,7 +5,6 @@ RentDeal 관련 뷰.
 - GET /api/transactions/bbox?bbox=lng1,lat1,lng2,lat2
                             &deal_type=apt|officetel|villa|dagagu|danok|danok_dagagu|all
                             &from=YYYY-MM-DD&to=YYYY-MM-DD
-                            &limit=200
   → 메인 지도 bbox 내 실거래 핀 (SPEC 6.1)
 sub-plan 4.5B 정합:
 - 컬럼명 변경: deal_date → contract_date, build_year → construction_year.
@@ -15,8 +14,7 @@ sub-plan 4.5B 정합:
 - N+1 회피: select_related("ldong", "ldong__gu").
 
 설계 원칙:
-- bbox가 너무 크면 limit (default 200, max 500) 으로 자동 컷.
-- limit + 1 fetch → has_more 단순 페이지네이션.
+- bbox 내 조건 일치 거래를 모두 반환한다.
 - N+1 회피: select_related("ldong", "ldong__gu").
 - location__isnull=False 필수.
 - ordering: -contract_date (최신순).
@@ -32,7 +30,6 @@ from typing import Optional
 
 from django.contrib.gis.geos import Polygon
 from django.core.cache import cache
-from django.db.models import Count, Q
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
@@ -49,13 +46,6 @@ from apps.public_data.rent_deal.models import (
 )
 
 from .serializers import RentDealPinSerializer
-
-# ---- 상수 ----
-DEFAULT_LIMIT = 200
-MAX_LIMIT = 500
-
-# total 정확 카운트 상한.
-TOTAL_COUNT_CAP_MULTIPLIER = 5
 
 # deal_type 화이트리스트 (응답/요청 영문 enum 5종 + "all"). lock 1.
 ALLOWED_DEAL_TYPES = {
@@ -118,19 +108,6 @@ def _parse_date(raw: Optional[str], key: str) -> Optional[date]:
         ) from exc
 
 
-def _parse_limit(raw: Optional[str]) -> int:
-    """`limit` 파싱."""
-    if raw is None:
-        return DEFAULT_LIMIT
-    try:
-        value = int(raw)
-    except (TypeError, ValueError) as exc:
-        raise ValidationError({"limit": "limit는 정수여야 합니다."}) from exc
-    if value <= 0:
-        raise ValidationError({"limit": "limit는 1 이상이어야 합니다."})
-    return min(value, MAX_LIMIT)
-
-
 def _parse_deal_type(raw: Optional[str]) -> str:
     """`deal_type` 파싱. 응답 lock 1 — 영문 enum 그대로."""
     if raw is None or raw == "":
@@ -183,13 +160,6 @@ def _parse_deal_type(raw: Optional[str]) -> str:
             required=False,
             description="YYYY-MM-DD. 지정 시 contract_date <= to.",
         ),
-        OpenApiParameter(
-            name="limit",
-            type=OpenApiTypes.INT,
-            location=OpenApiParameter.QUERY,
-            required=False,
-            description=f"기본 {DEFAULT_LIMIT}, 최대 {MAX_LIMIT}.",
-        ),
     ],
     responses={
         200: {
@@ -224,13 +194,12 @@ class TransactionsBboxView(APIView):
         deal_type = _parse_deal_type(request.query_params.get("deal_type"))
         date_from = _parse_date(request.query_params.get("from"), "from")
         date_to = _parse_date(request.query_params.get("to"), "to")
-        limit = _parse_limit(request.query_params.get("limit"))
 
         # ---- 캐시 키 ----
         cache_key = (
             "tx_bbox:"
             f"{lng1:.6f},{lat1:.6f},{lng2:.6f},{lat2:.6f}|"
-            f"dt={deal_type}|from={date_from}|to={date_to}|lim={limit}"
+            f"dt={deal_type}|from={date_from}|to={date_to}"
         )
         cached = cache.get(cache_key)
         if cached is not None:
@@ -259,23 +228,13 @@ class TransactionsBboxView(APIView):
 
         qs = qs.order_by("-contract_date", "-id")
 
-        # ---- has_more 판정용 limit + 1 fetch ----
-        rows = list(qs[: limit + 1])
-        has_more = len(rows) > limit
-        items = rows[:limit]
-
-        # ---- total 카운트 (cap 적용) ----
-        total_cap = limit * TOTAL_COUNT_CAP_MULTIPLIER
-        total = qs[: total_cap + 1].count()
-        has_more_total = total > total_cap
-        if has_more_total:
-            total = total_cap
+        items = list(qs)
 
         payload = {
             "items": RentDealPinSerializer(items, many=True).data,
-            "has_more": has_more,
-            "total": total,
-            "has_more_total": has_more_total,
+            "has_more": False,
+            "total": len(items),
+            "has_more_total": False,
         }
 
         cache.set(cache_key, payload, timeout=CACHE_TTL_SECONDS)

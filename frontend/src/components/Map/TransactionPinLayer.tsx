@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { Marker, useMap, useMapEvents } from 'react-leaflet';
 
+import { formatManwonAmount } from '@/lib/rent';
 import type { Bbox, RentDealCachePin, RentDealPin, RentDealSummaryPin } from '@/types/api';
 
 const MIN_ZOOM_FOR_PINS = 12;
@@ -85,11 +86,6 @@ function avg(values: number[]): number | null {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function formatMan(v: number | null, suffix = '만'): string {
-  if (v == null || !Number.isFinite(v)) return '-';
-  return `${Math.round(v).toLocaleString()}${suffix}`;
-}
-
 function typeLabel(type: RentDealMapPin['deal_type']): string {
   switch (type) {
     case 'apt':
@@ -128,12 +124,12 @@ function chipHtml(opts: {
   summary: GroupSummary;
 }): string {
   const { variant, isSelected, isDimmed, summary } = opts;
-  const priceText = formatMan(summary.medianConverted);
+  const priceText = formatManwonAmount(summary.medianConverted);
   const countText = `${summary.count.toLocaleString()}건`;
   const labelText = summary.label ?? '';
   const typeText = summary.primaryType ? typeLabel(summary.primaryType) : '거래';
   const areaText = summary.avgArea == null ? '-' : `평균 ${Math.round(summary.avgArea)}m²`;
-  const depositText = `보증금 ${formatMan(summary.medianDeposit)}`;
+  const depositText = `보증금 ${formatManwonAmount(summary.medianDeposit)}`;
   const latestText = formatYmd(summary.latestContractYmd);
 
   const cls = [

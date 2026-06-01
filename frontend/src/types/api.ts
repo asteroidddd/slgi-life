@@ -575,7 +575,7 @@ export interface ApiErrorDetail {
 
 // -------- Transactions (Phase 1 — main map raw pin layer) ----------------
 // Source: docs/handoff/20260503-phase1a-transactions-api.md
-//   GET /api/transactions/bbox?bbox=lng1,lat1,lng2,lat2&deal_type=&from=&to=&limit=
+//   GET /api/transactions/bbox?bbox=lng1,lat1,lng2,lat2&deal_type=&from=&to=
 //   - Backend filters out geom IS NULL rows (단독다가구 좌표 없음).
 //   - Same jibun → same coordinates (privacy: 지번 중심점만, SPEC 14.2).
 
@@ -717,11 +717,11 @@ export interface RentDealCachePin {
 /** Response of GET /api/transactions/bbox. */
 export interface TransactionsBboxResponse {
   items: RentDealPin[];
-  /** True when limit + 1 fetch returned the +1 → next page exists. */
+  /** Limit is no longer applied; kept for response compatibility. */
   has_more: boolean;
-  /** Display-only count, capped at `limit * 5`. */
+  /** Display-only count of returned rows. */
   total: number;
-  /** True when `total` itself is the cap (real count is higher). */
+  /** Limit is no longer applied; kept for response compatibility. */
   has_more_total: boolean;
 }
 
@@ -858,6 +858,7 @@ export interface AmenityBboxResponse {
   bbox: [number, number, number, number];
   categories: string[];
   limit: number;
+  limit_scope?: 'category';
   count: number;
   items: AmenityBboxItem[];
 }
@@ -884,7 +885,7 @@ export interface MedicalFacilitiesResponse {
   open_now: boolean;
   bbox: [number, number, number, number] | null;
   radius: number | null;
-  limit: number;
+  limit: number | null;
   count: number;
   items: MedicalFacilityItem[];
 }

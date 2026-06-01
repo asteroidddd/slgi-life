@@ -145,7 +145,7 @@ def _search_vworld(query: str, limit: int) -> list[dict]:
         if len(items) >= limit:
             return items
     for search_type, category in calls:
-        for item in _vworld_request(query, search_type, category=category, size=5):
+        for item in _vworld_request(query, search_type, category=category, size=10):
             key = (item["type"], item["name"], f"{item['lng']:.6f},{item['lat']:.6f}")
             if key in seen:
                 continue
@@ -213,12 +213,12 @@ class SearchView(APIView):
         if len(query) < 2:
             return Response({"items": []}, status=status.HTTP_200_OK)
 
-        cache_key = f"map-search:v2:{query}"
+        cache_key = f"map-search:v3:{query}"
         cached = cache.get(cache_key)
         if cached is not None:
             return Response(cached, status=status.HTTP_200_OK)
 
-        data = {"items": _search_vworld(query, limit=8)}
+        data = {"items": _search_vworld(query, limit=50)}
         cache.set(cache_key, data, timeout=60 * 10)
         return Response(data, status=status.HTTP_200_OK)
 

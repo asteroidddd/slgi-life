@@ -1,4 +1,5 @@
 import type { ScoreLayerKey } from '@/components/Map/HeatMap';
+import { formatManwonAmount } from '@/lib/rent';
 import type { AdongScore, MapSearchItem, RentDealPin } from '@/types/api';
 
 export type SelectedPopup =
@@ -54,8 +55,8 @@ function MapPopup({ popup, onClose, heatLayer, ranks, rankTotal }: { popup: Sele
             <div key={deal.id} className="mb-2 rounded-card border border-border bg-surface-alt p-3 last:mb-0">
               <p className="m-0 text-[12px] font-semibold text-text-muted">{deal.date}</p>
               <div className="mt-2 grid grid-cols-3 gap-2">
-                <Metric label="보증금" value={deal.deposit} suffix="만" />
-                <Metric label="월세" value={deal.monthly_rent} suffix="만" />
+                <AmountMetric label="보증금" value={deal.deposit} />
+                <AmountMetric label="월세" value={deal.monthly_rent} />
                 <Metric label="면적" value={Math.round(deal.area_m2)} suffix="m²" />
               </div>
             </div>
@@ -124,6 +125,15 @@ function Metric({ label, value, suffix = '', active = false, rank, rankTotal, cl
       <p className="m-0 text-[12px] font-semibold text-text-muted">{label}</p>
       <strong className="mt-1 block text-[20px] text-text">{typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : '-'}{suffix}</strong>
       {rank && rankTotal ? <span className="mt-1 block text-[11px] font-semibold text-text-subtle">순위 {rank}/{rankTotal}</span> : null}
+    </div>
+  );
+}
+
+function AmountMetric({ label, value }: { label: string; value: number | null | undefined }) {
+  return (
+    <div className="rounded-card border border-border bg-surface-alt p-3">
+      <p className="m-0 text-[12px] font-semibold text-text-muted">{label}</p>
+      <strong className="mt-1 block text-[17px] text-text">{formatManwonAmount(value)}</strong>
     </div>
   );
 }

@@ -12,8 +12,7 @@ from .serializers import AmenityBboxSerializer
 
 
 ALLOWED_CATEGORIES = tuple(key for key, _label in CATEGORY_CHOICES)
-MAX_LIMIT = 1000
-DEFAULT_LIMIT = 500
+CATEGORY_LIMIT = 1000
 
 
 def _parse_bbox(raw: str | None) -> tuple[float, float, float, float]:
@@ -40,33 +39,28 @@ def _parse_categories(raw: str | None) -> tuple[str, ...]:
     return items
 
 
-def _parse_limit(raw: str | None) -> int:
-    if raw in (None, ""):
-        return DEFAULT_LIMIT
-    try:
-        value = int(raw)
-    except ValueError as exc:
-        raise ValidationError({"limit": "limit must be an integer."}) from exc
-    return max(1, min(value, MAX_LIMIT))
-
-
 class AmenityBboxView(APIView):
     def get(self, request: Request) -> Response:
         min_lng, min_lat, max_lng, max_lat = _parse_bbox(request.query_params.get("bbox"))
         categories = _parse_categories(request.query_params.get("categories"))
-        limit = _parse_limit(request.query_params.get("limit"))
+        selected_categories = categories or ALLOWED_CATEGORIES
 
         bbox = Polygon.from_bbox((min_lng, min_lat, max_lng, max_lat))
-        qs = Amenity.objects.filter(location__within=bbox).order_by("category", "name", "id")
-        if categories:
-            qs = qs.filter(category__in=categories)
+        base_qs = Amenity.objects.filter(location__within=bbox)
 
-        items = list(qs[:limit])
+        items: list[Amenity] = []
+        for category in selected_categories:
+            items.extend(
+                base_qs
+                .filter(category=category)
+                .order_by("name", "id")[:CATEGORY_LIMIT]
+            )
         return Response(
             {
                 "bbox": [min_lng, min_lat, max_lng, max_lat],
-                "categories": categories,
-                "limit": limit,
+                "categories": selected_categories,
+                "limit": CATEGORY_LIMIT,
+                "limit_scope": "category",
                 "count": len(items),
                 "items": AmenityBboxSerializer(items, many=True).data,
             },
