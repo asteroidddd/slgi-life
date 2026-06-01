@@ -29,7 +29,7 @@ function Tooltip({ label, placement = 'top', children }: TooltipProps) {
       <span
         id={id}
         role="tooltip"
-        className={`absolute z-[1100] bg-secondary text-surface text-micro leading-[1.4] font-normal tracking-normal px-3 py-2 rounded-xs whitespace-nowrap pointer-events-none opacity-0 transition-all duration-[120ms] ease-out max-w-60 group-hover:opacity-100 group-focus-within:opacity-100 ${placementClasses[placement]}`}
+        className={`pointer-events-none absolute z-[1100] max-w-60 whitespace-pre-line rounded-xs bg-[var(--secondary-overlay-bg)] px-3 py-2 text-micro font-normal leading-[1.4] tracking-normal text-surface opacity-0 shadow-lg backdrop-blur-md transition-all duration-[120ms] ease-out group-hover:opacity-100 group-focus-within:opacity-100 ${placementClasses[placement]}`}
       >
         {label}
       </span>

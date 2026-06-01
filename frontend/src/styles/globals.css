@@ -76,6 +76,8 @@
   --map-control-width: 365px;
   --map-control-radius: 10px;
   --map-guide-bg: rgba(243, 244, 246, 0.60);
+  --surface-overlay-bg: color-mix(in srgb, var(--color-surface) 60%, transparent);
+  --secondary-overlay-bg: color-mix(in srgb, var(--color-secondary) 60%, transparent);
   --map-mask-fill: #6b7280;
   --map-mask-opacity: 0.50;
   --map-status-bg: #111827;
@@ -382,6 +384,8 @@ html[data-theme='dark'] {
   --color-backdrop:       rgba(0, 0, 0, 0.70);
 
   --map-guide-bg: rgba(15, 23, 42, 0.70);
+  --surface-overlay-bg: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  --secondary-overlay-bg: color-mix(in srgb, var(--color-secondary) 70%, transparent);
   --map-mask-fill: #020617;
   --map-mask-opacity: 0.36;
   --map-status-bg: #0f172a;
@@ -625,12 +629,13 @@ html[data-theme='dark'] {
  * LEAFLET 오버라이드 — Leaflet이 자체 생성하는 DOM 엘리먼트 스타일
  * ========================================================================= */
 .leaflet-tooltip {
-  background: var(--color-surface);
+  background: var(--surface-overlay-bg);
   color: var(--color-text);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-floating);
   padding: 8px 12px;
+  backdrop-filter: blur(8px);
 }
 
 .leaflet-tooltip-top::before,

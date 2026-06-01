@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
-const MODE_GUIDE_STORAGE_PREFIX = 'map.modeGuide.open';
+const MODE_GUIDE_STORAGE_KEY = 'map.modeGuide.open';
+const MODE_GUIDE_SYNC_EVENT = 'map-mode-guide-sync';
 
-function readStoredGuideState(storageKey: string) {
+function readStoredGuideState() {
   if (typeof window === 'undefined') return true;
-  const stored = window.localStorage.getItem(storageKey);
+  const stored = window.localStorage.getItem(MODE_GUIDE_STORAGE_KEY);
   if (stored === 'false') return false;
   if (stored === 'true') return true;
   return true;
@@ -25,7 +26,7 @@ function FilterButton({
     <button
       type="button"
       onClick={onClick}
-      className={`h-9 w-full rounded-[var(--map-control-radius)] border px-3 text-left text-[13px] font-semibold shadow-sm transition ${
+      className={`flex h-9 w-full items-center rounded-[var(--map-control-radius)] border px-3 text-left text-[13px] font-semibold leading-none shadow-sm transition ${
         active
           ? 'border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]'
           : 'border-border bg-surface/95 text-text hover:bg-[var(--color-heatmap-1)] hover:text-[var(--color-heatmap-5)]'
@@ -81,27 +82,34 @@ function ModeGuide({
   children: React.ReactNode;
   className?: string;
 }) {
-  const storageKey = useMemo(
-    () => `${MODE_GUIDE_STORAGE_PREFIX}.${encodeURIComponent(title)}`,
-    [title],
-  );
-  const [open, setOpen] = useState(() => readStoredGuideState(storageKey));
+  const [open, setOpen] = useState(readStoredGuideState);
 
   useEffect(() => {
-    setOpen(readStoredGuideState(storageKey));
-  }, [storageKey]);
+    function syncOpenState() {
+      setOpen(readStoredGuideState());
+    }
+
+    syncOpenState();
+    window.addEventListener('storage', syncOpenState);
+    window.addEventListener(MODE_GUIDE_SYNC_EVENT, syncOpenState);
+    return () => {
+      window.removeEventListener('storage', syncOpenState);
+      window.removeEventListener(MODE_GUIDE_SYNC_EVENT, syncOpenState);
+    };
+  }, []);
 
   function toggleOpen() {
     setOpen((value) => {
       const next = !value;
-      window.localStorage.setItem(storageKey, next ? 'true' : 'false');
+      window.localStorage.setItem(MODE_GUIDE_STORAGE_KEY, next ? 'true' : 'false');
+      window.dispatchEvent(new Event(MODE_GUIDE_SYNC_EVENT));
       return next;
     });
   }
 
   return (
     <aside
-      className={`pointer-events-auto relative z-0 rounded-card border border-border/70 bg-[var(--map-guide-bg)] text-left shadow-lg backdrop-blur transition-[width,padding] ${
+      className={`pointer-events-auto relative z-0 rounded-card border border-border/70 bg-[var(--map-guide-bg)] text-left shadow-lg backdrop-blur-md transition-[width,padding] ${
         open ? 'w-[var(--map-control-width)] px-3 py-2.5' : 'w-auto min-w-[96px] px-2.5 py-2'
       } ${className}`}
       aria-label={`${title} 안내`}
@@ -117,14 +125,14 @@ function ModeGuide({
           {open ? '-' : '+'}
         </span>
       </button>
-      {open ? <p className="m-0 mt-1 whitespace-normal break-keep text-[12px] leading-[1.45] text-text-muted">{children}</p> : null}
+      {open ? <p className="m-0 mt-1 whitespace-pre-line break-keep text-[12px] leading-[1.45] text-text-muted">{children}</p> : null}
     </aside>
   );
 }
 
 function IconTooltip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-[1300] hidden -translate-x-1/2 whitespace-nowrap rounded-[6px] border border-border bg-surface/95 px-2 py-1 text-[12px] font-semibold text-text shadow-lg group-hover:block group-focus-within:block">
+    <span className="pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-[1300] hidden -translate-x-1/2 whitespace-nowrap rounded-[6px] border border-border bg-[var(--surface-overlay-bg)] px-2 py-1 text-[12px] font-semibold text-text shadow-lg backdrop-blur-md group-hover:block group-focus-within:block">
       {children}
     </span>
   );

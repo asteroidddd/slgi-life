@@ -1,11 +1,28 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
+import courtLogo from '@/assets/logos/real-estate/court.png';
+import dabangLogo from '@/assets/logos/real-estate/dabang.png';
+import govSymbolLogo from '@/assets/logos/real-estate/gov-symbol.png';
+import hugLogo from '@/assets/logos/real-estate/hug.png';
+import kbLandLogo from '@/assets/logos/real-estate/kb-land.png';
+import naverPayLogo from '@/assets/logos/real-estate/naver-pay.png';
+import rebLogo from '@/assets/logos/real-estate/reb.png';
+import seoulLogo from '@/assets/logos/real-estate/seoul.png';
+import zigbangLogo from '@/assets/logos/real-estate/zigbang.png';
 import { analyzeRentListing, getRentConversionRate } from '@/lib/api';
 import { MONTHLY_CONVERSION_RATE } from '@/lib/rent';
 import type { RentListingAnalysisResponse, RentListingType } from '@/types/api';
 
 type RealEstateHelperTab = 'checklist' | 'calculator' | 'analysis' | 'links';
+type RealEstateLink = {
+  logoSrc: string;
+  logoAlt: string;
+  title: string;
+  description: string;
+  href: string;
+  fillFrame?: boolean;
+};
 
 const DEFAULT_ANNUAL_CONVERSION_RATE = Number((MONTHLY_CONVERSION_RATE * 12 * 100).toFixed(3));
 
@@ -96,9 +113,10 @@ export default function RealEstateHelperPanel({
 
         <div className="group relative z-[300] w-max">
           <button type="button" aria-label="부동산 지도 안내" className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/80 bg-surface/70 text-[11px] font-bold text-text-subtle shadow-sm backdrop-blur focus:outline-none">i</button>
-          <div className="pointer-events-none absolute left-[calc(100%+8px)] top-0 z-[1000] hidden w-[340px] rounded-card border border-[var(--color-heatmap-2)] bg-surface p-3 text-[12px] leading-5 text-text shadow-xl group-hover:block">
-            <p className="m-0">지도 핀은 실거래 캐시를 프론트에서 필터링해 묶은 요약입니다. 가격은 그룹의 대표 환산월세, 건수는 필터를 통과한 거래 수입니다.</p>
-            <p className="m-0 mt-1">{"환산월세는 한국부동산원 전월세전환율 최근 서울 평균으로 계산합니다. 과거 원천 데이터 일부는 연립과 다세대가 연립다세대로 통합되어 함께 반영될 수 있습니다. 단독·다가구는 원천 데이터 특성상 개별 주소/좌표가 없어 지도 핀으로 표시되지 않고 법정동 요약에서만 다룹니다."}</p>
+          <div className="pointer-events-none absolute left-[calc(100%+8px)] top-0 z-[1000] hidden w-[340px] rounded-card border border-[var(--color-heatmap-2)] bg-[var(--surface-overlay-bg)] p-3 text-[12px] leading-5 text-text shadow-xl backdrop-blur-md group-hover:block">
+            <p className="m-0">지도 핀은 과거 실거래 캐시를 프론트에서 필터링해 묶은 요약입니다. 가격은 그룹의 대표 환산월세, 건수는 필터를 통과한 거래 수입니다.</p>
+            <p className="m-0 mt-1">환산월세는 한국부동산원 전월세전환율 최근 서울 평균으로 계산합니다.</p>
+            <p className="m-0 mt-2">{"과거 원천 데이터 일부는 연립과 다세대가 연립다세대로 통합되어 함께 반영될 수 있습니다. 단독·다가구는 원천 데이터 특성상 개별 주소/좌표가 없어 지도 핀으로 표시되지 않고 법정동 요약에서만 다룹니다."}</p>
           </div>
         </div>
       </div>
@@ -441,22 +459,22 @@ function RealEstateLinks() {
   return (
     <div className="grid gap-3">
       <LinkGroup title="매물·시세 확인" caption="가격 비교" links={[
-        ['RT', '국토교통부 실거래가', '주변 시세와 최근 거래 확인', 'https://rt.molit.go.kr/'],
-        ['N', '네이버페이 부동산', '지도 기반 매물과 지역 정보 확인', 'https://fin.land.naver.com/home'],
-        ['KB', 'KB부동산', '시세, 단지, 지역 가격 흐름 참고', 'https://kbland.kr/'],
-        ['REB', '한국부동산원', '부동산테크, R-ONE 등 공식 통계 연결', 'https://www.reb.or.kr/'],
-        ['직', '직방', '외부 매물 탐색', 'https://www.zigbang.com/'],
-        ['다', '다방', '외부 매물 탐색', 'https://www.dabangapp.com/'],
+        { logoSrc: govSymbolLogo, logoAlt: '정부상징', title: '국토교통부 실거래가', description: '주변 시세와 최근 거래 확인', href: 'https://rt.molit.go.kr/' },
+        { logoSrc: naverPayLogo, logoAlt: '네이버페이 로고', title: '네이버페이 부동산', description: '지도 기반 매물과 지역 정보 확인', href: 'https://fin.land.naver.com/home', fillFrame: true },
+        { logoSrc: kbLandLogo, logoAlt: 'KB부동산 로고', title: 'KB부동산', description: '시세, 단지, 지역 가격 흐름 참고', href: 'https://kbland.kr/' },
+        { logoSrc: rebLogo, logoAlt: '한국부동산원 로고', title: '한국부동산원', description: '부동산테크, R-ONE 등 공식 통계 연결', href: 'https://www.reb.or.kr/' },
+        { logoSrc: zigbangLogo, logoAlt: '직방 로고', title: '직방', description: '외부 매물 탐색', href: 'https://www.zigbang.com/', fillFrame: true },
+        { logoSrc: dabangLogo, logoAlt: '다방 로고', title: '다방', description: '외부 매물 탐색', href: 'https://www.dabangapp.com/' },
       ]} />
       <LinkGroup title="등기·서류 확인" caption="권리관계" links={[
-        ['등', '인터넷등기소', '등기부등본 권리관계 확인', 'https://www.iros.go.kr/'],
-        ['24', '정부24', '건축물대장, 주민등록 등 민원 확인', 'https://www.gov.kr/'],
-        ['서울', '서울부동산정보광장', '서울 부동산 정보와 중개업소 확인', 'https://land.seoul.go.kr/land/'],
+        { logoSrc: courtLogo, logoAlt: '법원 로고', title: '인터넷등기소', description: '등기부등본 권리관계 확인', href: 'https://www.iros.go.kr/' },
+        { logoSrc: govSymbolLogo, logoAlt: '정부상징', title: '정부24', description: '건축물대장, 주민등록 등 민원 확인', href: 'https://www.gov.kr/' },
+        { logoSrc: seoulLogo, logoAlt: '서울시 로고', title: '서울부동산정보광장', description: '서울 부동산 정보와 중개업소 확인', href: 'https://land.seoul.go.kr/land/' },
       ]} />
       <LinkGroup title="보증·상담" caption="피해 예방" links={[
-        ['HUG', 'HUG 주택도시보증공사', '보증 가능 여부와 임대인 조회', 'https://www.khug.or.kr/'],
-        ['상담', '서울주거포털 전세사기 예방', '전월세종합지원센터와 예방 자료', 'https://housing.seoul.go.kr/site/main/content/sh05_070200'],
-        ['안전', '국토교통부 안전한 집', '전세사기 예방 체크리스트와 셀프 테스트', 'https://www.molit.go.kr/2023safehome/main.jsp'],
+        { logoSrc: hugLogo, logoAlt: 'HUG 로고', title: 'HUG 주택도시보증공사', description: '보증 가능 여부와 임대인 조회', href: 'https://www.khug.or.kr/' },
+        { logoSrc: seoulLogo, logoAlt: '서울시 로고', title: '서울주거포털 전세사기 예방', description: '전월세종합지원센터와 예방 자료', href: 'https://housing.seoul.go.kr/site/main/content/sh05_070200' },
+        { logoSrc: govSymbolLogo, logoAlt: '정부상징', title: '국토교통부 안전한 집', description: '전세사기 예방 체크리스트와 셀프 테스트', href: 'https://www.molit.go.kr/2023safehome/main.jsp' },
       ]} />
     </div>
   );
@@ -469,7 +487,7 @@ function LinkGroup({
 }: {
   title: string;
   caption: string;
-  links: Array<[string, string, string, string]>;
+  links: RealEstateLink[];
 }) {
   return (
     <section className="grid gap-1.5">
@@ -477,9 +495,11 @@ function LinkGroup({
         {title}
         <span className="text-[10px] font-semibold text-text-muted">{caption}</span>
       </h3>
-      {links.map(([logo, titleText, description, href]) => (
+      {links.map(({ logoSrc, logoAlt, title: titleText, description, href, fillFrame }) => (
         <a key={href} href={href} target="_blank" rel="noreferrer" className="grid min-h-14 grid-cols-[34px_1fr_auto] items-center gap-2 rounded-card border border-border bg-surface p-2.5 text-text no-underline transition hover:border-[var(--color-heatmap-2)] hover:bg-[var(--color-heatmap-1)]">
-          <span className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] bg-surface-alt text-[11px] font-bold text-[var(--color-heatmap-5)]">{logo}</span>
+          <span className={`inline-flex h-[34px] w-[34px] items-center justify-center overflow-hidden rounded-[10px] border border-border/70 bg-surface-alt shadow-sm ${fillFrame ? 'p-0' : 'p-0.5'}`}>
+            <img src={logoSrc} alt={logoAlt} className={`block h-full w-full ${fillFrame ? 'object-cover' : 'object-contain'}`} />
+          </span>
           <span className="min-w-0">
             <span className="block truncate text-[13px] font-bold">{titleText}</span>
             <span className="mt-0.5 block truncate text-[11px] text-text-muted">{description}</span>

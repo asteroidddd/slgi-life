@@ -34,6 +34,8 @@ import MapPopup, { buildScoreRanks, type SelectedPopup } from '@/components/Map/
 import MedicalControlPanel, { type MedicalCategory } from '@/components/Map/MedicalControlPanel';
 import RealEstateHelperPanel from '@/components/Map/RealEstateHelperPanel';
 import type { MapState, RentDealMapPin } from '@/components/Map/TransactionPinLayer';
+import daisoLogo from '@/assets/logos/facilities/daiso.svg';
+import oliveyoungLogo from '@/assets/logos/facilities/oliveyoung.svg';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdongMatchCounts } from '@/hooks/useAdongMatchCounts';
 import { useAdongScores, useLdongScores } from '@/hooks/useAdongs';
@@ -68,27 +70,27 @@ function ActiveModeGuide({ mapMode, regionLevel }: { mapMode: MapMode; regionLev
       <ModeGuide title={'\ud788\ud2b8\ub9f5'}>
         {'\uc120\ud0dd\ud55c \uc810\uc218\uc758 '}
         {regionLevel === 'adong' ? '\ud589\uc815\ub3d9\ubcc4' : '\ubc95\uc815\ub3d9\ubcc4'}
-        {' \ubd84\ud3ec\ub97c \uc0c9\uc73c\ub85c \ube44\uad50\ud569\ub2c8\ub2e4. i\ub97c \uc62c\ub9ac\uba74 \uacc4\uc0b0 \uae30\uc900\uc744 \ubcfc \uc218 \uc788\uc2b5\ub2c8\ub2e4.'}
+        {' 분포를 색으로 비교합니다.\ni를 올리면 계산 기준을 볼 수 있습니다.'}
       </ModeGuide>
     );
   }
   if (mapMode === 'realestate') {
     return (
       <ModeGuide title={'\ubd80\ub3d9\uc0b0'}>
-        {'\uae30\uac04, \uc720\ud615, \ubcf4\uc99d\uae08, \uc6d4\uc138, \uba74\uc801 \uc870\uac74\uc5d0 \ub9de\ub294 \uc2e4\uac70\ub798\ub97c \uc9c0\ub3c4\uc5d0 \ud45c\uc2dc\ud569\ub2c8\ub2e4. \ud655\ub300\ud558\uba74 \ub354 \uc791\uc740 \ubc94\uc704\ub85c \ubb36\uc785\ub2c8\ub2e4.'}
+        {'기간, 유형, 보증금, 월세, 면적 조건에 맞는 과거 실거래 내역을 지도에 표시합니다.\n확대하면 더 작은 범위로 묶입니다.'}
       </ModeGuide>
     );
   }
   if (mapMode === 'facility') {
     return (
       <ModeGuide title={'\uc2dc\uc124'}>
-        {'\uc120\ud0dd\ud55c \uc0dd\ud65c\uc2dc\uc124\uc744 \uc9c0\ub3c4\uc5d0 \ud45c\uc2dc\ud569\ub2c8\ub2e4. \ud45c\uc2dc\ud560 \uc2dc\uc124\uc774 \uc5c6\uc73c\uba74 \uc544\ubb34 \uac83\ub3c4 \uc120\ud0dd\ud558\uc9c0 \uc54a\uc740 \uc0c1\ud0dc\uc785\ub2c8\ub2e4.'}
+        {'선택한 생활시설을 지도에 표시합니다.\n표시할 시설이 없으면 아무 것도 선택하지 않은 상태입니다.\n시설 정보는 최신 상태가 아닐 수 있습니다.'}
       </ModeGuide>
     );
   }
   return (
     <ModeGuide title={'\uc758\ub8cc'}>
-      {'\uc120\ud0dd\ud55c \ubcd1\uc6d0, \uce58\uacfc, \uc57d\uad6d, \uc751\uae09\uc2e4\uc744 \uc9c0\ub3c4\uc5d0 \ud45c\uc2dc\ud569\ub2c8\ub2e4. \uc9c0\uae08 \ubb38 \uc5f0 \uacf3\uc744 \ucf1c\uba74 \uc800\uc7a5\ub41c \uc6b4\uc601\uc2dc\uac04 \uae30\uc900\uc73c\ub85c \ud544\ud130\ub9c1\ud569\ub2c8\ub2e4.'}
+      {'선택한 병원, 치과, 약국, 응급실을 지도에 표시합니다.\n운영시간 정보는 최신 또는 실제 운영과 다를 수 있습니다.\n방문 전 전화 등으로 실제 문 연 곳인지 확인하세요.'}
     </ModeGuide>
   );
 }
@@ -220,6 +222,10 @@ const FACILITY_ORDER: FacilityKey[] = [
 
 const MEDICAL_CATEGORY_ORDER: MedicalCategory[] = ['hospital', 'dental', 'pharmacy', 'emergency'];
 
+function facilityLogoIcon(src: string, label: string) {
+  return `<img src="${src}" alt="${label}" style="display:block;width:16px;height:16px;object-fit:contain;border-radius:4px;" />`;
+}
+
 const FACILITY_ICONS: Record<FacilityKey, string> = {
   subway_station: '🚇',
   bus_stop: '🚌',
@@ -227,13 +233,13 @@ const FACILITY_ICONS: Record<FacilityKey, string> = {
   library: '📚',
   convenience: '🏪',
   mart: '🛒',
-  daiso: '<span style="color:#dc2626;font-size:14px;line-height:1">■</span>',
+  daiso: facilityLogoIcon(daisoLogo, '다이소'),
   restaurant: '🍜',
   cafe: '☕',
   nightlife: '🍺',
   laundry: '🧺',
   beauty: '✂',
-  oliveyoung: '🫒',
+  oliveyoung: facilityLogoIcon(oliveyoungLogo, '올리브영'),
   gym: '🏋',
   book_stationery: '✏',
   study_cafe: '📖',
@@ -967,9 +973,9 @@ export default function MainMap() {
             ) : null}
             {FACILITY_ORDER.map((key) => (
               <FilterButton key={key} active={facilityKeys.has(key)} onClick={() => toggleFacility(key)} className="w-full">
-                <span className="inline-flex items-center gap-1.5">
-                  <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center" dangerouslySetInnerHTML={{ __html: FACILITY_ICONS[key] }} />
-                  <span>{FACILITY_LABELS[key]}</span>
+                <span className="inline-flex h-full translate-y-px items-center gap-1.5 leading-none">
+                  <span aria-hidden="true" className="inline-flex h-4 w-4 shrink-0 items-center justify-center leading-none" dangerouslySetInnerHTML={{ __html: FACILITY_ICONS[key] }} />
+                  <span className="leading-none">{FACILITY_LABELS[key]}</span>
                 </span>
               </FilterButton>
             ))}

@@ -392,7 +392,7 @@ function InfoButton({ text }: { text: string }) {
       <button type="button" aria-label="추가 정보" className="grid h-5 w-5 place-items-center rounded-full border border-border bg-transparent text-[11px] font-bold text-text-muted hover:border-text-muted hover:text-text">
         i
       </button>
-      <span className="pointer-events-none absolute right-0 top-[calc(100%+6px)] z-[90] hidden w-[300px] rounded-[6px] border border-border bg-surface p-3 text-left text-[12px] font-semibold leading-5 text-text-muted shadow-lg group-hover:block group-focus-within:block">
+      <span className="pointer-events-none absolute right-0 top-[calc(100%+6px)] z-[90] hidden w-[300px] whitespace-pre-line rounded-[6px] border border-border bg-[var(--surface-overlay-bg)] p-3 text-left text-[12px] font-semibold leading-5 text-text-muted shadow-lg backdrop-blur-md group-hover:block group-focus-within:block">
         {text}
       </span>
     </span>
@@ -491,7 +491,7 @@ function BarChart({ items, valueKey = 'count' }: { items: SeriesItem[]; valueKey
   const values = items.map((item) => Number(item[valueKey] ?? 0));
   const max = maxNumber(values);
   return (
-    <div className="relative z-[1] flex h-[138px] min-h-[138px] flex-1 items-end gap-2 overflow-visible border-b border-border px-1 pb-6">
+    <div className="relative z-[70] flex h-[138px] min-h-[138px] flex-1 items-end gap-2 overflow-visible border-b border-border px-1 pb-6">
       {items.map((item, index) => {
         const value = Number(item[valueKey] ?? 0);
         const label = formatMonth(item.month) || item.time || `${index + 1}`;
@@ -500,7 +500,7 @@ function BarChart({ items, valueKey = 'count' }: { items: SeriesItem[]; valueKey
           <div key={`${item.month ?? item.time ?? index}`} className="group relative flex h-full flex-1 flex-col items-center justify-end gap-2">
             <span className="w-full rounded-t-[var(--map-control-radius)] bg-[var(--color-heatmap-4)]/80 transition group-hover:bg-[var(--color-heatmap-5)]" style={{ height: `${height}%`, minHeight: value > 0 ? 10 : 0 }} />
             <span className="absolute bottom-[-22px] text-[11px] font-semibold text-text-muted">{label}</span>
-            <span className="pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-[3000] hidden min-w-[136px] -translate-x-1/2 rounded-[6px] border border-border bg-surface px-2 py-1.5 text-center text-[12px] font-bold leading-5 text-text shadow-lg group-hover:block">
+            <span className="pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-[3000] hidden min-w-[136px] -translate-x-1/2 rounded-[6px] border border-border bg-[var(--surface-overlay-bg)] px-2 py-1.5 text-center text-[12px] font-bold leading-5 text-text shadow-lg backdrop-blur-md group-hover:block">
               {label}<br />
               거래 {value.toLocaleString()}건<br />
               <small className="font-semibold text-text-muted">표시 기준 최대 {max.toLocaleString()}건</small>
@@ -823,7 +823,11 @@ function InfraTreemap({ items }: { items: TypeMixItem[] }) {
 function InfraDivergingBars({ items }: { items: TypeMixItem[] }) {
   const valid = items.filter((item) => typeof item.delta === 'number' && Number.isFinite(item.delta));
   const strengths = valid.filter((item) => Number(item.delta) > 0).sort((a, b) => Number(b.delta) - Number(a.delta)).slice(0, 3);
-  const weaknesses = valid.filter((item) => Number(item.delta) < 0).sort((a, b) => Number(a.delta) - Number(b.delta)).slice(0, 3);
+  const weaknesses = valid
+    .filter((item) => Number(item.delta) < 0)
+    .sort((a, b) => Number(a.delta) - Number(b.delta))
+    .slice(0, 3)
+    .sort((a, b) => Number(b.delta) - Number(a.delta));
   const ranked = [...strengths, ...weaknesses];
   const positiveMax = Math.max(0.01, ...valid.filter((item) => Number(item.delta) > 0).map((item) => Number(item.delta)));
   const barWidth = (delta: number) => {

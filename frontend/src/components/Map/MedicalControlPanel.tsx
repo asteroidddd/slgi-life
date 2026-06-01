@@ -71,7 +71,7 @@ export default function MedicalControlPanel({
   const hospitalActive = categories.has('hospital');
   const specialtyOptions = [
     '전체',
-    ...Array.from(new Set((specialtyGroups.length ? specialtyGroups : DEFAULT_SPECIALTY_GROUPS).filter(Boolean))),
+    ...Array.from(new Set((specialtyGroups.length ? specialtyGroups : DEFAULT_SPECIALTY_GROUPS).filter((name) => name && name !== '기타'))),
   ];
 
   const resetSpecialties = () => {
