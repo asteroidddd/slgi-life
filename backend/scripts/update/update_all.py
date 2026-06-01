@@ -17,7 +17,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
-STATE_DIR = BACKEND_ROOT / "apps" / "public_data" / ".state"
+STATE_DIR = BACKEND_ROOT / "scripts" / "update" / ".state"
 STATE_FILE = STATE_DIR / "update_all_state.json"
 PUBLIC_DATA_STATE_FILE = STATE_DIR / "public_data_state.json"
 LOCK_FILE = STATE_DIR / "update_all.lock"

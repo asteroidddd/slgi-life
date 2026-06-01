@@ -42,6 +42,7 @@ PERSISTENT_FAILURES_PATH = STATE_DIR / "persistent_failures.md"
 LOCK_PATH = STATE_DIR / "scheduled_update.lock"
 DEFAULT_MAX_HOURS = 6.0
 FAILED_STATUSES = {"failed", "partial", "rate_limited", "timeout"}
+NON_RETRY_REASONS = {"deadline_reached"}
 
 
 @dataclass(frozen=True)
@@ -141,13 +142,12 @@ def result_has_change(value: Any) -> bool:
             return False
         for key in (
             "created",
-            "updated",
-            "loaded",
             "inserted",
             "deleted_missing",
             "deleted_existing",
             "imported",
             "deleted_old",
+            "upserted",
             "stale_key_count",
             "deleted_key_count",
         ):
@@ -161,6 +161,26 @@ def result_has_change(value: Any) -> bool:
         return any(result_has_change(item) for item in value.values())
     if isinstance(value, list):
         return any(result_has_change(item) for item in value)
+    return False
+
+
+def contains_reason(value: Any, reasons: set[str]) -> bool:
+    if isinstance(value, dict):
+        if value.get("reason") in reasons:
+            return True
+        return any(contains_reason(item, reasons) for item in value.values())
+    if isinstance(value, list):
+        return any(contains_reason(item, reasons) for item in value)
+    return False
+
+
+def task_success_should_signal_change(task: Task, due_reason: str, result: dict[str, Any]) -> bool:
+    if result_has_change(result):
+        return True
+    if task.extra.get("signal_on_success"):
+        return True
+    if task.schedule == "file_change" and due_reason in {"no_previous_success", "source_hash_changed_or_missing", "force"}:
+        return True
     return False
 
 
@@ -280,13 +300,13 @@ TASKS: tuple[Task, ...] = (
             "data/adong_boundaries.geojson",
         ),
     ),
-    Task("metrics", "public_data", "P02", "monthly", run_public("metrics"), deps=("regions",), monthly_day=1),
+    Task("metrics", "public_data", "P02", "monthly", run_public("metrics"), deps=("regions",), monthly_day=1, extra={"signal_on_success": True}),
     Task("populations", "public_data", "P03", "monthly", run_public("populations"), deps=("regions",), monthly_day=1, heavy=True),
-    Task("rent_deals", "public_data", "P04", "daily", run_public("rent_deals"), deps=("regions",), heavy=True),
+    Task("rent_deals", "public_data", "P04", "daily", run_public("rent_deals"), deps=("regions",), heavy=True, extra={"signal_on_success": True}),
     Task("univ", "public_data", "P05", "file_change", run_public("univ"), deps=("regions",), file_paths=("data/university_boundaries.geojson",)),
     Task("bus_stop", "public_data", "P06A", "daily", run_public("bus", skip_congestion=True), deps=("regions",)),
     Task("bus_congestion", "public_data", "P06B", "daily", run_bus_congestion, deps=("bus_stop",), heavy=True),
-    Task("subway", "public_data", "P07", "daily", run_public("subway"), deps=("regions",)),
+    Task("subway", "public_data", "P07", "daily", run_public("subway"), deps=("regions",), extra={"signal_on_success": True}),
     Task(
         "stores",
         "public_data",
@@ -297,8 +317,9 @@ TASKS: tuple[Task, ...] = (
         weekly_day=0,
         file_paths=("data/store_business_category.xlsx", "data/KSIC_10th.xlsx"),
         heavy=True,
+        extra={"signal_on_success": True},
     ),
-    Task("daiso", "public_data", "P09", "weekly", run_public("daiso"), deps=("stores",), weekly_day=0),
+    Task("daiso", "public_data", "P09", "weekly", run_public("daiso"), deps=("stores",), weekly_day=0, extra={"signal_on_success": True}),
     Task(
         "medical",
         "public_data",
@@ -308,9 +329,10 @@ TASKS: tuple[Task, ...] = (
         deps=("regions",),
         weekly_day=0,
         heavy=True,
+        extra={"signal_on_success": True},
     ),
     Task("parks", "public_data", "P11", "file_change", run_public("parks"), deps=("regions",), file_paths=("data/park_boundaries.geojson",)),
-    Task("library", "public_data", "P12", "weekly", run_public("library"), deps=("regions",), weekly_day=0),
+    Task("library", "public_data", "P12", "weekly", run_public("library"), deps=("regions",), weekly_day=0, extra={"signal_on_success": True}),
     Task(
         "amenity",
         "service",
@@ -374,7 +396,15 @@ TASKS: tuple[Task, ...] = (
         "D01",
         "on_change",
         run_dashboard,
-        deps=("current_scores", "rent_deal_summary_cache", "region_park_area_cache", "region_amenity_category_cache"),
+        deps=(
+            "current_scores",
+            "rent_deal_summary_cache",
+            "region_park_area_cache",
+            "region_amenity_category_cache",
+            "bus_congestion",
+            "subway",
+            "bus_stop",
+        ),
         run_on_dependency_change=True,
     ),
     Task("ai_stale_keys", "maintenance", "M01", "daily", run_ai_stale_keys),
@@ -420,10 +450,10 @@ def should_run(task: Task, args: argparse.Namespace, now: datetime, run_results:
     if task.schedule == "weekly":
         if task.weekly_day is None:
             return False, "weekly_day_not_configured", source_hash
-        if now.weekday() != task.weekly_day:
-            return False, "not_weekly_day", source_hash
         if previous.get("last_success_local_week") == local_week_text(now):
             return False, "already_succeeded_this_week", source_hash
+        if now.weekday() < task.weekly_day:
+            return False, "before_weekly_day", source_hash
         return True, "weekly_due", source_hash
 
     if task.schedule == "file_change":
@@ -516,26 +546,43 @@ def append_persistent_failure(task: Task, payload: dict[str, Any]) -> None:
         handle.write(line)
 
 
-def run_task(task: Task, args: argparse.Namespace, dry_run: bool, source_hash: str | None) -> dict[str, Any]:
+def run_task(task: Task, args: argparse.Namespace, dry_run: bool, source_hash: str | None, due_reason: str) -> dict[str, Any]:
     started_at = utc_now()
     last_error: dict[str, Any] | None = None
+    last_result: dict[str, Any] | None = None
+    last_status = "failed"
     for attempt in range(1, args.retry_attempts + 1):
         try:
             result = task.runner(args, dry_run)
             status = "success"
             if contains_unsuccessful(result):
                 status = unsuccessful_status(result)
-            changed = result_has_change(result)
-            return save_task_result(
-                task,
-                status=status,
-                reason="executed",
-                source_hash=source_hash,
-                result=result,
-                changed=changed and status == "success",
-                attempts=attempt,
-                started_at=started_at,
-            )
+            last_result = result
+            last_status = status
+            if status == "success":
+                return save_task_result(
+                    task,
+                    status=status,
+                    reason="executed",
+                    source_hash=source_hash,
+                    result=result,
+                    changed=task_success_should_signal_change(task, due_reason, result),
+                    attempts=attempt,
+                    started_at=started_at,
+                )
+            if contains_reason(result, NON_RETRY_REASONS):
+                return save_task_result(
+                    task,
+                    status=status,
+                    reason="non_retryable_unsuccessful_result",
+                    source_hash=source_hash,
+                    result=result,
+                    changed=False,
+                    attempts=attempt,
+                    started_at=started_at,
+                )
+            if attempt < args.retry_attempts:
+                time.sleep(args.retry_wait_seconds)
         except Exception as exc:
             last_error = {
                 "type": type(exc).__name__,
@@ -545,10 +592,21 @@ def run_task(task: Task, args: argparse.Namespace, dry_run: bool, source_hash: s
             if attempt < args.retry_attempts:
                 time.sleep(args.retry_wait_seconds)
 
+    if last_result is not None:
+        return save_task_result(
+            task,
+            status=last_status,
+            reason="retry_exhausted_unsuccessful_result",
+            source_hash=source_hash,
+            result=last_result,
+            changed=False,
+            attempts=args.retry_attempts,
+            started_at=started_at,
+        )
     return save_task_result(
         task,
         status="failed",
-        reason="retry_exhausted",
+        reason="retry_exhausted_exception",
         source_hash=source_hash,
         error=last_error,
         changed=False,
@@ -669,7 +727,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         elif args.plan_only:
             state = save_task_result(task, status="planned", reason=reason, source_hash=source_hash, changed=False)
         else:
-            state = run_task(task, args, dry_run=dry_run, source_hash=source_hash)
+            state = run_task(task, args, dry_run=dry_run, source_hash=source_hash, due_reason=reason)
 
         run_results[task.task_id] = state
         run_payload["tasks"].append(state)

@@ -9,7 +9,14 @@ from pathlib import Path
 from typing import Any
 
 
-STATE_PATH = Path(__file__).resolve().parent / ".state" / "public_data_state.json"
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+LEGACY_STATE_PATH = Path(__file__).resolve().parent / ".state" / "public_data_state.json"
+STATE_PATH = Path(
+    os.environ.get(
+        "CAPSTON_PUBLIC_DATA_STATE_PATH",
+        BACKEND_ROOT / "scripts" / "update" / ".state" / "public_data_state.json",
+    )
+)
 
 
 def utc_now_iso() -> str:
@@ -17,10 +24,14 @@ def utc_now_iso() -> str:
 
 
 def load_state() -> dict[str, Any]:
-    if not STATE_PATH.exists():
+    path = STATE_PATH if STATE_PATH.exists() or not LEGACY_STATE_PATH.exists() else LEGACY_STATE_PATH
+    if not path.exists():
         return {"datasets": {}}
-    with STATE_PATH.open(encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        with path.open(encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {"datasets": {}, "corrupt_detected_at": utc_now_iso(), "corrupt_state_path": str(path)}
     if not isinstance(data, dict):
         return {"datasets": {}}
     data.setdefault("datasets", {})

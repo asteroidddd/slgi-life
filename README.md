@@ -86,7 +86,7 @@ capston/
 │       └── types/             # 프론트엔드 타입
 ├── docker-compose.yml
 ├── scripts/
-└── DATA_SOURCES.xlsx
+└── DATA_SOURCES.csv
 ```
 
 ## 환경 파일
@@ -101,7 +101,7 @@ capston/
 
 루트 `.env`는 애플리케이션 런타임에서 사용하지 않습니다. 로컬 작업 자동화나 EC2 접속 보조용으로만 둘 수 있습니다.
 
-Backend에 필요한 외부 API 키 이름은 `backend/.env.example`과 `DATA_SOURCES.xlsx`를 기준으로 맞춥니다.
+Backend에 필요한 외부 API 키 이름은 `backend/.env.example`과 `DATA_SOURCES.csv`를 기준으로 맞춥니다.
 
 Frontend 주요 환경변수:
 
@@ -267,6 +267,8 @@ npm run preview
 
 데이터 업데이트는 backend 스크립트로 수행합니다. 기본 실행은 dry-run이며, 실제 DB 반영에는 `--write`가 필요합니다.
 
+운영 자동 업데이트는 systemd timer `capston-scheduled-update.timer`가 backend 컨테이너 안에서 `scripts/update/scheduled_update.py`를 실행하는 방식입니다. 실행 상태 JSON은 `backend/scripts/update/.state` 아래에 저장됩니다.
+
 ```bash
 cd /home/ubuntu/capston/backend
 python scripts/update/update_all.py --write
@@ -300,13 +302,13 @@ python scripts/update/update_cache_data.py --target all --write
 
 지원 target은 `rent_deal_geocode_cache`, `region_park_area_cache`, `region_amenity_category_cache`입니다.
 
-업데이트 상태 JSON은 `backend/apps/public_data/.state` 아래에 저장됩니다.
+업데이트 상태 JSON은 `backend/scripts/update/.state` 아래에 저장됩니다.
 
 ## 주요 문서
 
 | 문서 | 용도 |
 |---|---|
-| `DATA_SOURCES.xlsx` | 원천 데이터, 업데이트 정책, 데이터 출처 정리 |
+| `DATA_SOURCES.csv` | 원천 데이터, 업데이트 정책, 데이터 출처 정리 |
 | `backend/README.md` | 백엔드 개발과 API 요약 |
 | `backend/scripts/README.md` | 업데이트 스크립트 개요 |
 
@@ -315,7 +317,7 @@ python scripts/update/update_cache_data.py --target all --write
 - `.env` 값, DB 비밀번호, 개인 키는 문서나 Git에 기록하지 않습니다.
 - `backend/.env`, `frontend/.env`, `secrets/`, `TEMP/`, `node_modules/`, `dist/`, `*.tsbuildinfo`는 Git에 포함하지 않습니다.
 - 마이그레이션 적용 후 데이터 업데이트를 수행합니다.
-- 공공데이터 API 호출 제한이 발생하면 해당 실행에서 중단하고 다음 실행에서 이어받습니다.
+- 공공데이터 API 호출 제한이나 응답 오류가 반복되면 운영 스케줄러가 실패 상태를 기록하고 가능한 다음 작업을 계속 진행합니다.
 - 삭제가 필요한 스냅샷성 데이터는 전체 적재 성공 후에만 삭제 반영합니다.
 - AI Agent DB 계정은 허용된 조회 테이블만 읽을 수 있도록 권한을 제한합니다.
 - Frontend 환경변수 중 `VITE_` prefix 값은 클라이언트에 노출되므로 비밀값을 넣지 않습니다.

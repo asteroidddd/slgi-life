@@ -15,6 +15,7 @@
 
 | 파일 | 역할 |
 |---|---|
+| `update/scheduled_update.py` | systemd timer가 호출하는 운영용 스케줄러. 상태 JSON, 실행 조건, 재시도, 부분 실패 기록을 관리 |
 | `update/update_all.py` | 공공데이터, 서비스 파생 데이터, 대시보드 캐시, 유지보수 작업을 전체 순서대로 실행 |
 | `update/update_public_data.py` | 공공데이터 도메인을 하나씩 또는 전체 순서대로 업데이트 |
 | `update/update_service_data.py` | 서비스 파생 데이터를 하나씩 또는 전체 순서대로 업데이트 |
@@ -64,10 +65,10 @@ python scripts/update/update_cache_data.py --target all --write
 - `region_park_area_cache`
 - `region_amenity_category_cache`
 
-업데이트 상태 JSON은 `backend/apps/public_data/.state` 아래에 저장됩니다.
+업데이트 상태 JSON은 `backend/scripts/update/.state` 아래에 저장됩니다. 운영에서는 이 경로를 Docker bind mount/volume으로 보존해야 컨테이너 재생성 후에도 업데이트 이력이 유지됩니다.
 
 ## 운영 메모
 
-- 매일 자정 실행이 필요하면 배포 환경의 cron 또는 CI/CD 스케줄러에서 `update_all.py --write`를 호출합니다.
-- API 호출 제한, 네트워크 오류, 부분 실패가 발생하면 이후 단계는 중단하고 다음 실행에서 이어받습니다.
+- 매일 자정 운영 실행은 systemd `capston-scheduled-update.timer`가 `scheduled_update.py --write`를 호출합니다.
+- API 호출 제한, 네트워크 오류, 부분 실패가 반복되면 실패 상태를 기록하고 가능한 다음 작업은 계속 진행합니다.
 - 스크립트 실행 전 `backend/.env`와 DB migration 상태를 확인합니다.

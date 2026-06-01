@@ -6,6 +6,7 @@
 
 | 파일 | 역할 |
 |---|---|
+| `scheduled_update.py` | 운영 systemd timer가 호출하는 일일 스케줄러. 상태 JSON, 실행 조건, 재시도, 부분 실패 기록을 관리 |
 | `update_all.py` | 공공데이터, 서비스 파생 데이터, 대시보드 캐시, 유지보수 작업을 정해진 순서로 실행 |
 | `update_public_data.py` | 공공데이터 원천 테이블 업데이트 |
 | `update_service_data.py` | `Amenity`, 전월세 캐시, `Current*` 같은 서비스 파생 테이블 업데이트 |
@@ -36,6 +37,8 @@ python scripts/update/update_dashboard_data.py --target all --write
 python scripts/update/update_cache_data.py --target all --write
 ```
 
+운영 자동 실행은 루트 systemd unit `capston-scheduled-update.service`와 `capston-scheduled-update.timer`가 담당합니다. 서비스는 backend 컨테이너 안에서 `scheduled_update.py --write`를 실행합니다.
+
 ## 데이터 흐름
 
 1. `update_public_data.py`가 원천 데이터를 갱신합니다.
@@ -49,5 +52,6 @@ python scripts/update/update_cache_data.py --target all --write
 
 - 기본 실행은 dry-run입니다. DB에 반영하려면 반드시 `--write`를 붙입니다.
 - 장시간 실행될 수 있으므로 운영에서는 로그와 실패 알림을 함께 구성합니다.
-- API 호출 제한이나 네트워크 오류가 발생하면 해당 실행을 중단하고 다음 실행에서 이어받습니다.
+- API 호출 제한이나 네트워크 오류가 반복되면 운영 스케줄러가 실패 상태를 기록하고 가능한 다음 작업을 계속 진행합니다.
+- 업데이트 상태 JSON은 `backend/scripts/update/.state` 아래에 저장됩니다.
 - `fetch_*` 레거시 스크립트는 새 도메인별 업데이터로 대체되어 제거되었습니다.

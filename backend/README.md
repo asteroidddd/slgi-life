@@ -184,7 +184,9 @@ python scripts/update/update_dashboard_data.py --target all --write
 python scripts/update/update_cache_data.py --target all --write
 ```
 
-업데이트 상태 JSON은 `backend/apps/public_data/.state` 아래에 저장됩니다.
+운영 자동 업데이트는 루트 systemd timer `capston-scheduled-update.timer`가 backend 컨테이너 안에서 `scripts/update/scheduled_update.py`를 실행하는 방식입니다.
+
+업데이트 상태 JSON은 `backend/scripts/update/.state` 아래에 저장됩니다.
 
 ## GDAL 트러블슈팅
 

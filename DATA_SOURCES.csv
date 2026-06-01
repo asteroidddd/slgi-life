@@ -1,0 +1,55 @@
+﻿구분,사용 내용,이름,링크,제공서비스,제공기관
+지도,"배경지도, 대시보드 미니맵, 안전 지도 레이어 배경지도",WMTS API,https://www.vworld.kr/dev/v4dv_wmtsguide_s001.do,V-WORLD,국토교통부
+지도,검색,검색 API,https://www.vworld.kr/dev/v4dv_search_s001.do,V-WORLD,국토교통부
+지도,좌표 변환,Geocoder API,https://www.vworld.kr/dev/v4dv_geocoderguide2_s001.do,V-WORLD,국토교통부
+지도,법정동 경계 확인,행정구역_읍면동(법정동),https://www.vworld.kr/dtmk/dtmk_ntads_s002.do?dsId=30603,V-WORLD,국토교통부
+지도,행정동 경계 확인,(센서스경계)행정동경계,https://www.vworld.kr/dtmk/dtmk_ntads_s002.do?dsId=30017,V-WORLD,국가데이터처
+지도,자치구 경계 확인,(센서스경계)시군구경계,https://www.vworld.kr/dtmk/dtmk_ntads_s002.do?dsId=30015,V-WORLD,국가데이터처
+전월세 실거래,아파트 전월세 실거래가 기반 시세와 매물 분석 등,아파트 전월세 실거래가 자료,https://www.data.go.kr/data/15126474/openapi.do,공공데이터포털,국토교통부
+전월세 실거래,오피스텔 전월세 실거래가 기반 시세와 매물 분석 등,오피스텔 전월세 실거래가 자료,https://www.data.go.kr/data/15126475/openapi.do,공공데이터포털,국토교통부
+전월세 실거래,단독·다가구 전월세 실거래가 기반 시세와 매물 분석 등,단독/다가구 전월세 실거래가 자료,https://www.data.go.kr/data/15126472/openapi.do,공공데이터포털,국토교통부
+전월세 실거래,연립다세대 전월세 실거래가 기반 시세와 매물 분석 등,연립다세대 전월세 실거래가 자료,https://www.data.go.kr/data/15126473/openapi.do,공공데이터포털,국토교통부
+전월세 전환율,보증금을 월세로 환산하여 환산월세 계산,지역별 전월세 전환율 종합주택,https://stat.kosis.kr/statHtml_host/statHtml.do?orgId=408&tblId=DT_30404_N0010&dbUser=NSI_IN_408,KOSIS,한국부동산원
+전월세 전환율,보증금을 월세로 환산하여 환산월세 계산,지역별 전월세 전환율 아파트,https://stat.kosis.kr/statHtml_host/statHtml.do?orgId=408&tblId=DT_30404_N0010&dbUser=NSI_IN_408,KOSIS,한국부동산원
+전월세 전환율,보증금을 월세로 환산하여 환산월세 계산,지역별 전월세 전환율 연립/다세대,https://stat.kosis.kr/statHtml_host/statHtml.do?orgId=408&tblId=DT_30404_N0010&dbUser=NSI_IN_408,KOSIS,한국부동산원
+전월세 전환율,보증금을 월세로 환산하여 환산월세 계산,지역별 전월세 전환율 단독주택,https://stat.kosis.kr/statHtml_host/statHtml.do?orgId=408&tblId=DT_30404_N0010&dbUser=NSI_IN_408,KOSIS,한국부동산원
+상권/생활시설,여러 시설 기반 서비스 제공,상가(상권)정보 API,https://www.data.go.kr/data/15012005/openapi.do,공공데이터포털,소상공인시장진흥공단
+상권/생활시설,여러 시설 기반 서비스 제공,"다이소|매장찾기",https://www.daiso.co.kr/cs/shop,다이소,다이소
+상권/생활시설,분류 표 활용,제10차 한국표준산업분류,https://kssc.mods.go.kr:8443/ksscNew_web/index.jsp,통계분류포털,국가데이터처
+의료,"병원, 치과 운영 정보 표시",전국 병·의원 찾기 서비스,https://www.data.go.kr/data/15000736/openapi.do,공공데이터포털,국립중앙의료원
+의료,약국 운영 정보 표시,전국 약국 정보 조회 서비스,https://www.data.go.kr/data/15000576/openapi.do,공공데이터포털,국립중앙의료원
+의료,진료과목 확인,의료기관별상세정보서비스,https://www.data.go.kr/data/15001699/openapi.do,공공데이터포털,건강보험심사평가원
+의료,진료과목 확인,병원정보서비스,https://www.data.go.kr/data/15001698/openapi.do,공공데이터포털,건강보험심사평가원
+의료,응급실 운영 확인,전국 응급의료기관 정보 조회 서비스,https://www.data.go.kr/data/15000563/openapi.do,공공데이터포털,국립중앙의료원
+의료,명절 진료 운영 확인,전국 명절 비상 진료기관 정보 조회 서비스,https://www.data.go.kr/data/15000480/openapi.do,공공데이터포털,국립중앙의료원
+교통,버스정류장 위치 확인,버스정류장,https://www.data.go.kr/data/15142032/openapi.do,공공데이터포털,국토교통부
+교통,버스정류장 위치 확인,서울시 버스정류소 위치정보,https://data.seoul.go.kr/dataList/OA-15067/S/1/datasetView.do,서울열린데이터광장,서울특별시
+교통,버스 혼잡도 확인,노선별 혼잡도,https://www.data.go.kr/data/15142068/openapi.do,공공데이터포털,국토교통부
+교통,지하철역 위치 확인,서울시 역사마스터 정보,https://data.seoul.go.kr/dataList/OA-21232/S/1/datasetView.do,서울열린데이터광장,서울특별시
+교통,지하철 혼잡도 확인,지하철혼잡도정보,https://data.seoul.go.kr/dataList/OA-12928/A/1/datasetView.do,서울열린데이터광장,서울교통공사
+교통,지하철 혼잡도 확인,서울시 9호선 혼잡도 정보,https://data.seoul.go.kr/dataList/OA-22197/F/1/datasetView.do,서울열린데이터광장,서울시메트로9호선㈜
+도서관,도서관 위치 및 운영시간 확인,서울시 공공도서관 현황정보,https://data.seoul.go.kr/dataList/OA-15480/S/1/datasetView.do,서울열린데이터광장,서울특별시
+도서관,도서관 위치 및 운영시간 확인,서울시 작은도서관 현황정보,https://data.seoul.go.kr/dataList/OA-15481/S/1/datasetView.do,서울열린데이터광장,서울특별시
+대학,대학 이름 및 종류 확인,서울시 대학 및 전문대학 DB 정보 (한국어)(2025년),https://data.seoul.go.kr/dataList/OA-12974/S/1/datasetView.do,서울열린데이터광장,서울특별시
+대학,대학 경계 및 위치 확인,직접 수집,https://www.openstreetmap.org/#map=17/37.536266/126.984186,OpenStreetMap,OpenStreetMap
+공원,"공원 경계, 면적 및 위치 확인",서울시 생활권계획 시설(공원) 공간정보,https://data.seoul.go.kr/dataList/OA-15529/S/1/datasetView.do,서울열린데이터광장,서울특별시
+공원,"공원 경계, 면적 및 위치 확인",서울시 주요 공원현황,http://data.seoul.go.kr/dataList/OA-394/S/1/datasetView.do,서울열린데이터광장,서울특별시
+인구,행정동별 인구 확인,행정동별(통반단위) 주민등록 인구 및 세대현황,https://www.data.go.kr/data/15108065/openapi.do,공공데이터포털,행정안전부
+인구,법정동별 인구 확인,법정동별(행정동 통반단위) 주민등록 인구 및 세대 현황,https://www.data.go.kr/data/15108071/openapi.do,공공데이터포털,행정안전부
+통계 지표,자치구별 통계 확인,지역안전등급,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1YL20341&conn_path=I2,KOSIS,행정안전부
+통계 지표,자치구별 통계 확인,화재발생건수,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1YL8601&conn_path=I2,KOSIS,소방청
+통계 지표,자치구별 통계 확인,교통문화지수,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1YL20331&conn_path=I2,KOSIS,국토교통부
+통계 지표,자치구별 통계 확인,음주운전교통사고비율,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1YL14001&conn_path=I2,KOSIS,경찰청
+통계 지표,자치구별 통계 확인,뺑소니교통사고율,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1YL13901&conn_path=I2,KOSIS,경찰청
+통계 지표,자치구별 통계 확인,자동차천대당교통사고발생건수,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1YL21051&conn_path=I2,KOSIS,경찰청
+통계 지표,자치구별 통계 확인,자동차등록대수,https://kosis.kr/statHtml/statHtml.do?orgId=110&tblId=DT_110001_A029&conn_path=I2,KOSIS,행정안전부
+통계 지표,자치구별 통계 확인,GRDP,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1C65_03E&conn_path=I2,KOSIS,국가데이터처
+통계 지표,자치구별 통계 확인,주택수,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=INH_1JU1501&conn_path=I2,KOSIS,국가데이터처
+통계 지표,자치구별 통계 확인,지가변동률,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1YL20881E&conn_path=I2,KOSIS,한국부동산원
+통계 지표,자치구별 통계 확인,주민등록인구,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1YL20651E&conn_path=I2,KOSIS,행정안전부
+통계 지표,자치구별 통계 확인,인구총조사 고령인구비율,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1YL20632&conn_path=I2,KOSIS,국가데이터처
+통계 지표,자치구별 통계 확인,인구총조사 청년인구비율,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1YL20643&conn_path=I2,KOSIS,국가데이터처
+통계 지표,자치구별 통계 확인,녹지율,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1YL202105E&conn_path=I2,KOSIS,한국국토정보공사
+안전 지도,안전 지도 레이어,범죄주의구간(전체),https://www.safemap.go.kr/opna/data/dataViewRenew.do?objtId=205,생활안전정보,경찰청
+AI 에이전트,AI 에이전트 응답을 위한 API 활용,mindlogic API Gateway,https://docs.mindlogic.ai/docs/general/gateway/getting-started/overview#api-gateway,mindlogic Docs,마인드로직
+AI 에이전트,AI 에이전트 응답을 위한 API 활용,OpenAI API,https://openai.com/ko-KR/index/openai-api/,OpenAI,OpenAI
