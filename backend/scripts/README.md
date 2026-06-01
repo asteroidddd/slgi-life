@@ -19,6 +19,7 @@
 | `update/update_public_data.py` | 공공데이터 도메인을 하나씩 또는 전체 순서대로 업데이트 |
 | `update/update_service_data.py` | 서비스 파생 데이터를 하나씩 또는 전체 순서대로 업데이트 |
 | `update/update_dashboard_data.py` | 대시보드 화면 전용 데이터를 하나씩 또는 전체 순서대로 업데이트 |
+| `update/update_cache_data.py` | 전월세 지오코딩, 지역별 공원/편의시설 집계 같은 운영 보조 캐시를 업데이트 |
 
 기본은 dry-run이며 실제 DB 반영에는 `--write`가 필요합니다.
 
@@ -28,6 +29,7 @@ python scripts/update/update_all.py --write
 python scripts/update/update_public_data.py --dataset all --write
 python scripts/update/update_service_data.py --target all --write
 python scripts/update/update_dashboard_data.py --target all --write
+python scripts/update/update_cache_data.py --target all --write
 ```
 
 ## 실행 순서
@@ -46,11 +48,21 @@ python scripts/update/update_dashboard_data.py --target all --write
    - `library`
 2. 서비스 파생 데이터 업데이트
    - `amenity`
+   - `rent_deal_cache`
+   - `rent_deal_summary_cache`
    - `current`
 3. 대시보드 데이터 업데이트
    - `dashboard_cache`
 4. 유지보수 작업
    - `ai_stale_keys`
+
+`update_cache_data.py`는 `update_all.py`에 포함되지 않는 선택 운영 캐시입니다. 필요할 때 별도로 실행합니다.
+
+지원 target:
+
+- `rent_deal_geocode_cache`
+- `region_park_area_cache`
+- `region_amenity_category_cache`
 
 업데이트 상태 JSON은 `backend/apps/public_data/.state` 아래에 저장됩니다.
 

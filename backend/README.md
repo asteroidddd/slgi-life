@@ -57,10 +57,10 @@ docker compose ps
 | `REDIS_URL` | Redis 연결 |
 | `PUBLIC_DATA_API_KEY*` | 공공데이터포털 API 키 |
 | `SEOUL_API_KEY` | 서울 열린데이터광장 API 키 |
-| `V_WORLD_API_KEY` | VWorld API 키 |
+| `V_WORLD_API_KEY` / `VWORLD_API_KEY` | VWorld API 키 |
 | `KOSIS_API_KEY` | KOSIS API 키 |
 | `LIFE_INFO_API_KEY` | 생활안전지도 WMS API 키 |
-| `KAKAO_REST_API_KEY` | Kakao 로그인 REST API 키 |
+| `KAKAO_REST_API_KEY` | Kakao 로그인 및 주소 fallback REST API 키 |
 | `AI_AGENT_*` | AI Agent DB/OpenAI 설정 |
 
 ## 앱 구조
@@ -78,6 +78,7 @@ backend/
 ├── apps/
 │   ├── accounts/          # 사용자, 프로필, 소셜 로그인, 즐겨찾기 하위 앱
 │   ├── ai_agent/          # 자연어 질의, SQL guard, BYOK API 키
+│   ├── caches/            # 운영 보조 캐시 테이블과 업데이터
 │   ├── dashboard/         # 대시보드 캐시와 안전 WMS 프록시
 │   ├── public_data/       # 원천 데이터 모델과 업데이터
 │   └── service/           # 화면 제공용 서비스 API
@@ -180,6 +181,7 @@ python scripts/update/update_all.py --write
 python scripts/update/update_public_data.py --dataset all --write
 python scripts/update/update_service_data.py --target all --write
 python scripts/update/update_dashboard_data.py --target all --write
+python scripts/update/update_cache_data.py --target all --write
 ```
 
 업데이트 상태 JSON은 `backend/apps/public_data/.state` 아래에 저장됩니다.

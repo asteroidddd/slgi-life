@@ -8,8 +8,9 @@
 |---|---|
 | `update_all.py` | 공공데이터, 서비스 파생 데이터, 대시보드 캐시, 유지보수 작업을 정해진 순서로 실행 |
 | `update_public_data.py` | 공공데이터 원천 테이블 업데이트 |
-| `update_service_data.py` | `Amenity`, `Current*` 같은 서비스 파생 테이블 업데이트 |
+| `update_service_data.py` | `Amenity`, 전월세 캐시, `Current*` 같은 서비스 파생 테이블 업데이트 |
 | `update_dashboard_data.py` | 대시보드 화면 전용 캐시 업데이트 |
+| `update_cache_data.py` | `update_all.py`에 포함되지 않는 선택 운영 캐시 업데이트 |
 
 ## 실행 예시
 
@@ -30,14 +31,19 @@ python scripts/update/update_service_data.py --target all --write
 
 # 대시보드 캐시만 실제 반영
 python scripts/update/update_dashboard_data.py --target all --write
+
+# 선택 운영 캐시만 실제 반영
+python scripts/update/update_cache_data.py --target all --write
 ```
 
 ## 데이터 흐름
 
 1. `update_public_data.py`가 원천 데이터를 갱신합니다.
-2. `update_service_data.py`가 화면/API 제공에 필요한 파생 데이터를 재계산합니다.
+2. `update_service_data.py`가 화면/API 제공에 필요한 파생 데이터와 전월세 캐시를 재계산합니다.
 3. `update_dashboard_data.py`가 대시보드 화면 전용 데이터를 갱신합니다.
 4. `update_all.py`가 세 단계 이후 오래된 AI API 키 정리(`ai_stale_keys`)를 실행합니다.
+
+`update_cache_data.py`는 전체 흐름과 별도입니다. 지원 target은 `rent_deal_geocode_cache`, `region_park_area_cache`, `region_amenity_category_cache`입니다.
 
 ## 주의
 

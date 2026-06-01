@@ -67,6 +67,7 @@ capston/
 │   ├── apps/
 │   │   ├── accounts/          # 사용자, 프로필, 소셜 로그인, 즐겨찾기 하위 앱
 │   │   ├── ai_agent/          # 자연어 질의 보조와 BYOK API 키 관리
+│   │   ├── caches/            # 운영 보조 캐시 테이블과 업데이터
 │   │   ├── dashboard/         # 대시보드 캐시와 안전 WMS 프록시
 │   │   ├── public_data/       # 공공데이터 원천 테이블과 업데이터
 │   │   └── service/           # 지도, 히트맵, 편의시설, 전월세 서비스 API
@@ -84,7 +85,6 @@ capston/
 │       ├── styles/            # 전역 스타일
 │       └── types/             # 프론트엔드 타입
 ├── docker-compose.yml
-├── initial_setup.sh
 ├── scripts/
 └── DATA_SOURCES.xlsx
 ```
@@ -115,14 +115,19 @@ Vite는 `VITE_` prefix가 붙은 값만 클라이언트 번들에 노출합니�
 
 ## 초기 세팅
 
-서버에 코드와 환경 파일을 배치한 뒤, 루트에서 최초 1회 실행합니다.
+서버에 코드와 환경 파일을 배치한 뒤, 루트에서 DB/Redis, migration, 백엔드 컨테이너를 순서대로 준비합니다.
 
 ```bash
 cd /home/ubuntu/capston
-./initial_setup.sh
+docker compose up -d db redis
+docker compose build backend
+docker compose run --rm backend python manage.py migrate
+scripts/db/apply_agent_read_permissions.sh
+docker compose up -d backend
+docker compose ps
 ```
 
-이 스크립트는 다음 작업을 순서대로 수행합니다.
+위 명령은 다음 작업을 순서대로 수행합니다.
 
 1. DB와 Redis 컨테이너 기동
 2. Backend 이미지 빌드
@@ -146,6 +151,7 @@ Backend는 Django/DRF/GeoDjango 기반입니다. 공공데이터 원천 테이�
 | `apps.accounts.social` | Kakao 로그인 시작/콜백/webhook |
 | `apps.accounts.favorites` | 즐겨찾기 조회/추가/삭제 |
 | `apps.ai_agent` | 자연어 질의 기반 보조 기능과 BYOK API 키 관리 |
+| `apps.caches` | 전월세 지오코딩, 지역별 공원/편의시설 집계 캐시 |
 | `apps.dashboard.cache` | 대시보드 캐시, 지역 소개글, 안전 WMS 프록시 |
 | `apps.public_data.regions` | 서울 행정구역 코드와 경계 |
 | `apps.public_data.rent_deal` | 국토부 전월세 실거래 원천 데이터 |
@@ -280,9 +286,19 @@ python scripts/update/update_all.py --write
 10. `parks`
 11. `library`
 12. `amenity`
-13. `current`
-14. `dashboard_cache`
-15. `ai_stale_keys`
+13. `rent_deal_cache`
+14. `rent_deal_summary_cache`
+15. `current`
+16. `dashboard_cache`
+17. `ai_stale_keys`
+
+운영 보조 캐시는 전체 업데이트와 별도로 실행할 수 있습니다.
+
+```bash
+python scripts/update/update_cache_data.py --target all --write
+```
+
+지원 target은 `rent_deal_geocode_cache`, `region_park_area_cache`, `region_amenity_category_cache`입니다.
 
 업데이트 상태 JSON은 `backend/apps/public_data/.state` 아래에 저장됩니다.
 
