@@ -15,7 +15,6 @@
   - 대화형 모드: python agent.py 실행 후 프롬프트에 질문 입력
 =============================================================================
 """
-
 import json
 import time
 import argparse
@@ -25,6 +24,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from ..metadata.context import (
     get_config,
     get_db,
+    get_data_source_labels,
     get_domain_dictionary_context,
     get_llm,
     get_schema_context,
@@ -205,7 +205,8 @@ def run_agent(
     print(f"  query_type:    {classification.query_type}")
     print(f"  needed_tables: {classification.needed_tables}")
     print(f"  join_hint:     {classification.join_hint}")
-
+    data_sources = get_data_source_labels(classification.needed_tables)
+    print(f"  data_sources:  {data_sources}")
     if classification.route in {"direct", "blocked"}:
         if classification.route == "blocked":
             answer = "저는 서울 자취/동네 추천 서비스예요. 동네 추천, 월세, 주변 시설 등에 대해 물어봐 주세요! 😊"
@@ -246,7 +247,11 @@ def run_agent(
             InfoOutput, method="function_calling"
         ).invoke([
             SystemMessage(content=INFO_ANSWER_PROMPT),
-            HumanMessage(content=f"질문: {enriched_question}\nSQL 결과: {sql_result['result'] or '조회 결과 없음'}"),
+            HumanMessage(content=(
+   		 f"질문: {enriched_question}\n"
+    		 f"SQL 결과: {sql_result['result'] or '조회 결과 없음'}\n"
+    		 f"데이터 출처: {data_sources}"
+	    )),
         ])
 
         elapsed = round(time.time() - start, 2)
@@ -282,6 +287,7 @@ def run_agent(
                 question=enriched_question,
                 sql_result=sql_result["result"] or "조회 결과 없음",
                 max_neighborhoods=max_neighborhoods,
+                data_sources=data_sources,
             )),
             HumanMessage(content=enriched_question),
         ])
@@ -310,6 +316,7 @@ def run_agent(
                             question=enriched_question,
                             sql_result=enriched,
                             max_neighborhoods=max_neighborhoods,
+			    data_sources=data_sources,
                         )),
                         HumanMessage(content=enriched_question),
                     ])

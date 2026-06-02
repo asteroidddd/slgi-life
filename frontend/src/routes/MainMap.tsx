@@ -1012,10 +1012,10 @@ export default function MainMap() {
             {user ? '마이페이지' : '로그인'}
           </Link>
         </div>
-        <div className="grid translate-x-[-10px] justify-items-end gap-0.5 text-[11px] font-semibold leading-4 text-text">
-          <Link className="bg-transparent p-0 hover:text-text" to="/terms">이용약관</Link>
-          <Link className="bg-transparent p-0 hover:text-text" to="/privacy">개인정보처리방침</Link>
-          <Link className="bg-transparent p-0 hover:text-text" to="/data-sources">데이터 출처</Link>
+        <div className="grid translate-x-[-10px] justify-items-end gap-0.5 text-[11px] font-semibold leading-4">
+          <Link className="bg-transparent p-0 text-black [-webkit-text-stroke:0.35px_rgba(255,255,255,0.95)] [text-shadow:0_1px_1px_rgba(255,255,255,0.9)] hover:text-black" to="/terms">이용약관</Link>
+          <Link className="bg-transparent p-0 text-black [-webkit-text-stroke:0.35px_rgba(255,255,255,0.95)] [text-shadow:0_1px_1px_rgba(255,255,255,0.9)] hover:text-black" to="/privacy">개인정보처리방침</Link>
+          <Link className="bg-transparent p-0 text-black [-webkit-text-stroke:0.35px_rgba(255,255,255,0.95)] [text-shadow:0_1px_1px_rgba(255,255,255,0.9)] hover:text-black" to="/data-sources">데이터 출처</Link>
         </div>
       </div>
 

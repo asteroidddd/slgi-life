@@ -4,18 +4,20 @@ from __future__ import annotations
 
 import json
 import os
+import csv
 import time as sleep_time
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
+from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from django.contrib.gis.geos import Point
-from django.db import transaction
+from django.db import connection, transaction
 
 from apps.public_data.api_keys import env_key_ring, with_rate_limit_fallback
 from apps.public_data.bus.models import BusCongestion, BusStop
@@ -29,9 +31,13 @@ SEOUL_BUS_STOP_URL = (
 )
 PUBLIC_DATA_BASE_URL = "https://apis.data.go.kr"
 BUS_CONGESTION_PATH = "/1613000/RouteCongestionLevel/getRouteCongestionLevel"
+BUS_CONGESTION_STOP_MAP_PATH = Path(__file__).resolve().parents[3] / "data" / "bus_congestion_stop_map.csv"
 PAGE_SIZE = 1000
 BUS_CONGESTION_RETENTION_DAYS = 14
 BUS_CONGESTION_LAG_DAYS = 15
+BUS_SERVICE_START_HOUR = 4
+BUS_SERVICE_END_HOUR = 27
+BUS_SERVICE_HOURS = tuple(range(BUS_SERVICE_START_HOUR, BUS_SERVICE_END_HOUR + 1))
 
 
 @dataclass(frozen=True)
@@ -71,6 +77,52 @@ def _normalize_id(value: Any) -> str:
     if text.isdigit():
         return str(int(text))
     return text
+
+
+def _load_bus_congestion_stop_map() -> tuple[dict[str, str], dict[str, Any]]:
+    """Map RouteCongestionLevel sttn_id to the current EC2 bus_stop.id."""
+
+    bus_stop_by_number: dict[str, str] = {}
+    direct_ids: dict[str, str] = {}
+    for stop_id, stop_number in BusStop.objects.values_list("id", "stop_number"):
+        stop_id_text = _normalize_id(stop_id)
+        if stop_id_text:
+            direct_ids[stop_id_text] = stop_id_text
+        number = str(stop_number or "").strip()
+        if number and stop_id_text:
+            bus_stop_by_number[number] = stop_id_text
+
+    mapping = dict(direct_ids)
+    file_rows = matched_rows = unmatched_rows = bad_rows = 0
+    matched_stop_numbers: set[str] = set()
+    if BUS_CONGESTION_STOP_MAP_PATH.exists():
+        with BUS_CONGESTION_STOP_MAP_PATH.open(encoding="utf-8-sig", newline="") as handle:
+            for row in csv.DictReader(handle):
+                file_rows += 1
+                external_id = _normalize_id(row.get("sttn_id"))
+                stop_number = str(row.get("stop_number") or "").strip()
+                if not external_id or not stop_number:
+                    bad_rows += 1
+                    continue
+                internal_id = bus_stop_by_number.get(stop_number)
+                if internal_id is None:
+                    unmatched_rows += 1
+                    continue
+                mapping[external_id] = internal_id
+                matched_rows += 1
+                matched_stop_numbers.add(stop_number)
+
+    return mapping, {
+        "file": str(BUS_CONGESTION_STOP_MAP_PATH),
+        "file_exists": BUS_CONGESTION_STOP_MAP_PATH.exists(),
+        "file_rows": file_rows,
+        "matched_rows": matched_rows,
+        "unmatched_rows": unmatched_rows,
+        "bad_rows": bad_rows,
+        "matched_stop_numbers": len(matched_stop_numbers),
+        "direct_id_count": len(direct_ids),
+        "mapping_count": len(mapping),
+    }
 
 
 def _request_json(url: str, *, timeout: float) -> Any:
@@ -246,9 +298,44 @@ def _date_range(start: date, end: date) -> list[date]:
     return out
 
 
+def _service_datetime(service_date: date, raw_hour: int) -> tuple[date, time]:
+    if raw_hour < 0 or raw_hour > BUS_SERVICE_END_HOUR:
+        raise ValueError("invalid bus service hour")
+    if raw_hour < BUS_SERVICE_START_HOUR:
+        return service_date + timedelta(days=1), time(raw_hour, 0)
+    if raw_hour <= 23:
+        return service_date, time(raw_hour, 0)
+    return service_date + timedelta(days=1), time(raw_hour - 24, 0)
+
+
+def _service_day_missing_hours(service_date: date) -> list[int]:
+    next_date = service_date + timedelta(days=1)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT ARRAY_AGG(DISTINCT service_hour ORDER BY service_hour) AS hours
+            FROM (
+                SELECT
+                    CASE
+                        WHEN date = %s AND time >= time '04:00' THEN EXTRACT(HOUR FROM time)::int
+                        WHEN date = %s AND time < time '04:00' THEN EXTRACT(HOUR FROM time)::int + 24
+                    END AS service_hour
+                FROM bus_congestion
+                WHERE (date = %s AND time >= time '04:00')
+                   OR (date = %s AND time < time '04:00')
+            ) hourly
+            WHERE service_hour IS NOT NULL
+            """,
+            [service_date, next_date, service_date, next_date],
+        )
+        row = cursor.fetchone()
+    hours = set(row[0] or []) if row else set()
+    return [hour for hour in BUS_SERVICE_HOURS if hour not in hours]
+
+
 def _missing_congestion_dates(start: date, end: date, completed_dates: set[str]) -> list[date]:
     dates = _date_range(start, end)
-    return [day for day in dates if day.isoformat() not in completed_dates]
+    return [day for day in dates if day.isoformat() not in completed_dates or _service_day_missing_hours(day)]
 
 
 def _congestion_window(options: BusUpdateOptions) -> tuple[date | None, date | None, dict[str, Any]]:
@@ -318,7 +405,7 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
         }
 
     gu_codes = list(Gu.objects.order_by("gu_code").values_list("gu_code", flat=True))
-    existing_stop_ids = set(BusStop.objects.values_list("id", flat=True))
+    stop_id_map, stop_map = _load_bus_congestion_stop_map()
     checked = created = updated = skipped = 0
     skip_reasons = {"bad_row": 0, "missing_bus_stop": 0}
     processed_dates: list[str] = []
@@ -368,25 +455,27 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
                     for row in rows:
                         checked += 1
                         try:
-                            stop_id = _normalize_id(_get(row, "sttn_id", "STTN_ID"))
-                            raw_hour = _get(row, "hh", "HH", "tmzon", "TMZON", "TZON")
+                            external_stop_id = _normalize_id(_get(row, "sttn_id", "STTN_ID"))
+                            raw_hour = _get(row, "hh", "HH", "tmzon", "TMZON", "tzon", "TZON")
                             hour = int(str(raw_hour).strip())
-                            if not 0 <= hour <= 23:
+                            if not 0 <= hour <= BUS_SERVICE_END_HOUR:
                                 raise ValueError("invalid hour")
                             value = Decimal(
                                 str(_get(row, "cgst", "CGST", "congestion", "CONGESTION"))
                                 .replace("%", "")
                                 .strip()
                             )
+                            date_value, time_value = _service_datetime(day, hour)
                         except (TypeError, ValueError, InvalidOperation):
                             skipped += 1
                             skip_reasons["bad_row"] += 1
                             continue
-                        if stop_id not in existing_stop_ids:
+                        stop_id = stop_id_map.get(external_stop_id)
+                        if stop_id is None:
                             skipped += 1
                             skip_reasons["missing_bus_stop"] += 1
                             continue
-                        day_aggregate[(stop_id, day, time(hour, 0))].append(value)
+                        day_aggregate[(stop_id, date_value, time_value)].append(value)
 
                     if options.limit is not None and checked >= options.limit:
                         stop_reason = "limit_reached"
@@ -450,6 +539,7 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
             "skip_reasons": skip_reasons,
             "error": str(exc),
             "reason": "rate_limited",
+            "stop_map": stop_map,
             "public_data_key_count": len(api_keys),
         }
 
@@ -468,6 +558,7 @@ def update_bus_congestion(options: BusUpdateOptions) -> dict[str, Any]:
         "window": window_meta | {"start": start.isoformat(), "end": end.isoformat()},
         "skip_reasons": skip_reasons,
         "reason": stop_reason,
+        "stop_map": stop_map,
         "public_data_key_count": len(api_keys),
     }
 

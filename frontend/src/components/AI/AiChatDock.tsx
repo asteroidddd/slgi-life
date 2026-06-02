@@ -36,6 +36,7 @@ let nextMessageId = 1;
 
 const HIDDEN_PATHS = new Set(['/login', '/register']);
 const VISIBLE_PATHS = new Set(['/', '/dashboard']);
+const AI_AGENT_PUBLIC_MODE = import.meta.env.VITE_AI_AGENT_PUBLIC_MODE === 'true';
 
 export default function AiChatDock() {
   const location = useLocation();
@@ -56,6 +57,7 @@ export default function AiChatDock() {
       </button>
       {isOpen ? (
         <AiChatDialog
+          publicMode={AI_AGENT_PUBLIC_MODE}
           authLoading={authLoading}
           isAuthenticated={Boolean(user)}
           onClose={() => setIsOpen(false)}
@@ -66,10 +68,12 @@ export default function AiChatDock() {
 }
 
 function AiChatDialog({
+  publicMode,
   authLoading,
   isAuthenticated,
   onClose,
 }: {
+  publicMode: boolean;
   authLoading: boolean;
   isAuthenticated: boolean;
   onClose: () => void;
@@ -79,6 +83,7 @@ function AiChatDialog({
   const [keyStatusError, setKeyStatusError] = useState<string | null>(null);
 
   const refreshKeyStatus = useCallback(async () => {
+    if (publicMode) return;
     if (!isAuthenticated) return;
     setKeyStatusLoading(true);
     setKeyStatusError(null);
@@ -89,15 +94,15 @@ function AiChatDialog({
     } finally {
       setKeyStatusLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, publicMode]);
 
   useEffect(() => {
     void refreshKeyStatus();
   }, [refreshKeyStatus]);
 
-  const hasConfiguredKey = keyStatus?.keys.some((key) => key.configured) ?? false;
+  const hasConfiguredKey = publicMode || (keyStatus?.keys.some((key) => key.configured) ?? false);
   const hasUnlockedKey =
-    keyStatus?.keys.some((key) => key.configured && key.unlocked) ?? false;
+    publicMode || (keyStatus?.keys.some((key) => key.configured && key.unlocked) ?? false);
 
   return (
     <div
@@ -124,31 +129,31 @@ function AiChatDialog({
           </button>
         </header>
 
-        {authLoading || keyStatusLoading ? (
+        {!publicMode && (authLoading || keyStatusLoading) ? (
           <GateMessage title="확인 중" message="AI 사용 가능 상태를 확인하고 있습니다." />
         ) : null}
-        {!authLoading && !isAuthenticated ? (
+        {!publicMode && !authLoading && !isAuthenticated ? (
           <GateMessage
             title="로그인이 필요합니다"
             message="AI 질의는 로그인 후 사용할 수 있습니다."
             action={<Link className="app-floating-button h-10 min-h-10 no-underline" to="/login">로그인하기</Link>}
           />
         ) : null}
-        {!authLoading && isAuthenticated && keyStatusError ? (
+        {!publicMode && !authLoading && isAuthenticated && keyStatusError ? (
           <GateMessage title="상태 확인 실패" message={keyStatusError} action={<GateButton onClick={refreshKeyStatus}>다시 시도</GateButton>} />
         ) : null}
-        {!authLoading && isAuthenticated && keyStatus && !hasConfiguredKey ? (
+        {!publicMode && !authLoading && isAuthenticated && keyStatus && !hasConfiguredKey ? (
           <GateMessage
             title="API KEY가 필요합니다"
             message="마이페이지에서 AI API KEY를 먼저 등록해주세요."
             action={<Link className="app-floating-button h-10 min-h-10 no-underline" to="/mypage">마이페이지로 이동</Link>}
           />
         ) : null}
-        {!authLoading && isAuthenticated && keyStatus && hasConfiguredKey && !hasUnlockedKey ? (
+        {!publicMode && !authLoading && isAuthenticated && keyStatus && hasConfiguredKey && !hasUnlockedKey ? (
           <UnlockGate onUnlocked={refreshKeyStatus} />
         ) : null}
-        {!authLoading && isAuthenticated && keyStatus && hasUnlockedKey ? (
-          <ChatWorkspace canUseDemo={Boolean(keyStatus.can_use_demo)} />
+        {publicMode || (!authLoading && isAuthenticated && keyStatus && hasUnlockedKey) ? (
+          <ChatWorkspace canUseDemo={!publicMode && Boolean(keyStatus?.can_use_demo)} />
         ) : null}
       </section>
     </div>

@@ -721,6 +721,10 @@ tables:
 
       bus_congestion 컬럼: date, time, congestion, bus_stop_id. 시간 컬럼명은 hour가 아니라 time
 
+      RouteCongestionLevel API의 tzon 24~27은 다음 날짜 00:00~03:00으로 저장됨.
+
+      특정 서비스일 D의 버스 혼잡도 전체 흐름은 date=D AND time>=04:00 또는 date=D+1 AND time<04:00 조건으로 조회.
+
       location NULL 719건 존재 (가상/차고지). map 반환 시 WHERE location IS NOT NULL 필수
 
       location(POINT): 정류장 좌표. map 타입 반환 시 ST_Y/ST_X 사용

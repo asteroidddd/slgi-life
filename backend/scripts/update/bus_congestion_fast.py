@@ -5,6 +5,7 @@ Runs inside the backend container. Uses Django DB connection, not docker exec.
 
 from __future__ import annotations
 
+import csv
 import json
 import math
 import threading
@@ -14,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -27,10 +29,14 @@ from apps.public_data.exceptions import RateLimitedError
 
 
 BUS_URL = "https://apis.data.go.kr/1613000/RouteCongestionLevel/getRouteCongestionLevel"
+STOP_MAP_PATH = Path(__file__).resolve().parents[2] / "data" / "bus_congestion_stop_map.csv"
 PAGE_SIZE = 1000
 RETENTION_DAYS = 14
 DEFAULT_LOOKBACK_DAYS = 500
 DISCOVERY_GUS = ("11680", "11500", "11710", "11440")
+BUS_SERVICE_START_HOUR = 4
+BUS_SERVICE_END_HOUR = 27
+BUS_SERVICE_HOURS = tuple(range(BUS_SERVICE_START_HOUR, BUS_SERVICE_END_HOUR + 1))
 
 
 @dataclass(frozen=True)
@@ -100,6 +106,52 @@ def _gu_codes() -> list[str]:
 
 def _existing_stop_ids() -> set[int]:
     return {int(value) for value in BusStop.objects.values_list("id", flat=True) if str(value).isdigit()}
+
+
+def _load_stop_id_map() -> tuple[dict[int, int], dict[str, Any]]:
+    """Map RouteCongestionLevel sttn_id to the current EC2 bus_stop.id."""
+
+    bus_stop_by_number: dict[str, int] = {}
+    direct_ids: dict[int, int] = {}
+    for stop_id, stop_number in BusStop.objects.values_list("id", "stop_number"):
+        stop_id_text = str(stop_id or "").strip()
+        if stop_id_text.isdigit():
+            direct_ids[int(stop_id_text)] = int(stop_id_text)
+        number = str(stop_number or "").strip()
+        if number and stop_id_text.isdigit():
+            bus_stop_by_number[number] = int(stop_id_text)
+
+    mapping: dict[int, int] = dict(direct_ids)
+    file_rows = matched_rows = unmatched_rows = bad_rows = 0
+    matched_stop_numbers: set[str] = set()
+    if STOP_MAP_PATH.exists():
+        with STOP_MAP_PATH.open(encoding="utf-8-sig", newline="") as handle:
+            for row in csv.DictReader(handle):
+                file_rows += 1
+                sttn_id_text = str(row.get("sttn_id") or "").strip()
+                stop_number = str(row.get("stop_number") or "").strip()
+                if not sttn_id_text.isdigit() or not stop_number:
+                    bad_rows += 1
+                    continue
+                bus_stop_id = bus_stop_by_number.get(stop_number)
+                if bus_stop_id is None:
+                    unmatched_rows += 1
+                    continue
+                mapping[int(sttn_id_text)] = bus_stop_id
+                matched_rows += 1
+                matched_stop_numbers.add(stop_number)
+
+    return mapping, {
+        "file": str(STOP_MAP_PATH),
+        "file_exists": STOP_MAP_PATH.exists(),
+        "file_rows": file_rows,
+        "matched_rows": matched_rows,
+        "unmatched_rows": unmatched_rows,
+        "bad_rows": bad_rows,
+        "matched_stop_numbers": len(matched_stop_numbers),
+        "direct_id_count": len(direct_ids),
+        "mapping_count": len(mapping),
+    }
 
 
 def _request_json(
@@ -295,9 +347,43 @@ def _target_dates(
     return dates
 
 
-def _date_count(ymd: str) -> int:
+def _service_datetime(service_date: date, raw_hour: int) -> tuple[date, time]:
+    if raw_hour < 0 or raw_hour > BUS_SERVICE_END_HOUR:
+        raise ValueError("invalid bus service hour")
+    if raw_hour < BUS_SERVICE_START_HOUR:
+        return service_date + timedelta(days=1), time(raw_hour, 0)
+    if raw_hour <= 23:
+        return service_date, time(raw_hour, 0)
+    return service_date + timedelta(days=1), time(raw_hour - 24, 0)
+
+
+def _service_day_status(ymd: str) -> dict[str, Any]:
     date_value = date(int(ymd[:4]), int(ymd[4:6]), int(ymd[6:8]))
-    return BusCongestion.objects.filter(date=date_value).count()
+    next_date = date_value + timedelta(days=1)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                COUNT(*)::int AS row_count,
+                ARRAY_AGG(DISTINCT service_hour ORDER BY service_hour) AS hours
+            FROM (
+                SELECT
+                    CASE
+                        WHEN date = %s AND time >= time '04:00' THEN EXTRACT(HOUR FROM time)::int
+                        WHEN date = %s AND time < time '04:00' THEN EXTRACT(HOUR FROM time)::int + 24
+                    END AS service_hour
+                FROM bus_congestion
+                WHERE (date = %s AND time >= time '04:00')
+                   OR (date = %s AND time < time '04:00')
+            ) hourly
+            WHERE service_hour IS NOT NULL
+            """,
+            [date_value, next_date, date_value, next_date],
+        )
+        row = cursor.fetchone()
+    hours = set(row[1] or []) if row else set()
+    missing_hours = [hour for hour in BUS_SERVICE_HOURS if hour not in hours]
+    return {"row_count": int(row[0] or 0) if row else 0, "hours": sorted(hours), "missing_hours": missing_hours}
 
 
 def _parse_row(row: dict[str, Any]) -> tuple[int, int, Decimal] | None:
@@ -310,15 +396,16 @@ def _parse_row(row: dict[str, Any]) -> tuple[int, int, Decimal] | None:
         congestion = Decimal(str(value_raw).replace("%", "").strip())
     except Exception:
         return None
-    if hour < 0 or hour > 23:
+    if hour < 0 or hour > BUS_SERVICE_END_HOUR:
         return None
     return stop_id, hour, congestion
 
 
 def _merge_rows(
-    aggregate: dict[tuple[int, int], list[Decimal]],
+    aggregate: dict[tuple[int, date, time], list[Decimal]],
     rows: list[dict[str, Any]],
-    stop_ids: set[int],
+    stop_id_map: dict[int, int],
+    service_date: date,
 ) -> dict[str, int]:
     stats = {"raw": len(rows), "parsed": 0, "unmatched": 0, "bad": 0}
     for row in rows:
@@ -326,22 +413,23 @@ def _merge_rows(
         if parsed is None:
             stats["bad"] += 1
             continue
-        stop_id, hour, congestion = parsed
-        if stop_id not in stop_ids:
+        external_stop_id, hour, congestion = parsed
+        stop_id = stop_id_map.get(external_stop_id)
+        if stop_id is None:
             stats["unmatched"] += 1
             continue
-        bucket = aggregate[(stop_id, hour)]
+        date_value, time_value = _service_datetime(service_date, hour)
+        bucket = aggregate[(stop_id, date_value, time_value)]
         bucket[0] += congestion
         bucket[1] += Decimal(1)
         stats["parsed"] += 1
     return stats
 
 
-def _upsert_date_rows(ymd: str, aggregate: dict[tuple[int, int], list[Decimal]]) -> int:
-    date_value = date(int(ymd[:4]), int(ymd[4:6]), int(ymd[6:8]))
+def _upsert_date_rows(aggregate: dict[tuple[int, date, time], list[Decimal]]) -> int:
     rows = [
-        (stop_id, date_value, time(hour, 0), total / count)
-        for (stop_id, hour), (total, count) in sorted(aggregate.items())
+        (stop_id, date_value, time_value, total / count)
+        for (stop_id, date_value, time_value), (total, count) in sorted(aggregate.items())
         if count > 0
     ]
     if not rows:
@@ -384,16 +472,24 @@ def _load_one_date(
     api_key: str,
     ymd: str,
     gu_codes: list[str],
-    stop_ids: set[int],
+    stop_id_map: dict[int, int],
     options: FastBusCongestionOptions,
     limiter: RateLimiter,
     counter: ApiCounter,
 ) -> dict[str, Any]:
-    existing = _date_count(ymd)
-    if existing > 0:
-        return {"ymd": ymd, "status": "skipped", "completed": True, "reason": "date_already_loaded", "existing_rows": existing}
+    service_date = date(int(ymd[:4]), int(ymd[4:6]), int(ymd[6:8]))
+    service_status = _service_day_status(ymd)
+    if service_status["row_count"] > 0 and not service_status["missing_hours"]:
+        return {
+            "ymd": ymd,
+            "status": "skipped",
+            "completed": True,
+            "reason": "service_day_already_loaded",
+            "existing_rows": service_status["row_count"],
+            "hours": service_status["hours"],
+        }
 
-    aggregate: dict[tuple[int, int], list[Decimal]] = defaultdict(lambda: [Decimal(0), Decimal(0)])
+    aggregate: dict[tuple[int, date, time], list[Decimal]] = defaultdict(lambda: [Decimal(0), Decimal(0)])
     stats = {"raw": 0, "parsed": 0, "unmatched": 0, "bad": 0, "pages": 0}
     total_pages = 0
 
@@ -418,7 +514,7 @@ def _load_one_date(
             pages = int(math.ceil(total / options.page_size)) if total else 0
             total_pages += pages
             stats["pages"] += 1
-            row_stats = _merge_rows(aggregate, rows, stop_ids)
+            row_stats = _merge_rows(aggregate, rows, stop_id_map, service_date)
             for key, value in row_stats.items():
                 stats[key] += value
             for page in range(2, pages + 1):
@@ -441,14 +537,14 @@ def _load_one_date(
             _gu_code, _page = futures[future]
             _total, rows, _status = future.result()
             stats["pages"] += 1
-            row_stats = _merge_rows(aggregate, rows, stop_ids)
+            row_stats = _merge_rows(aggregate, rows, stop_id_map, service_date)
             for key, value in row_stats.items():
                 stats[key] += value
 
     if options.dry_run:
         imported = 0
     else:
-        imported = _upsert_date_rows(ymd, aggregate)
+        imported = _upsert_date_rows(aggregate)
 
     return {
         "ymd": ymd,
@@ -457,6 +553,7 @@ def _load_one_date(
         "imported": imported,
         "aggregate_rows": len(aggregate),
         "total_pages": total_pages,
+        "previous_missing_hours": service_status["missing_hours"],
         **stats,
     }
 
@@ -477,10 +574,10 @@ def update_bus_congestion_fast(options: FastBusCongestionOptions) -> dict[str, A
     limiter = RateLimiter(options.rps)
     counter = ApiCounter(options.max_api_calls)
     gu_codes = _gu_codes()
-    stop_ids = _existing_stop_ids()
+    stop_id_map, stop_map = _load_stop_id_map()
     if not gu_codes:
         raise RuntimeError("gu must be loaded before bus_congestion")
-    if not stop_ids:
+    if not stop_id_map:
         raise RuntimeError("bus_stop must be loaded before bus_congestion")
 
     latest = _latest_available_date(api_key, options, limiter, counter)
@@ -506,7 +603,7 @@ def update_bus_congestion_fast(options: FastBusCongestionOptions) -> dict[str, A
             api_key=api_key,
             ymd=ymd,
             gu_codes=gu_codes,
-            stop_ids=stop_ids,
+            stop_id_map=stop_id_map,
             options=options,
             limiter=limiter,
             counter=counter,
@@ -531,5 +628,6 @@ def update_bus_congestion_fast(options: FastBusCongestionOptions) -> dict[str, A
         "retention_days": options.days,
         "rps": options.rps,
         "workers": options.workers,
+        "stop_map": stop_map,
         "public_data_key_count": len(api_keys),
     }

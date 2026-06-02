@@ -20,6 +20,15 @@ from ..metadata.context import (
 from .prompts import SQL_GENERATION_PROMPT
 from ..helpers.sql_guard import validate_read_only_sql
 
+def choose_sql_model_key(needed_tables: list[str], sql_plans: list | None = None) -> str:
+    """Use fast model for simple SQL tasks, otherwise use configured sql_generation model."""
+    table_count = len(set(needed_tables or []))
+    plan_count = len(sql_plans or [])
+
+    if table_count <= 2 and plan_count <= 1:
+        return "fast"
+
+    return get_stage_model("sql_generation")
 
 def run_text_to_sql(
     question: str,
@@ -37,8 +46,9 @@ def run_text_to_sql(
     if max_retry is None:
         max_retry = sql_cfg.get("max_retry", 3)
 
-    model_key = get_stage_model("sql_generation")
+    model_key = choose_sql_model_key(needed_tables, sql_plans)
     llm = get_llm(model_key, credentials=llm_credentials)
+    print(f"[SQL 모델] {model_key} | tables={len(set(needed_tables or []))} | plans={len(sql_plans or [])}")
     db = get_db()
     filtered_schema = get_filtered_schema_context(needed_tables)
     yaml_hints = get_join_hints(needed_tables)

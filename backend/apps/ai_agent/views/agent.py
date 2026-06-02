@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import os
 import uuid
 
 from django.core.cache import cache
 from rest_framework import status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.permissions import BasePermission
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.ai_agent.byok.services import BYOKError, get_unlocked_credentials, purge_stale_user_keys
+from apps.ai_agent.byok.services import BYOKError, ProviderCredential, get_unlocked_credentials, purge_stale_user_keys
+from apps.ai_agent.models import UserAIAPIKey
 from apps.ai_agent.runtime.agent import run_agent
 
 from .common import (
@@ -19,6 +22,34 @@ from .common import (
     error_response,
 )
 from .context import build_user_context
+
+
+PUBLIC_AI_ENV = "AI_AGENT_PUBLIC_MODE"
+
+
+def public_ai_mode_enabled() -> bool:
+    value = os.environ.get(PUBLIC_AI_ENV, "").strip().lower()
+    return value in {"1", "true", "yes", "on"} and bool(os.environ.get("AI_AGENT_OPENAI_API_KEY"))
+
+
+class AgentQueryPermission(BasePermission):
+    def has_permission(self, request, view):  # type: ignore[no-untyped-def]
+        if public_ai_mode_enabled():
+            return True
+        return bool(request.user and request.user.is_authenticated)
+
+
+def public_openai_credentials() -> list[ProviderCredential]:
+    api_key = os.environ.get("AI_AGENT_OPENAI_API_KEY", "").strip()
+    if not api_key:
+        return []
+    return [
+        ProviderCredential(
+            provider=UserAIAPIKey.PROVIDER_OPENAI,
+            api_key=api_key,
+            base_url=os.environ.get("AI_AGENT_OPENAI_BASE_URL") or None,
+        )
+    ]
 
 def build_memory_items(result: dict, visualizations: list) -> list[dict]:
     items: list[dict] = []
@@ -140,7 +171,7 @@ def demo_agent_response() -> dict:
 
 @api_view(["POST"])
 @authentication_classes([CsrfExemptSessionAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([AgentQueryPermission])
 def agent_query(request):
     purge_stale_user_keys()
     question = str(request.data.get("question") or "").strip()
@@ -152,13 +183,23 @@ def agent_query(request):
     if not conversation_id:
         conversation_id = str(uuid.uuid4())
 
-    store_key = conversation_key(request.user.id, conversation_id)
+    public_mode = public_ai_mode_enabled()
+    is_authenticated = bool(request.user and request.user.is_authenticated)
+    conversation_owner = request.user.id if is_authenticated else "public"
+    store_key = conversation_key(conversation_owner, conversation_id)
     history = list(cache.get(store_key) or [])
 
-    try:
-        credentials = get_unlocked_credentials(request.user)
-    except BYOKError as exc:
-        return error_response(exc.code, str(exc), status.HTTP_401_UNAUTHORIZED)
+    if public_mode:
+        credentials = public_openai_credentials()
+    else:
+        try:
+            credentials = get_unlocked_credentials(request.user)
+        except BYOKError as exc:
+            return error_response(exc.code, str(exc), status.HTTP_401_UNAUTHORIZED)
+    if not credentials:
+        return error_response("AI_PUBLIC_KEY_MISSING", "AI public API key is not configured.", status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    user_context = build_user_context(request.user) if is_authenticated else {}
 
     failures = []
     for credential in credentials:
@@ -171,7 +212,7 @@ def agent_query(request):
                     "api_key": credential.api_key,
                     "base_url": credential.base_url,
                 },
-                user_context=build_user_context(request.user),
+                user_context=user_context,
             )
             visualizations = result.get("visualizations", [])
             if not visualizations:

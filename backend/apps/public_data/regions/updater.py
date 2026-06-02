@@ -134,40 +134,39 @@ def _source_data() -> dict[str, Any]:
     if bad_ldong_gu or bad_adong_gu:
         raise RuntimeError(f"region code CSV has unknown gu refs: ldong={bad_ldong_gu} adong={bad_adong_gu}")
 
-    gu_code_by_name = {row["gu_name"]: row["gu_code"] for row in gu_rows}
-    gu_boundary_by_name = {}
-    legacy_gu_to_gu_code = {}
+    gu_row_by_code = {row["gu_code"]: row for row in gu_rows}
+    gu_boundary_by_code = {}
     for feature in gu_features:
         props = feature.get("properties") or {}
-        name = str(props.get("SIGUNGU_NM") or "").strip()
-        legacy_code = str(props.get("SIGUNGU_CD") or "").strip()
-        if name not in gu_code_by_name:
-            raise RuntimeError(f"gu boundary has unknown SIGUNGU_NM={name!r}")
-        gu_boundary_by_name[name] = _geometry(feature)
-        legacy_gu_to_gu_code[legacy_code] = gu_code_by_name[name]
+        gu_code = str(props.get("gu_code") or "").strip()
+        gu_name = str(props.get("gu_name") or props.get("name") or "").strip()
+        row = gu_row_by_code.get(gu_code)
+        if not row:
+            raise RuntimeError(f"gu boundary has unknown gu_code={gu_code!r}")
+        if gu_name and gu_name != row["gu_name"]:
+            raise RuntimeError(f"gu boundary name mismatch gu_code={gu_code!r} gu_name={gu_name!r}")
+        gu_boundary_by_code[gu_code] = _geometry(feature)
 
     ldong_boundary_by_code = {}
     for feature in ldong_features:
         props = feature.get("properties") or {}
-        emd_cd = str(props.get("EMD_CD") or "").strip()
-        if not emd_cd:
-            raise RuntimeError("ldong boundary has blank EMD_CD")
-        ldong_boundary_by_code[f"{emd_cd}00"] = _geometry(feature)
+        ldong_code = str(props.get("ldong_code") or "").strip()
+        if not ldong_code:
+            raise RuntimeError("ldong boundary has blank ldong_code")
+        ldong_boundary_by_code[ldong_code] = _geometry(feature)
 
-    adong_lookup = {(row["gu_code"], row["adong_name"]): row for row in adong_rows}
     adong_boundary_by_code = {}
     for feature in adong_features:
         props = feature.get("properties") or {}
-        adm_cd = str(props.get("ADM_CD") or "").strip()
-        adm_name = str(props.get("ADM_NM") or "").strip()
-        gu_code = legacy_gu_to_gu_code.get(adm_cd[:5])
-        row = adong_lookup.get((gu_code, adm_name))
-        if not row:
-            raise RuntimeError(f"cannot match adong boundary ADM_CD={adm_cd} ADM_NM={adm_name!r}")
-        adong_boundary_by_code[row["adong_code"]] = _geometry(feature)
+        adong_code = str(props.get("adong_code") or "").strip()
+        if not adong_code:
+            raise RuntimeError("adong boundary has blank adong_code")
+        adong_boundary_by_code[adong_code] = _geometry(feature)
 
     ldong_codes = {row["ldong_code"] for row in ldong_rows}
     adong_codes = {row["adong_code"] for row in adong_rows}
+    if set(gu_boundary_by_code) != gu_codes:
+        raise RuntimeError("gu boundary codes do not match gu_code.csv")
     if set(ldong_boundary_by_code) != ldong_codes:
         raise RuntimeError("ldong boundary codes do not match ldong_code.csv")
     if set(adong_boundary_by_code) != adong_codes:
@@ -177,7 +176,7 @@ def _source_data() -> dict[str, Any]:
         "gu_rows": gu_rows,
         "ldong_rows": ldong_rows,
         "adong_rows": adong_rows,
-        "gu_boundary_by_name": gu_boundary_by_name,
+        "gu_boundary_by_code": gu_boundary_by_code,
         "ldong_boundary_by_code": ldong_boundary_by_code,
         "adong_boundary_by_code": adong_boundary_by_code,
         "counts": {
@@ -229,7 +228,7 @@ def _update_regions(source: dict[str, Any], options: RegionsUpdateOptions) -> di
     existing_adong_codes = set(Adong.objects.filter(adong_code__in=adong_codes).values_list("adong_code", flat=True))
     gu_objects = []
     for row in source["gu_rows"]:
-        geom = source["gu_boundary_by_name"].get(row["gu_name"])
+        geom = source["gu_boundary_by_code"].get(row["gu_code"])
         gu_objects.append(
             Gu(
                 gu_code=row["gu_code"],

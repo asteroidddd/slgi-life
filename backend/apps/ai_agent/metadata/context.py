@@ -287,6 +287,19 @@ def get_store_codes_text() -> str:
     codes = get_config().get("store_codes", {})
     return "\n".join(f"{name}: {code}" for name, code in codes.items())
 
+def get_data_source_labels(table_names: list[str]) -> str:
+    """Return user-facing data source labels for selected tables."""
+    metadata = get_table_metadata()
+    labels = []
+
+    for table in table_names or []:
+        table_meta = metadata.get(table) or {}
+        for label in table_meta.get("source_labels", []) or []:
+            if label and label not in labels:
+                labels.append(label)
+
+    return ", ".join(labels) if labels else "서비스 내부 데이터"
+
 
 def get_join_hints(needed_tables: list[str]) -> str:
     """needed_tables에 해당하는 조인 힌트를 YAML에서 로드해 반환합니다."""

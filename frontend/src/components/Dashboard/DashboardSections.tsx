@@ -15,6 +15,8 @@ import 'leaflet/dist/leaflet.css';
 type RegionLevel = 'adong' | 'ldong';
 type Tone = 'good' | 'bad' | 'info' | 'warn';
 
+const CHART_TOOLTIP_CLASS = 'pointer-events-none absolute z-[3000] hidden min-w-[136px] rounded-[6px] border border-border bg-[var(--surface-overlay-bg)] px-2 py-1.5 text-center text-[12px] font-bold leading-5 text-text shadow-lg backdrop-blur-md group-hover:block group-focus-within:block';
+
 interface SectionRegion {
   gu: string;
   name: string;
@@ -474,7 +476,7 @@ function TransitStationList({ stations, stationItems }: { stations?: string[]; s
 
 function Card({ title, hint, info, children, className = '' }: { title: string; hint?: string; info?: string; children: ReactNode; className?: string }) {
   return (
-    <article className={`flex min-h-[248px] flex-col rounded-card border border-border bg-surface p-4 ${className}`}>
+    <article className={`flex min-h-[248px] flex-col overflow-visible rounded-card border border-border bg-surface p-4 ${className}`}>
       <div className="relative z-[60] mb-3 flex items-start justify-between gap-3">
         <h3 className="m-0 text-[15px] font-bold text-text">{title}</h3>
         <div className="flex items-center gap-2">
@@ -574,7 +576,7 @@ function MultiSeriesLineChart({ series, emptyText, unit = '' }: { series: ChartS
               return { ...point, x: xFor(labelIndex), y: yFor(point.value) };
             })
             .filter((point): point is { label: string; value: number; tooltip?: string; x: number; y: number } => point != null);
-          const path = smoothLinePath(points);
+          const path = points.map((point, pointIndex) => `${pointIndex === 0 ? 'M' : 'L'}${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ');
           return (
             <g key={line.key}>
               {points.length > 1 ? (
@@ -773,10 +775,16 @@ function InfraDensityDotPlot({ items }: { items: TypeMixItem[] }) {
           <div className="relative h-6 rounded-full bg-surface-alt">
             <span className="absolute top-1/2 h-4 w-px -translate-y-1/2 bg-border" style={{ left: `${seoulPosition}%` }} />
             <span
-              className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[var(--color-heatmap-4)] shadow-sm"
+              className="group absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[var(--color-heatmap-4)] shadow-sm"
               style={{ left: `${xFor(group.density, group.seoulDensity)}%` }}
-              title={`${group.label} · ${group.density.toFixed(1)}곳/km² · 서울 ${group.seoulDensity.toFixed(1)}곳/km²`}
-            />
+              tabIndex={0}
+            >
+              <span className={`${CHART_TOOLTIP_CLASS} bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2`}>
+                {group.label}<br />
+                선택 지역 {group.density.toFixed(1)}곳/km²<br />
+                <small className="font-semibold text-text-muted">서울 기준 {group.seoulDensity.toFixed(1)}곳/km²</small>
+              </span>
+            </span>
           </div>
           <span className="text-right text-[12px] font-bold text-text">{group.density.toFixed(1)}</span>
         </div>
@@ -847,10 +855,15 @@ function InfraDivergingBars({ items }: { items: TypeMixItem[] }) {
           <div className="relative h-5 rounded-full bg-surface-alt">
             <span className="absolute left-1/2 top-0 h-full w-px bg-border" />
             <span
-              className={`absolute top-1/2 h-2.5 -translate-y-1/2 rounded-full ${delta >= 0 ? 'left-1/2 bg-[var(--color-success)]' : 'right-1/2 bg-[var(--color-danger)]'}`}
+              className={`group absolute top-1/2 h-2.5 -translate-y-1/2 rounded-full ${delta >= 0 ? 'left-1/2 bg-[var(--color-success)]' : 'right-1/2 bg-[var(--color-danger)]'}`}
               style={{ width: `${width}%` }}
-              title={`${readableCategory(item.category)} · 서울 평균 대비 ${delta >= 0 ? '+' : ''}${(delta * 100).toFixed(1)}%`}
-            />
+              tabIndex={0}
+            >
+              <span className={`${CHART_TOOLTIP_CLASS} bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2`}>
+                {readableCategory(item.category)}<br />
+                서울 평균 대비 {delta >= 0 ? '+' : ''}{(delta * 100).toFixed(1)}%
+              </span>
+            </span>
           </div>
           <span className="text-right font-bold text-text">{delta >= 0 ? '+' : ''}{(delta * 100).toFixed(0)}%</span>
         </div>
@@ -913,18 +926,6 @@ function normalizeSafetySeoulText(text: string) {
     .replace(/전체 구 평균/g, '서울 기준')
     .replace(/서울 평균 안전 점수/g, '서울 기준 안전 점수')
     .replace(/서울 평균 안전 지표/g, '서울 기준 안전 지표');
-}
-
-function safetyTooltip(item: SafetyGradeItem) {
-  const unit = item.unit || '등급';
-  const rawText = formatSafetyGrade(item.raw_value, unit);
-  const seoulRawText = formatSafetyGrade(item.seoul_raw_value, unit);
-  const parts = [
-    safetyLabel(item),
-    `선택 지역: ${rawText}`,
-    `서울 기준: ${seoulRawText}`,
-  ].filter(Boolean);
-  return parts.join('\n');
 }
 
 function SafetyRadarChart({ items }: { items: SafetyGradeItem[] }) {
@@ -1004,7 +1005,6 @@ function SafetyRadarChart({ items }: { items: SafetyGradeItem[] }) {
           const point = pointFor(index, safetyValue(item.raw_value, item.score));
           const seoulPoint = pointFor(index, safetyValue(item.seoul_raw_value, item.seoul_score));
           const labelPoint = pointFor(index, 5.9);
-          const tooltipText = safetyTooltip(item);
           return (
             <g
               key={item.key}
@@ -1014,28 +1014,21 @@ function SafetyRadarChart({ items }: { items: SafetyGradeItem[] }) {
               onBlur={() => setHoveredItem(null)}
               tabIndex={0}
             >
-              <circle cx={seoulPoint.x} cy={seoulPoint.y} r="3.5" fill="#9ca3af">
-                <title>{tooltipText}</title>
-              </circle>
-              <circle cx={point.x} cy={point.y} r="4" fill="var(--color-danger)">
-                <title>{tooltipText}</title>
-              </circle>
-              <circle cx={point.x} cy={point.y} r="12" fill="transparent" style={{ pointerEvents: 'all' }}>
-                <title>{tooltipText}</title>
-              </circle>
+              <circle cx={seoulPoint.x} cy={seoulPoint.y} r="3.5" fill="#9ca3af" />
+              <circle cx={point.x} cy={point.y} r="4" fill="var(--color-danger)" />
+              <circle cx={point.x} cy={point.y} r="12" fill="transparent" style={{ pointerEvents: 'all' }} />
               <text x={labelPoint.x} y={labelPoint.y} textAnchor="middle" dominantBaseline="middle" className="fill-text-muted text-[11px] font-bold" style={{ pointerEvents: 'all' }}>
                 {safetyLabel(item)}
-                <title>{tooltipText}</title>
               </text>
             </g>
           );
         })}
       </svg>
       {hoveredItem ? (
-        <div className="pointer-events-none absolute right-2 top-2 z-[90] min-w-[170px] rounded-[6px] border border-border bg-surface px-3 py-2 text-left text-[12px] font-semibold leading-5 text-text shadow-lg">
-          <strong className="block text-text">{safetyLabel(hoveredItem)}</strong>
-          <span className="block text-text-muted">선택 지역: {formatSafetyGrade(hoveredItem.raw_value, hoveredItem.unit || '등급')}</span>
-          <span className="block text-text-muted">서울 기준: {formatSafetyGrade(hoveredItem.seoul_raw_value, hoveredItem.unit || '등급')}</span>
+        <div className="pointer-events-none absolute left-1/2 top-2 z-[3000] min-w-[170px] -translate-x-1/2 rounded-[6px] border border-border bg-[var(--surface-overlay-bg)] px-2 py-1.5 text-center text-[12px] font-bold leading-5 text-text shadow-lg backdrop-blur-md">
+          {safetyLabel(hoveredItem)}<br />
+          선택 지역 {formatSafetyGrade(hoveredItem.raw_value, hoveredItem.unit || '등급')}<br />
+          <small className="font-semibold text-text-muted">서울 기준 {formatSafetyGrade(hoveredItem.seoul_raw_value, hoveredItem.unit || '등급')}</small>
         </div>
       ) : null}
       <div className="mt-[-8px] flex gap-3 text-[11px] font-bold text-text-muted">

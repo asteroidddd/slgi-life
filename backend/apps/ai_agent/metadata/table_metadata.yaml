@@ -12,6 +12,8 @@
 
 rent_deal:
   description: 전월세 실거래 데이터 (2011~현재)
+  source_labels: 
+    - 국토교통부 전월세 실거래가 자료(공공데이터포털)
   category: 부동산
   key_column: ldong_code
   join_path: rent_deal.ldong_code = ldong.ldong_code
@@ -30,6 +32,8 @@ rent_deal:
 
 library:
   description: 도서관 마스터 (공공/작은도서관)
+  source_labels: 
+    - 서울시 공공도서관/작은도서관 현황정보(서울 열린데이터광장)
   category: 시설
   key_column: adong_code
   join_path: library.adong_code = adong.adong_code
@@ -40,6 +44,8 @@ library:
 
 library_hours:
   description: 도서관 요일별 운영시간
+  source_labels: 
+    - 서울시 공공도서관/작은도서관 현황정보(서울 열린데이터광장)
   category: 시설
   key_column: library_id
   join_path: library_hours.library_id = library.id
@@ -47,6 +53,8 @@ library_hours:
 
 store:
   description: 상가 점포 (소상공인 데이터)
+  source_labels: 
+    - 소상공인시장진흥공단 상가업소 정보(공공데이터포털)
   category: 시설
   key_column: adong_code
   join_path: store.adong_code = adong.adong_code
@@ -71,6 +79,8 @@ daiso_store:
 
 park:
   description: 서울시 공원
+  source_labels: 
+    - 서울시 공원 정보(서울 열린데이터광장)
   category: 시설
   bridge_table: park_adong
   join_path: park_adong.park_id = park.id, park_adong.adong_code = adong.adong_code
@@ -99,6 +109,8 @@ amenity:
 
 subway_station:
   description: 지하철역 (1~9호선 서울 구간)
+  source_labels: 
+    - 서울시 역사마스터 정보(서울 열린데이터광장)
   category: 교통
   key_column: adong_code
   join_path: subway_station.adong_code = adong.adong_code
@@ -115,6 +127,8 @@ subway_station:
 
 bus_stop:
   description: 버스 정류장
+  source_labels: 
+    - 서울시 버스정류소 위치정보(서울 열린데이터광장)
   category: 교통
   key_column: adong_code
   join_path: bus_stop.adong_code = adong.adong_code
@@ -122,6 +136,8 @@ bus_stop:
   note: |
     bus_stop.id는 문자열이지만 숫자형 문자열. 혼잡도 조인 시 bus_stop.id::bigint 캐스팅 필요
     bus_congestion 컬럼: date, time, congestion, bus_stop_id. 시간 컬럼명은 hour가 아니라 time
+    RouteCongestionLevel API의 tzon 24~27은 다음 날짜 00:00~03:00으로 저장됨.
+    특정 서비스일 D의 버스 혼잡도 전체 흐름은 date=D AND time>=04:00 또는 date=D+1 AND time<04:00 조건으로 조회.
     location NULL 719건 존재 (가상/차고지). map 반환 시 WHERE location IS NOT NULL 필수
     location(POINT): 정류장 좌표. map 타입 반환 시 ST_Y/ST_X 사용
 
@@ -147,6 +163,8 @@ nearest_subway_ldong:
 
 univ:
   description: 대학 캠퍼스
+  source_labels: 
+    - 서울시 대학 및 전문대학 DB 정보(서울 열린데이터광장)
   category: 장소
   to_rent_deal: univ → univ_ldong(ldong_code) → adjacent_ldong(양방향) → rent_deal(ldong_code)
   to_facility: univ → univ_adong(adong_code) → adjacent_adong(양방향) → [시설](adong_code)
@@ -219,6 +237,8 @@ rent_deal_ldong_adong_map:
 
 ldong_population:
   description: 법정동 월별 인구 (2022-09~현재)
+  source_labels: 
+    - 행정안전부 주민등록 인구 및 세대현황(공공데이터포털)
   category: 인구
   key_column: ldong_code
   join_path: ldong_population.ldong_code = ldong.ldong_code
@@ -226,6 +246,8 @@ ldong_population:
 
 adong_population:
   description: 행정동 월별 인구 (2022-09~현재)
+  source_labels: 
+    - 행정안전부 주민등록 인구 및 세대현황(공공데이터포털)
   category: 인구
   key_column: adong_code
   join_path: adong_population.adong_code = adong.adong_code

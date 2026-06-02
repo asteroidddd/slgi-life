@@ -142,6 +142,7 @@ def result_has_change(value: Any) -> bool:
             return False
         for key in (
             "created",
+            "updated",
             "inserted",
             "deleted_missing",
             "deleted_existing",

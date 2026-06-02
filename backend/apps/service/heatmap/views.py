@@ -39,55 +39,40 @@ def _current_payload(region, current) -> dict:
 
 
 def _load_adong_geojson_from_data() -> dict:
-    with (DATA_DIR / "gu_code.csv").open(encoding="utf-8-sig", newline="") as f:
-        gu_rows = list(csv.DictReader(f))
     with (DATA_DIR / "adong_code.csv").open(encoding="utf-8-sig", newline="") as f:
         adong_rows = list(csv.DictReader(f))
-    with (DATA_DIR / "gu_boundaries.geojson").open(encoding="utf-8") as f:
-        gu_geojson = json.load(f)
     with (DATA_DIR / "adong_boundaries.geojson").open(encoding="utf-8") as f:
         adong_geojson = json.load(f)
 
-    gu_code_by_name = {row["gu_name"]: row["gu_code"] for row in gu_rows}
-    gu_name_by_code = {row["gu_code"]: row["gu_name"] for row in gu_rows}
-    legacy_gu_to_gu_code: dict[str, str] = {}
-    for feature in gu_geojson.get("features", []):
-        props = feature.get("properties") or {}
-        name = str(props.get("SIGUNGU_NM") or "").strip()
-        legacy_code = str(props.get("SIGUNGU_CD") or "").strip()
-        if name and legacy_code and name in gu_code_by_name:
-            legacy_gu_to_gu_code[legacy_code] = gu_code_by_name[name]
-
-    adong_by_gu_name = {
-        (row["gu_code"], row["adong_name"]): row["adong_code"]
-        for row in adong_rows
-    }
+    adong_codes = {row["adong_code"] for row in adong_rows}
 
     normalized_features = []
     for feature in adong_geojson.get("features", []):
         props = feature.get("properties") or {}
-        legacy_adm_cd = str(props.get("ADM_CD") or "").strip()
-        adm_name = str(props.get("ADM_NM") or "").strip()
-        gu_code = legacy_gu_to_gu_code.get(legacy_adm_cd[:5], "")
-        adong_code = adong_by_gu_name.get((gu_code, adm_name), "")
-        if not adong_code:
+        adong_code = str(props.get("adong_code") or "").strip()
+        if adong_code not in adong_codes:
             continue
-        gu_name = gu_name_by_code.get(gu_code, "")
+        gu_code = str(props.get("gu_code") or "").strip()
+        gu_name = str(props.get("gu_name") or "").strip()
+        adong_name = str(props.get("adong_name") or props.get("name") or "").strip()
+        full_name = str(props.get("full_name") or f"서울특별시 {gu_name} {adong_name}").strip()
         normalized_features.append(
             {
                 "type": "Feature",
                 "geometry": feature.get("geometry"),
                 "properties": {
-                    "adm_nm": f"서울특별시 {gu_name} {adm_name}".strip(),
+                    "adm_nm": full_name,
                     "adm_cd": adong_code[:-3],
                     "adm_cd2": adong_code,
                     "sgg": gu_code,
                     "sido": "11",
                     "sidonm": "서울특별시",
                     "sggnm": gu_name,
-                    "ADM_CD": legacy_adm_cd,
-                    "ADM_NM": adm_name,
-                    "BASE_DATE": props.get("BASE_DATE"),
+                    "adong_code": adong_code,
+                    "adong_name": adong_name,
+                    "gu_code": gu_code,
+                    "gu_name": gu_name,
+                    "base_date": props.get("base_date"),
                 },
             }
         )
@@ -113,29 +98,31 @@ def _load_ldong_geojson_from_data() -> dict:
     normalized_features = []
     for feature in ldong_geojson.get("features", []):
         props = feature.get("properties") or {}
-        emd_cd = str(props.get("EMD_CD") or "").strip()
-        ldong_code = emd_cd if len(emd_cd) == 10 else f"{emd_cd}00"
+        ldong_code = str(props.get("ldong_code") or "").strip()
         row = ldong_by_code.get(ldong_code)
         if not row:
             continue
         gu_code = row["gu_code"]
-        gu_name = gu_name_by_code.get(gu_code, "")
-        ldong_name = row["ldong_name"]
+        gu_name = str(props.get("gu_name") or gu_name_by_code.get(gu_code, ""))
+        ldong_name = str(props.get("ldong_name") or row["ldong_name"])
+        full_name = str(props.get("full_name") or f"서울특별시 {gu_name} {ldong_name}").strip()
         normalized_features.append(
             {
                 "type": "Feature",
                 "geometry": feature.get("geometry"),
                 "properties": {
-                    "adm_nm": f"서울특별시 {gu_name} {ldong_name}".strip(),
+                    "adm_nm": full_name,
                     "adm_cd": ldong_code[:-2],
                     "adm_cd2": ldong_code,
                     "sgg": gu_code,
                     "sido": "11",
                     "sidonm": "서울특별시",
                     "sggnm": gu_name,
-                    "ADM_CD": ldong_code,
-                    "ADM_NM": ldong_name,
-                    "BASE_DATE": props.get("BASE_DATE"),
+                    "ldong_code": ldong_code,
+                    "ldong_name": ldong_name,
+                    "gu_code": gu_code,
+                    "gu_name": gu_name,
+                    "base_date": props.get("base_date"),
                 },
             }
         )
@@ -149,7 +136,7 @@ def _load_ldong_geojson_from_data() -> dict:
 
 class HeatmapAdongGeoJsonView(APIView):
     def get(self, request: Request) -> Response:
-        cache_key = "heatmap:geojson:adongs:v1"
+        cache_key = "heatmap:geojson:adongs:v2"
         cached = cache.get(cache_key)
         if cached is not None:
             return Response(cached, status=status.HTTP_200_OK)
@@ -160,7 +147,7 @@ class HeatmapAdongGeoJsonView(APIView):
 
 class HeatmapLdongGeoJsonView(APIView):
     def get(self, request: Request) -> Response:
-        cache_key = "heatmap:geojson:ldongs:v1"
+        cache_key = "heatmap:geojson:ldongs:v2"
         cached = cache.get(cache_key)
         if cached is not None:
             return Response(cached, status=status.HTTP_200_OK)

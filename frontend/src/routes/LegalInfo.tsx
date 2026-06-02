@@ -276,7 +276,7 @@ const CONTENT: Record<LegalPage, LegalContent> = {
         rows: [
           {
             category: '지도·공간 기준',
-            source: 'V-World, 카카오맵 API, 국토교통부, 국가데이터처',
+            source: 'V-World, 카카오, 국토교통부, 국가데이터처',
             usage: '배경지도, 검색, 좌표 변환, 행정동·법정동·자치구 경계 표시와 지역 매핑 기준으로 사용합니다. 지도 렌더링에는 Leaflet을 사용합니다.',
             links: [
               { label: 'WMTS API', href: 'https://www.vworld.kr/dev/v4dv_wmtsguide_s001.do' },

@@ -508,14 +508,24 @@ def build_transit_parts(config: RegionConfig, regions: dict[str, dict[str, Any]]
     )
     bus_rows = fetchall(
         f"""
-        SELECT b.{config.code_col} AS code,
-               CASE WHEN EXTRACT(ISODOW FROM c.date)::int IN (6, 7) THEN '주말' ELSE '평일' END AS day_type,
-               to_char(c.time, 'HH24:MI') AS time,
-               ROUND(AVG(c.congestion)::numeric, 1)::float AS congestion
-        FROM bus_congestion c
-        JOIN bus_stop b ON b.id = c.bus_stop_id::text
-        WHERE b.{config.code_col} = ANY(%s) AND b.location IS NOT NULL
-        GROUP BY b.{config.code_col}, day_type, c.time
+        WITH normalized AS (
+            SELECT b.{config.code_col} AS code,
+                   CASE
+                       WHEN c.time < time '04:00' THEN c.date - interval '1 day'
+                       ELSE c.date
+                   END AS service_date,
+                   c.time,
+                   c.congestion
+            FROM bus_congestion c
+            JOIN bus_stop b ON b.id = c.bus_stop_id::text
+            WHERE b.{config.code_col} = ANY(%s) AND b.location IS NOT NULL
+        )
+        SELECT code,
+               CASE WHEN EXTRACT(ISODOW FROM service_date)::int IN (6, 7) THEN '주말' ELSE '평일' END AS day_type,
+               to_char(time, 'HH24:MI') AS time,
+               ROUND(AVG(congestion)::numeric, 1)::float AS congestion
+        FROM normalized
+        GROUP BY code, day_type, time
         """,
         [codes],
     )

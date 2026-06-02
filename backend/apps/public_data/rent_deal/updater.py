@@ -18,7 +18,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from django.contrib.gis.geos import Point
-from django.db import transaction
+from django.db import connection, transaction
 
 from apps.public_data.api_keys import env_key_ring, with_rate_limit_fallback
 from apps.public_data.exceptions import RateLimitedError, is_rate_limited_code, is_rate_limited_text
@@ -34,6 +34,7 @@ PUBLIC_DATA_BASE_URL = "https://apis.data.go.kr"
 DATA_PATH = Path(__file__).resolve().parents[3] / "data" / "rent_deal_ldong_adong_map.csv"
 DEFAULT_START_YM = "201101"
 PAGE_SIZE = 1000
+ADONG_BACKFILL_BATCH_SIZE = 50_000
 
 RENT_ENDPOINTS = {
     "아파트": "/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent",
@@ -138,6 +139,95 @@ def _read_map_rows() -> list[dict[str, str]]:
 
 def _map_table_populated() -> bool:
     return RentDealLdongAdongMap.objects.exists()
+
+
+def _count_adong_backfill_pending() -> int:
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM rent_deal
+            WHERE location IS NOT NULL
+              AND adong_code IS NULL
+            """
+        )
+        return int(cursor.fetchone()[0] or 0)
+
+
+def _backfill_adong_from_location(options: RentDealsUpdateOptions) -> dict[str, Any]:
+    pending_before = _count_adong_backfill_pending()
+    if options.dry_run:
+        return {
+            "status": "skipped",
+            "completed": True,
+            "pending_before": pending_before,
+            "updated": 0,
+            "remaining_without_adong": pending_before,
+            "skipped_write": True,
+            "reason": "dry_run",
+        }
+    if pending_before == 0:
+        return {
+            "status": "success",
+            "completed": True,
+            "pending_before": 0,
+            "updated": 0,
+            "remaining_without_adong": 0,
+            "skipped_write": True,
+            "reason": "no_pending_rows",
+        }
+
+    updated_total = 0
+    batches = 0
+    stopped_by_deadline = False
+    while True:
+        if _deadline_reached(options):
+            stopped_by_deadline = True
+            break
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    WITH candidates AS MATERIALIZED (
+                        SELECT r.id, matched.adong_code
+                        FROM rent_deal r
+                        JOIN LATERAL (
+                            SELECT a.adong_code
+                            FROM adong a
+                            WHERE a.boundary && r.location
+                              AND ST_Covers(a.boundary, r.location)
+                            ORDER BY a.area_m2 NULLS LAST, a.adong_code
+                            LIMIT 1
+                        ) matched ON TRUE
+                        WHERE r.location IS NOT NULL
+                          AND r.adong_code IS NULL
+                        LIMIT %s
+                    )
+                    UPDATE rent_deal r
+                    SET adong_code = candidates.adong_code
+                    FROM candidates
+                    WHERE r.id = candidates.id
+                    """,
+                    [ADONG_BACKFILL_BATCH_SIZE],
+                )
+                updated = cursor.rowcount
+        if updated <= 0:
+            break
+        updated_total += updated
+        batches += 1
+
+    remaining = _count_adong_backfill_pending()
+    return {
+        "status": "partial" if stopped_by_deadline else "success",
+        "completed": not stopped_by_deadline,
+        "pending_before": pending_before,
+        "updated": updated_total,
+        "remaining_without_adong": remaining,
+        "batches": batches,
+        "batch_size": ADONG_BACKFILL_BATCH_SIZE,
+        "skipped_write": False,
+        "reason": "deadline_reached" if stopped_by_deadline else None,
+    }
 
 
 def _load_map(options: RentDealsUpdateOptions, meta: dict[str, Any]) -> dict[str, Any]:
@@ -662,6 +752,7 @@ def update_rent_deals(options: RentDealsUpdateOptions) -> dict[str, Any]:
     map_meta = _file_meta()
     mapping = _load_map(options, map_meta)
     conversion_rate = _update_conversion_rate(options)
+    adong_backfill = _backfill_adong_from_location(options)
     start_ym = _validate_ym(options.start_ym or DEFAULT_START_YM)
     end_ym = _validate_ym(options.end_ym or _current_ym())
     current = _current_ym()
@@ -673,13 +764,15 @@ def update_rent_deals(options: RentDealsUpdateOptions) -> dict[str, Any]:
     )
 
     if not target_months:
+        completed = bool(adong_backfill.get("completed", True))
         return {
-            "status": "success",
-            "completed": True,
+            "status": "success" if completed else "partial",
+            "completed": completed,
             "loaded": mapping["loaded"] + conversion_rate["loaded"],
             "dry_run": options.dry_run,
             "map": mapping,
             "conversion_rate": conversion_rate,
+            "adong_backfill": adong_backfill,
             "rent_deals": {
                 "checked": 0,
                 "loaded": 0,
@@ -705,7 +798,7 @@ def update_rent_deals(options: RentDealsUpdateOptions) -> dict[str, Any]:
     checked_total = loaded_total = created_total = updated_total = skipped_total = geocoded_total = 0
     deleted_current_month = 0
     month_results: dict[str, Any] = {}
-    completed = True
+    completed = bool(adong_backfill.get("completed", True))
 
     for ym in target_months:
         if _deadline_reached(options):
@@ -817,6 +910,7 @@ def update_rent_deals(options: RentDealsUpdateOptions) -> dict[str, Any]:
         "dry_run": options.dry_run,
         "map": mapping,
         "conversion_rate": conversion_rate,
+        "adong_backfill": adong_backfill,
         "rent_deals": rent_deals,
     }
 
@@ -856,5 +950,6 @@ def update(options: RentDealsUpdateOptions) -> dict[str, Any]:
                 "deleted_current_month": result["rent_deals"]["rent_deals"].get("deleted_current_month"),
             }
             rent_state["conversion_rate"] = result["rent_deals"].get("conversion_rate")
+            rent_state["adong_backfill"] = result["rent_deals"].get("adong_backfill")
             save_state(state)
     return result
