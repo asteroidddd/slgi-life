@@ -43,7 +43,7 @@ HOUSING_TYPE_CHOICES = [
 ]
 
 # 한글 housing_type ↔ 영문 deal_type 매핑 (serializer 응답 key 'deal_type' 보존용).
-# legacy 응답 (sub-plan 2H 이전)에서 'deal_type'은 영문 enum 5종을 반환했음.
+# 이전 응답에서 'deal_type'은 영문 enum을 반환했음.
 HOUSING_TYPE_TO_DEAL_TYPE: dict[str, str] = {
     "아파트": "apt",
     "오피스텔": "officetel",

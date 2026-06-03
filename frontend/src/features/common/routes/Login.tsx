@@ -12,7 +12,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   inactive_user: '사용할 수 없는 계정입니다.',
 };
 
-const AUTH_RETURN_PATH_KEY = 'slgi-auth-return-path';
+const AUTH_RETURN_PATH_KEY = 'jachwimap-auth-return-path';
 
 function cleanReturnPath(path: string) {
   try {

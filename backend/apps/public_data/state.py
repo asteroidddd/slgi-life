@@ -10,7 +10,7 @@ from typing import Any
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
-LEGACY_STATE_PATH = Path(__file__).resolve().parent / ".state" / "public_data_state.json"
+PREVIOUS_STATE_PATH = Path(__file__).resolve().parent / ".state" / "public_data_state.json"
 STATE_PATH = Path(
     os.environ.get(
         "CAPSTON_PUBLIC_DATA_STATE_PATH",
@@ -24,7 +24,7 @@ def utc_now_iso() -> str:
 
 
 def load_state() -> dict[str, Any]:
-    path = STATE_PATH if STATE_PATH.exists() or not LEGACY_STATE_PATH.exists() else LEGACY_STATE_PATH
+    path = STATE_PATH if STATE_PATH.exists() or not PREVIOUS_STATE_PATH.exists() else PREVIOUS_STATE_PATH
     if not path.exists():
         return {"datasets": {}}
     try:

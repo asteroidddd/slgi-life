@@ -140,7 +140,7 @@ export const MAP_PIN = {
  *
  * The three rent-trend lines use the **mono text + Link + Accent**
  * triplet so all three are readable on the same axes without resurrecting
- * the legacy 4-color category palette. If a future chart needs a 5-step
+ * the previous 4-color category palette. If a future chart needs a 5-step
  * sequential palette, use `HEATMAP_COLORS_ORDERED`.
  *
  * Mapping (SPEC 6.3 RealEstate trend chart, 4 series):

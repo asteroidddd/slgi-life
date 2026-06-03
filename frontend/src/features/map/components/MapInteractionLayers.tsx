@@ -2,8 +2,12 @@ import { useEffect, useMemo, useRef } from 'react';
 import L from 'leaflet';
 import { Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 
-import type { MapSearchItem } from '@/features/common/types/api';
-import type { MapState } from '@/features/map/components/TransactionPinLayer';
+import type { Bbox, MapSearchItem } from '@/features/common/types/api';
+
+export interface MapState {
+  bbox: Bbox;
+  zoom: number;
+}
 
 interface AiMapTarget {
   label: string;

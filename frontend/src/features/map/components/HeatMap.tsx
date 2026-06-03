@@ -23,7 +23,7 @@ import { useSeoulMaskGeoJson } from '@/features/map/hooks/useSeoulMaskGeoJson';
 import type { AdongFeatureCollection, AdongFeatureProps } from '@/features/map/hooks/useAdongGeoJson';
 import { HEATMAP_NO_DATA, MAP_POLYGON_STROKE, scoreToHeatmapColor } from '@/features/common/lib/colors';
 import { VWORLD_ATTRIBUTION, getVWorldMaxNativeZoom, getVWorldTileUrl } from '@/features/map/lib/vworld';
-import type { AdongScore, MatchCountItem } from '@/features/common/types/api';
+import type { AdongScore } from '@/features/common/types/api';
 
 import 'leaflet/dist/leaflet.css';
 
@@ -42,31 +42,17 @@ function cssColorToken(name: string): string {
   return `var(${name})`;
 }
 
-/** 레이어 탭 — 색상의 기준이 되는 점수 축. score 모드 전용.
- *  Phase 5 cleanup 이후 호출측 (MainMap) 은 항상 'composite' 로 고정 사용 —
- *  단일 축 (rent/amenity/transit) 보기는 WEIGHTS 100/0/0 프리셋 칩으로 흡수.
- *  rent/amenity/transit 키는 pickScore unit test 와 잠재적 상세 화면 재사용을
- *  위해 type 에 그대로 보존. */
+/** 레이어 탭 — 색상의 기준이 되는 점수 축. */
 export type ScoreLayerKey = 'composite' | 'rent' | 'amenity' | 'transit' | 'safety';
 
-/** 히트맵 색칠 모드.
- *  - 'score': activeLayer 의 점수 (composite/rent/amenity/transit) 기반.
- *  - 'match': MatchCountItem.ratio (0~100, log scale 정규화) 기반.
- *  Phase 5 default 는 'match' (자취생 첫 화면이 자기 조건으로 즉시 시작). */
-export type HeatMapMode = 'score' | 'match';
-
 export interface HeatMapProps {
-  /** score 모드용 데이터. match 모드에서도 click handler 의 adong 인자에 필요. */
+  /** 히트맵 점수 데이터. */
   adongs: AdongScore[];
   onAdongClick?: (adong: AdongScore) => void;
   /** 히트맵 폴리곤 표시 여부. false면 베이스맵만 보임. */
   heatmapVisible?: boolean;
-  /** 색상 기준이 되는 점수 축. 기본 'composite' (가중합). score 모드에서만 사용. */
+  /** 색상 기준이 되는 점수 축. 기본 'composite' (가중합). */
   activeLayer?: ScoreLayerKey;
-  /** Phase 5: 'score' (기존) 또는 'match' (조건 거래량). default 'match'. */
-  mode?: HeatMapMode;
-  /** match 모드에서 폴리곤 색칠에 쓰는 카운트 분포. mode='match' 일 때만 의미. */
-  matchCounts?: MatchCountItem[];
   /** 추가 레이어를 MapContainer 내부에 렌더링. react-leaflet 컴포넌트만 (e.g.,
    *  CircleMarker, useMap 사용 컴포넌트). 일반 DOM 노드는 작동 안 함. */
   children?: ReactNode;
@@ -129,8 +115,6 @@ export default function HeatMap({
   onAdongClick,
   heatmapVisible = true,
   activeLayer = 'composite',
-  mode = 'match',
-  matchCounts,
   children,
   regionLevel = 'adong',
   selectedRegionSlug = null,
@@ -157,34 +141,14 @@ export default function HeatMap({
     [adongs, selectedRegionAdongs],
   );
 
-  // match 모드용 — code 키로 인덱싱한 MatchCountItem 맵.
-  const matchByCode = useMemo(() => {
-    const m: Record<string, MatchCountItem> = {};
-    for (const item of matchCounts ?? []) m[item.code] = item;
-    return m;
-  }, [matchCounts]);
-
   // 가중치/레이어/모드 변경마다 색이 갱신되도록 GeoJSON 레이어를 강제 리마운트.
-  // 425개라 비용 약간 있지만 슬라이더 빈도 낮아 OK.
-  // mode 도 키에 포함 (eng-review 회귀 가드 — score↔match 토글 시 리마운트).
+  // 425개라 비용 약간 있지만 레이어 변경 빈도 낮아 OK.
   const layerKey = useMemo(() => {
     let acc = 0;
-    if (mode === 'score') {
-      for (const d of adongs) acc = (acc + Math.round((pickScore(d, activeLayer) ?? 0) * 100)) | 0;
-      return `score-${activeLayer}-${adongs.length}-${selectedRegionSlug ?? 'none'}-${heatmapVisible ? 'heat' : 'outline'}-${acc}`;
-    }
-    // match — ratio 기반 키 (정수 부분만 충분).
-    // adongs가 비어 있는 초기 렌더 이후 score 데이터가 도착하면 GeoJSON을
-    // 다시 마운트해야 polygon 클릭 핸들러가 붙는다.
-    for (const d of adongs) acc = (acc + Number(d.code.slice(-4) || 0)) | 0;
-    for (const item of matchCounts ?? []) {
-      acc = (acc + Math.round(item.ratio * 10)) | 0;
-    }
-    return `match-${regionLevel}-${adongs.length}-${matchCounts?.length ?? 0}-${selectedRegionSlug ?? 'none'}-${heatmapVisible ? 'heat' : 'outline'}-${acc}`;
-  }, [adongs, activeLayer, heatmapVisible, mode, matchCounts, regionLevel, selectedRegionSlug]);
+    for (const d of adongs) acc = (acc + Math.round((pickScore(d, activeLayer) ?? 0) * 100)) | 0;
+    return `score-${regionLevel}-${activeLayer}-${adongs.length}-${selectedRegionSlug ?? 'none'}-${heatmapVisible ? 'heat' : 'outline'}-${acc}`;
+  }, [adongs, activeLayer, heatmapVisible, regionLevel, selectedRegionSlug]);
 
-  // match 모드 fillOpacity — 0.85 (eng-review #15 모드 시각 차이).
-  const matchFillOpacity = 0.85;
   const scoreFillOpacity = 0.7;
 
   // DESIGN_SYSTEM.md "Map-Specific Shapes":
@@ -201,19 +165,6 @@ export default function HeatMap({
         opacity: 0,
         fillColor: 'transparent',
         fillOpacity: 0,
-      };
-    }
-
-    if (mode === 'match') {
-      const item = matchByCode[code];
-      // has_data=false 또는 ratio===0 → NO_DATA 색 (Soft Stone 70% opacity).
-      const hasColor = item != null && item.has_data && item.ratio > 0;
-      return {
-        color: MAP_POLYGON_STROKE.default.color,
-        weight: MAP_POLYGON_STROKE.default.weight,
-        opacity: MAP_POLYGON_STROKE.default.opacity,
-        fillColor: hasColor ? scoreToHeatmapColor(item.ratio) : HEATMAP_NO_DATA,
-        fillOpacity: hasColor ? matchFillOpacity : 0.7 * 0.5,
       };
     }
 
@@ -257,33 +208,16 @@ export default function HeatMap({
     if (!adong) return;
     if (!heatmapVisible) return;
 
-    if (mode === 'match') {
-      const item = matchByCode[code];
-      const countLabel =
-        item != null
-          ? `${item.count.toLocaleString()}건`
-          : '데이터 없음';
-      layer.bindTooltip(
-        `<div class="map-tooltip__name">${adong.gu} · ${adong.name}</div>` +
-          `<div class="map-tooltip__score tabular">조건 매칭 ${countLabel}</div>`,
-        { sticky: true, direction: 'top', offset: [0, -4], opacity: 1 },
-      );
-    } else {
-      const shownScore = pickScore(adong, activeLayer);
-      const scoreText = isFiniteScore(shownScore) ? shownScore.toFixed(1) : '데이터 없음';
-      layer.bindTooltip(
-        `<div class="map-tooltip__name">${adong.gu} · ${adong.name}</div>` +
-          `<div class="map-tooltip__score tabular">${layerLabel[activeLayer]} ${scoreText}</div>`,
-        { sticky: true, direction: 'top', offset: [0, -4], opacity: 1 },
-      );
-    }
+    const shownScore = pickScore(adong, activeLayer);
+    const scoreText = isFiniteScore(shownScore) ? shownScore.toFixed(1) : '데이터 없음';
+    layer.bindTooltip(
+      `<div class="map-tooltip__name">${adong.gu} · ${adong.name}</div>` +
+        `<div class="map-tooltip__score tabular">${layerLabel[activeLayer]} ${scoreText}</div>`,
+      { sticky: true, direction: 'top', offset: [0, -4], opacity: 1 },
+    );
 
-    const item = matchByCode[code];
-    const hasMatchColor = item != null && item.has_data && item.ratio > 0;
     const scoreForOpacity = pickScore(adong, activeLayer);
-    const restingFillOpacity = mode === 'match'
-      ? hasMatchColor ? matchFillOpacity : 0.7 * 0.5
-      : isFiniteScore(scoreForOpacity) ? scoreFillOpacity : 0.15;
+    const restingFillOpacity = isFiniteScore(scoreForOpacity) ? scoreFillOpacity : 0.15;
 
     layer.on({
       click: (e: LeafletMouseEvent) => {

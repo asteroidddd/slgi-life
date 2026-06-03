@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import ThemeToggle from '@/features/common/components/ThemeToggle';
@@ -8,6 +8,7 @@ import { LoginPanel } from '@/features/common/routes/Login';
 import { MyPagePanel } from '@/features/common/routes/MyPage';
 
 const PRIMARY_PATHS = new Set(['/', '/select', '/map']);
+const AiChatPanel = lazy(() => import('@/features/ai-chat/components/AiChatPanel'));
 type AuthMode = 'login' | 'mypage';
 
 function fallbackPath(pathname: string) {
@@ -48,17 +49,18 @@ export function AppActions() {
   const { user, isLoading } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>('login');
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiCompareCandidates, setAiCompareCandidates] = useState(false);
   const [loginNotice, setLoginNotice] = useState({ error: '', withdrawn: false });
   const requestedAuth = searchParams.get('auth');
+  const requestedAi = searchParams.get('ai');
   const onMap = location.pathname === '/map';
   const onRecommendation = location.pathname === '/recommend/conditions' || location.pathname === '/recommend/results';
   const onDashboard = location.pathname.startsWith('/dashboard/');
-  const onAiChat = location.pathname.startsWith('/ai-chat');
   const onRealEstate = location.pathname.startsWith('/real-estate');
   const onLegal = location.pathname.startsWith('/legal/');
-  const showAiAction = !location.pathname.startsWith('/ai-chat');
   const showRealEstateAction = !location.pathname.startsWith('/real-estate');
-  const showNeutralNavigation = onAiChat || onRealEstate || onLegal;
+  const showNeutralNavigation = onRealEstate || onLegal;
   const showMapAction = !onMap && (onRecommendation || onDashboard || showNeutralNavigation);
   const showConditionAction = !location.pathname.startsWith('/recommend/conditions') && (onMap || onDashboard || showNeutralNavigation);
 
@@ -88,10 +90,27 @@ export function AppActions() {
     setSearchParams(next, { replace: true });
   }, [requestedAuth, searchParams, setSearchParams]);
 
+  useEffect(() => {
+    if (requestedAi !== '1') return;
+    const context = searchParams.get('context') ?? searchParams.get('ai_context');
+    setAiCompareCandidates(context === 'candidates');
+    setAiOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('ai');
+    next.delete('context');
+    next.delete('ai_context');
+    setSearchParams(next, { replace: true });
+  }, [requestedAi, searchParams, setSearchParams]);
+
   const openAccountDialog = () => {
     setAuthMode(user ? 'mypage' : 'login');
     setLoginNotice({ error: '', withdrawn: false });
     setAuthOpen(true);
+  };
+
+  const openAiPanel = () => {
+    setAiCompareCandidates(false);
+    setAiOpen(true);
   };
 
   return (
@@ -112,18 +131,17 @@ export function AppActions() {
               </svg>
             </button>
           </Tooltip>
-          {showAiAction ? (
-            <Tooltip label="AI 채팅" placement="bottom">
-              <button
-                type="button"
-                className="app-action-button app-ai-button"
-                aria-label="AI 채팅으로 이동"
-                onClick={() => navigate('/ai-chat')}
-              >
-                AI
-              </button>
-            </Tooltip>
-          ) : null}
+          <Tooltip label="AI 채팅" placement="bottom">
+            <button
+              type="button"
+              className="app-action-button app-ai-button"
+              aria-label="AI 채팅 열기"
+              aria-pressed={aiOpen}
+              onClick={openAiPanel}
+            >
+              AI
+            </button>
+          </Tooltip>
           {showRealEstateAction ? (
             <Tooltip label="부동산 도우미" placement="bottom">
               <button
@@ -182,6 +200,14 @@ export function AppActions() {
             ? <MyPagePanel onClose={() => setAuthOpen(false)} />
             : <LoginPanel error={loginNotice.error} withdrawn={loginNotice.withdrawn} />}
         </AuthDialog>
+      ) : null}
+      {aiOpen ? (
+        <Suspense fallback={null}>
+          <AiChatPanel
+            compareCandidates={aiCompareCandidates}
+            onClose={() => setAiOpen(false)}
+          />
+        </Suspense>
       ) : null}
     </>
   );

@@ -194,7 +194,7 @@
 }
 
 /* ==========================================================================
- * LEGACY TOKEN ALIASES
+ * COMPAT TOKEN ALIASES
  *
  * Tokens referenced by existing CSS files that use the old naming but
  * don't map directly to Tailwind @theme namespace. Kept as :root overrides
@@ -286,7 +286,7 @@
   --font-data-display-weight: 600;
   --font-data-display-tracking: -0.48px;
 
-  /* Legacy font aliases */
+  /* Compatibility font aliases */
   --font-h1-size: var(--font-card-heading-size);
   --font-h1-line: var(--font-card-heading-line);
   --font-h1-weight: var(--font-card-heading-weight);
@@ -748,17 +748,6 @@ html[data-theme='dark'] {
   font-family: var(--font-family-mono);
 }
 
-/* ---------- TransactionPinLayer -- divIcon chip markers ----------
- * These classes are rendered via Leaflet L.divIcon string HTML,
- * so they cannot use Tailwind className props. */
-
-.tx-chip-icon {
-  background: transparent !important;
-  border: 0 !important;
-  overflow: visible !important;
-  z-index: 900 !important;
-}
-
 .map-redesign .leaflet-marker-pane {
   z-index: 720;
 }
@@ -787,136 +776,6 @@ html[data-theme='dark'] {
 .map-redesign .leaflet-popup-content strong {
   color: inherit;
 }
-
-.tx-chip {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
-  position: relative;
-  cursor: pointer;
-  transition: opacity 120ms ease-out;
-}
-
-.tx-chip__price,
-.tx-chip__label {
-  background: var(--color-secondary);
-  color: var(--color-surface);
-  font-family: var(--font-family-mono);
-  font-variant-numeric: tabular-nums;
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 1px 3px rgba(23, 23, 28, 0.18);
-  white-space: nowrap;
-  line-height: 1.1;
-  transition: transform 120ms ease-out, background 120ms ease-out,
-    box-shadow 120ms ease-out;
-}
-
-.tx-chip__sub {
-  background: var(--color-surface);
-  color: var(--color-secondary);
-  font-family: var(--font-family-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  font-size: 10px;
-  line-height: 1.1;
-  padding: 2px 7px;
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
-  border: 1px solid rgba(23, 23, 28, 0.14);
-  border-top: 0;
-  margin-top: -1px;
-  white-space: nowrap;
-  box-shadow: 0 1px 3px rgba(23, 23, 28, 0.12);
-}
-
-.tx-chip__meta {
-  margin-top: -1px;
-  padding: 2px 7px 3px;
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
-  background: var(--surface-floating);
-  border: 1px solid var(--color-border);
-  border-top: 0;
-  color: var(--color-text-muted);
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 1.1;
-  white-space: nowrap;
-  box-shadow: 0 1px 3px rgba(23, 23, 28, 0.12);
-}
-
-.tx-chip__pointer {
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 6px 5px 0 5px;
-  border-color: var(--color-secondary) transparent transparent transparent;
-  margin-top: -1px;
-}
-
-.tx-chip--compact .tx-chip__price {
-  padding: 4px 8px;
-  font-size: 12px;
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
-}
-
-.tx-chip--standard .tx-chip__price {
-  padding: 6px 10px;
-  font-size: 13px;
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
-}
-
-.tx-chip--expanded .tx-chip__label {
-  padding: 6px 11px;
-  font-size: 12px;
-  font-weight: 800;
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
-}
-
-.tx-chip--expanded .tx-chip__sub {
-  color: var(--color-text);
-  border-radius: 0;
-  min-width: 104px;
-  text-align: center;
-}
-
-.tx-chip--expanded .tx-chip__meta {
-  min-width: 104px;
-  text-align: center;
-}
-
-.tx-chip:hover .tx-chip__price,
-.tx-chip:hover .tx-chip__label {
-  transform: scale(1.04);
-  box-shadow: 0 2px 6px rgba(23, 23, 28, 0.25);
-}
-
-.tx-chip--selected .tx-chip__price,
-.tx-chip--selected .tx-chip__label {
-  background: var(--color-accent);
-  border-color: rgba(255, 255, 255, 0.6);
-  transform: scale(1.08);
-}
-
-.tx-chip--selected .tx-chip__sub,
-.tx-chip--selected .tx-chip__meta {
-  background: var(--color-accent);
-  color: var(--color-surface);
-  filter: brightness(0.92);
-}
-
-.tx-chip--selected .tx-chip__pointer {
-  border-top-color: var(--color-accent);
-}
-
-.tx-chip--dimmed {
-  opacity: 0.4;
-}
-
-.tx-chip--selected.tx-chip--dimmed {
-  opacity: 1;
-}
-
 
 /* New map workspace: keep Leaflet zoom buttons at the right center. */
 .map-redesign .leaflet-top.leaflet-right {

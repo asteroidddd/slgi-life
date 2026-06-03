@@ -1,6 +1,6 @@
 """
 =============================================================================
-슬기로운 자취생활 - AI Agent 메인 파이프라인 (agent.py)
+자취맵 - AI Agent 메인 파이프라인 (agent.py)
 =============================================================================
 이 모듈은 사용자 질문을 받아 DB 조회를 통해 답변을 생성하는 전체 과정을 조율합니다.
 
@@ -360,7 +360,7 @@ def run_agent(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="슬기로운 자취생활 AI Agent")
+    parser = argparse.ArgumentParser(description="자취맵 AI Agent")
     parser.add_argument("question", nargs="?", default=None)
     args = parser.parse_args()
 
@@ -368,7 +368,7 @@ if __name__ == "__main__":
         result = run_agent(args.question)
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
-        print("슬기로운 자취생활 AI Agent")
+        print("자취맵 AI Agent")
         print("종료: Ctrl+C | 히스토리 초기화: /clear\n")
         history = []
         while True:

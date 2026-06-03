@@ -28,7 +28,7 @@ if (typeof window !== 'undefined' && typeof window.matchMedia === 'undefined') {
       matches: false,
       media: query,
       onchange: null,
-      addListener: () => {}, // legacy
+      addListener: () => {}, // older MediaQueryList API
       removeListener: () => {},
       addEventListener: () => {},
       removeEventListener: () => {},

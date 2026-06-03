@@ -29,7 +29,7 @@ const variantClasses: Record<BadgeVariant, string> = {
 };
 
 // sm/md typography uses the Pretendard `caption` token (14px, normal case,
-// 0 tracking). `mono` variant keeps the legacy uppercase + 0.26px tracking
+// 0 tracking). `mono` variant keeps uppercase + 0.26px tracking
 // look — those mono artifacts are intentional only for that variant.
 const sizeClasses: Record<BadgeSize, string> = {
   sm: 'text-caption',

@@ -1,6 +1,6 @@
 # backend/scripts
 
-백엔드 데이터 업데이트와 검증을 위한 스크립트 모음입니다.
+자취맵 백엔드 데이터 업데이트와 검증을 위한 스크립트 모음입니다.
 
 ## 현재 구조
 
@@ -9,7 +9,7 @@
 | `update/` | 공공데이터 및 서비스 파생 데이터 업데이트 실행 |
 | `validate/` | 데이터 품질/스키마 검증 스크립트 위치 |
 
-`etl/`, `maintenance/`, `scoring/` 같은 과거 스크립트 폴더는 새 업데이트 흐름에서 사용하지 않아 제거했습니다. 과거 코드가 필요하면 Git 이력에서 확인합니다.
+`etl/`, `maintenance/`, `scoring/` 같은 이전 스크립트 폴더는 현재 업데이트 흐름에서 사용하지 않아 제거했습니다. 이전 코드가 필요하면 Git 이력에서 확인합니다.
 
 ## 업데이트 스크립트
 
@@ -49,8 +49,8 @@ python scripts/update/update_cache_data.py --target all --write
    - `library`
 2. 서비스 파생 데이터 업데이트
    - `amenity`
-   - `rent_deal_cache`
-   - `rent_deal_summary_cache`
+   - `rent_deal_cache` (추천/점수 계산용 내부 파생 데이터)
+   - `rent_deal_summary_cache` (대시보드/추천 계산용 내부 파생 데이터)
    - `current`
 3. 대시보드 데이터 업데이트
    - `dashboard_cache`

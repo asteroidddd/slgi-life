@@ -4,7 +4,6 @@ import axios from 'axios';
 import type { AxiosInstance } from 'axios';
 
 import type {
-  Bbox,
   AdongScore,
   AIAPIKeyStatusResponse,
   AIContextPreferencePatch,
@@ -12,30 +11,21 @@ import type {
   AIProvider,
   AgentQueryRequest,
   AgentQueryResponse,
-  MatchCountsResponse,
   DashboardRegionIntro,
   AmenityBboxResponse,
   MedicalFacilitiesResponse,
   MedicalSpecialtyGroupsResponse,
   MapSearchResponse,
-  MatchFilters,
   FavoriteItem,
   MePatchPayload,
   MeResponse,
-  RentDealCacheResponse,
-  RentDealLdongSummaryResponse,
-  RentDealGuCodesResponse,
-  RentDealGridSummaryResponse,
   RentListingAnalysisRequest,
   RentListingAnalysisResponse,
   RentConversionRateResponse,
   RecommendationRegionsResponse,
-  RentDealPin,
   SchoolOptionsResponse,
   SavedCandidateRegion,
   SavedRecommendationConditions,
-  TransactionFilters,
-  TransactionsBboxResponse,
   UserCandidateRegionsResponse,
   UserRecommendationConditionsResponse,
   User,
@@ -120,15 +110,6 @@ export async function getDashboardRegionAtPoint(
 }
 
 
-export async function getAdongMatchCounts(
-  filters: MatchFilters,
-): Promise<MatchCountsResponse> {
-  const { data } = await api.get<MatchCountsResponse>('/rent-deals/match-counts', {
-    params: matchFiltersToParams(filters),
-  });
-  return data;
-}
-
 export async function getRentConversionRate(): Promise<RentConversionRateResponse> {
   const { data } = await api.get<RentConversionRateResponse>('/rent-deals/conversion-rate');
   return data;
@@ -140,96 +121,6 @@ export async function analyzeRentListing(
   const { data } = await api.post<RentListingAnalysisResponse>('/rent-deals/listing-analysis', payload, {
     timeout: 20_000,
   });
-  return data;
-}
-
-function bboxToParam(bbox: Bbox): string {
-  return `${bbox.lng1},${bbox.lat1},${bbox.lng2},${bbox.lat2}`;
-}
-
-export async function getRentDealLdongSummary(
-  filters: MatchFilters,
-): Promise<RentDealLdongSummaryResponse> {
-  const { data } = await api.get<RentDealLdongSummaryResponse>('/rent-deals/summary/ldongs', {
-    params: matchFiltersToParams(filters),
-  });
-  return data;
-}
-
-export async function getRentDealGridSummary(
-  filters: MatchFilters,
-  bbox: Bbox | null,
-): Promise<RentDealGridSummaryResponse> {
-  const params: Record<string, string | number> = matchFiltersToParams(filters);
-  if (bbox) params.bbox = bboxToParam(bbox);
-  const { data } = await api.get<RentDealGridSummaryResponse>('/rent-deals/summary/grids', {
-    params,
-  });
-  return data;
-}
-
-export async function getRentDealGuCodes(bbox: Bbox): Promise<RentDealGuCodesResponse> {
-  const { data } = await api.get<RentDealGuCodesResponse>('/rent-deals/cache/gus', {
-    params: { bbox: bboxToParam(bbox) },
-  });
-  return data;
-}
-
-export async function getRentDealGuCacheText(guCode: string): Promise<string> {
-  const { data } = await api.get<string>(`/rent-deals/cache/gus/${guCode}.tsv.gz`, {
-    responseType: 'text',
-    timeout: 600_000,
-    transformResponse: [(value) => value],
-  });
-  return data;
-}
-
-export async function getRentDealCache(): Promise<RentDealCacheResponse> {
-  const { data } = await api.get<RentDealCacheResponse>('/rent-deals/cache', {
-    timeout: 600_000,
-  });
-  return data;
-}
-
-export async function getRentDealDetail(id: string): Promise<RentDealPin> {
-  const { data } = await api.get<RentDealPin>(`/rent-deals/${id}`);
-  return data;
-}
-
-
-function matchFiltersToParams(filters: MatchFilters): Record<string, string | number> {
-  return {
-    deal_types: filters.deal_types.join(','),
-    period: filters.period,
-    filter_mode: filters.filter_mode,
-    deposit_min: filters.deposit_min,
-    deposit_max: filters.deposit_max,
-    monthly_min: filters.monthly_min,
-    monthly_max: filters.monthly_max,
-    converted_min: filters.converted_min,
-    converted_max: filters.converted_max,
-    area_min: filters.area_min,
-    area_max: filters.area_max,
-  };
-}
-
-export async function getTransactionsBbox(
-  bbox: Bbox,
-  filters: TransactionFilters,
-): Promise<TransactionsBboxResponse> {
-  const params: Record<string, string | number> = {
-    bbox: `${bbox.lng1},${bbox.lat1},${bbox.lng2},${bbox.lat2}`,
-  };
-  // 'all' is a valid filter token on the backend (no filter applied), but we
-  // still send it explicitly so the URL is deterministic for caching.
-  params.deal_type = filters.deal_type;
-  if (filters.from) params.from = filters.from;
-  if (filters.to) params.to = filters.to;
-
-  const { data } = await api.get<TransactionsBboxResponse>(
-    '/transactions/bbox',
-    { params }
-  );
   return data;
 }
 

@@ -21,11 +21,11 @@ import {
   SearchFlyTo,
   SelectedPlacePinLayer,
   hasValidCoordinate,
+  type MapState,
 } from '@/features/map/components/MapInteractionLayers';
 import type { SelectedPlacePin } from '@/features/map/components/MapInteractionLayers';
 import MapPopup, { buildScoreRanks, type SelectedPopup } from '@/features/map/components/MapPopup';
 import MedicalControlPanel, { type MedicalCategory } from '@/features/map/components/MedicalControlPanel';
-import type { MapState } from '@/features/map/components/TransactionPinLayer';
 import daisoLogo from '@/assets/logos/facilities/daiso.svg';
 import oliveyoungLogo from '@/assets/logos/facilities/oliveyoung.svg';
 import { candidateFromIntro, candidateFromScore, useCandidateRegions } from '@/features/candidates/lib/candidates';
@@ -543,7 +543,6 @@ export default function MainMap() {
         adongs={scoresData}
         activeLayer={heatmapActiveLayer}
         heatmapVisible={heatmapEnabled}
-        mode="score"
         regionLevel={regionLevel}
         selectedRegionSlug={selectedMapRegionSlug}
         selectedRegionLevel={selectedMapRegionLevel}

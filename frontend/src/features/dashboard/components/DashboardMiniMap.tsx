@@ -254,7 +254,7 @@ export default function DashboardMiniMap({
       <button
         type="button"
         onClick={handleMapOpen}
-        className="absolute right-3 top-3 z-[1700] h-8 rounded-[var(--radius-sm)] border border-border bg-surface/90 px-3 text-[12px] font-semibold text-text-muted shadow-sm transition-colors hover:bg-surface hover:text-text"
+        className="absolute right-3 top-3 z-10 h-8 rounded-[var(--radius-sm)] border border-border bg-surface/90 px-3 text-[12px] font-semibold text-text-muted shadow-sm transition-colors hover:bg-surface hover:text-text"
         aria-label="지도로 이동"
         title="지도로 이동"
       >

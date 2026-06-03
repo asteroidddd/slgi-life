@@ -7,13 +7,13 @@ Subway 모델 — schema.dbml line 216~242 정합 (sub-plan 4.5B).
 
 sub-plan 4.5B 정합:
 - SubwayStation PK: BigAutoField → CharField(max_length=20). 'id varchar(20)'.
-- SubwayStation: legacy `adong FK`(neighborhoods.Adong) 제거 → adong/ldong FK 정합.
+- SubwayStation: 이전 `adong FK`(neighborhoods.Adong) 제거 → adong/ldong FK 정합.
   schema.dbml ldong_code/adong_code NOT NULL.
 - SubwayCongestion: PK (station_id, day_type, direction, express_yn, time).
   station FK는 새 varchar PK에 맞춰 db_column 'station_id' 유지.
 
 sub-plan 7G-C (결정 4A):
-- legacy NearestSubway(neighborhoods.Adong FK) 모델 및 nearest_subway 테이블 완전 폐기.
+- 이전 NearestSubway(neighborhoods.Adong FK) 모델 및 nearest_subway 테이블 완전 폐기.
   NearestSubwayAdong / NearestSubwayLdong이 대체. compute_nearest_subway.py 폐기.
 """
 
@@ -76,7 +76,7 @@ class SubwayStation(models.Model):
 # ---------------------------------------------------------------------------
 # NearestSubway v2 — Adong / Ldong (schema.dbml line 449~473)
 #
-# sub-plan 7G-C (결정 4A): legacy NearestSubway(neighborhoods.Adong FK) 폐기.
+# 이전 NearestSubway(neighborhoods.Adong FK) 폐기.
 # 이하 Adong/Ldong 기반 캐시만 사용.
 # ---------------------------------------------------------------------------
 

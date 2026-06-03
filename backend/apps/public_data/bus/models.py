@@ -6,7 +6,7 @@ Bus 모델 — schema.dbml line 243~264 정합 (sub-plan 4.5B).
 
 sub-plan 4.5B 정합:
 - BusStop PK: BigAutoField → CharField(max_length=20). 'id varchar(20)'.
-- BusStop: legacy `dong FK`(neighborhoods.Dong) 제거 → adong/ldong FK (nullable).
+- BusStop: 이전 `dong FK`(neighborhoods.Dong) 제거 → adong/ldong FK (nullable).
   schema.dbml line 247~248 ldong_code/adong_code NOT NULL 없음(nullable 허용).
 - BusCongestion: congestion NOT NULL (schema.dbml line 259).
 

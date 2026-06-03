@@ -7,7 +7,6 @@ import CandidateDrawer, { shouldShowCandidateDrawer } from '@/features/candidate
 import { PageTitleProvider } from '@/features/common/contexts/PageTitleContext';
 import { ADONG_GEOJSON_QUERY_KEY, fetchAdongGeoJson } from '@/features/map/hooks/useAdongGeoJson';
 import { SEOUL_MASK_GEOJSON_QUERY_KEY, fetchSeoulMaskGeoJson } from '@/features/map/hooks/useSeoulMaskGeoJson';
-import DesignSystem from '@/features/common/routes/DesignSystem';
 import Login from '@/features/common/routes/Login';
 import MyPage from '@/features/common/routes/MyPage';
 import NotFound from '@/features/common/routes/NotFound';
@@ -103,16 +102,12 @@ function AppContent() {
             </Suspense>
           }
         />
-        <Route path="/adong/:slug" element={<Navigate to="/map" replace />} />
-        <Route path="/adong/:slug/explore" element={<Navigate to="/map" replace />} />
-        <Route path="/compare" element={<Navigate to="/map" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/legal/terms" element={<LegalInfo page="terms" />} />
         <Route path="/legal/privacy" element={<LegalInfo page="privacy" />} />
         <Route path="/legal/data-sources" element={<LegalInfo page="data" />} />
         <Route path="/register" element={<Register />} />
         <Route path="/mypage" element={<MyPage />} />
-        <Route path="/design-system" element={<DesignSystem />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <LegalFooter />

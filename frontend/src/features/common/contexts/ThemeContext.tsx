@@ -12,7 +12,7 @@ interface ThemeContextValue {
   toggleTheme: () => void;
 }
 
-const THEME_STORAGE_KEY = 'slgi-theme';
+const THEME_STORAGE_KEY = 'jachwimap-theme';
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function isThemeMode(value: unknown): value is ThemeMode {

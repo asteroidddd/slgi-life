@@ -514,7 +514,7 @@ function AIKeyEditor({ onBack }: { onBack: () => void }) {
         <Input
           label="복호화 문구"
           type="password"
-          name="slgi-ai-passphrase"
+          name="jachwimap-ai-passphrase"
           autoComplete="new-password"
           value={passphrase}
           onChange={(e) => setPassphrase(e.target.value)}
@@ -523,7 +523,7 @@ function AIKeyEditor({ onBack }: { onBack: () => void }) {
         <Input
           label="복호화 문구 확인"
           type="password"
-          name="slgi-ai-passphrase-confirm"
+          name="jachwimap-ai-passphrase-confirm"
           autoComplete="new-password"
           value={passphraseConfirm}
           onChange={(e) => setPassphraseConfirm(e.target.value)}
@@ -612,7 +612,7 @@ function MaskedSecretInput({
       {label}
       <input
         type="text"
-        name="slgi-ai-key"
+        name="jachwimap-ai-key"
         autoComplete="off"
         autoCorrect="off"
         spellCheck={false}
