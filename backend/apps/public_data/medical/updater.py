@@ -159,10 +159,10 @@ def _fetch_pages(api_key: str, url: str, dataset: str, options: MedicalUpdateOpt
         )
         total, rows = _response_items(root, dataset=dataset)
         out.extend(rows)
-        if not rows or not total or page * PAGE_SIZE >= total:
-            return out
         if options.limit is not None and len(out) >= options.limit:
             return out[: options.limit]
+        if not rows or not total or page * PAGE_SIZE >= total:
+            return out
         page += 1
 
 
@@ -555,6 +555,8 @@ def _fetch_hira_hospitals(api_key: str, options: MedicalUpdateOptions) -> list[d
             options,
         )
         out.extend(rows)
+        if options.limit is not None and len(out) >= options.limit:
+            return out[: options.limit]
         if not rows or not total or page * PAGE_SIZE >= total:
             return out
         page += 1

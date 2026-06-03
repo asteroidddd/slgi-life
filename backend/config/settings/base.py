@@ -92,6 +92,7 @@ LOCAL_APPS = [
     "apps.service.amenities",
     "apps.service.heatmap",
     "apps.service.medical",
+    "apps.service.recommend.apps.RecommendConfig",
     "apps.public_data.populations",
     "apps.public_data.rent_deal",
     "apps.public_data.store",

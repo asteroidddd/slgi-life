@@ -29,7 +29,6 @@ from scripts.update.bus_congestion_fast import (  # noqa: E402
     FastBusCongestionOptions,
     update_bus_congestion_fast,
 )
-from scripts.update.update_cache_data import _run_target as run_cache_target  # noqa: E402
 from scripts.update.update_dashboard_data import _run_target as run_dashboard_target  # noqa: E402
 from scripts.update.update_public_data import _run_dataset as run_public_dataset  # noqa: E402
 from scripts.update.update_service_data import _run_target as run_service_target  # noqa: E402
@@ -248,13 +247,6 @@ def run_service(target: str) -> Callable[[argparse.Namespace, bool], dict[str, A
     return runner
 
 
-def run_cache(target: str) -> Callable[[argparse.Namespace, bool], dict[str, Any]]:
-    def runner(args: argparse.Namespace, dry_run: bool) -> dict[str, Any]:
-        return run_cache_target(target, dry_run=dry_run, limit=args.limit if target == "rent_deal_geocode_cache" else None)
-
-    return runner
-
-
 def run_dashboard(_args: argparse.Namespace, dry_run: bool) -> dict[str, Any]:
     return run_dashboard_target("dashboard_cache", dry_run=dry_run, strict=False)
 
@@ -355,40 +347,12 @@ TASKS: tuple[Task, ...] = (
         heavy=True,
     ),
     Task(
-        "rent_deal_geocode_cache",
-        "cache",
-        "C01",
-        "on_change",
-        run_cache("rent_deal_geocode_cache"),
-        deps=("rent_deals",),
-        run_on_dependency_change=True,
-        heavy=True,
-    ),
-    Task(
-        "region_park_area_cache",
-        "cache",
-        "C02",
-        "on_change",
-        run_cache("region_park_area_cache"),
-        deps=("regions", "parks"),
-        run_on_dependency_change=True,
-    ),
-    Task(
-        "region_amenity_category_cache",
-        "cache",
-        "C03",
-        "on_change",
-        run_cache("region_amenity_category_cache"),
-        deps=("amenity",),
-        run_on_dependency_change=True,
-    ),
-    Task(
         "current_scores",
         "service",
         "S04",
         "on_change",
         run_service("current"),
-        deps=("rent_deal_summary_cache", "amenity", "region_amenity_category_cache", "bus_stop", "subway", "metrics"),
+        deps=("rent_deal_summary_cache", "amenity", "bus_stop", "subway", "metrics"),
         run_on_dependency_change=True,
     ),
     Task(
@@ -400,8 +364,6 @@ TASKS: tuple[Task, ...] = (
         deps=(
             "current_scores",
             "rent_deal_summary_cache",
-            "region_park_area_cache",
-            "region_amenity_category_cache",
             "bus_congestion",
             "subway",
             "bus_stop",

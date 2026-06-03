@@ -31,18 +31,18 @@ OLIVEYOUNG_KEYWORDS = ("\uc62c\ub9ac\ube0c\uc601", "oliveyoung")
 
 STORE_CATEGORY_BY_SUBCATEGORY_CODE = {
     "G20405": "convenience",
-    "G20404": "mart",
+    "G20404": "etc",
     "I21201": "cafe",
-    "S20901": "laundry",
+    "S20901": "etc",
     "S20902": "laundry",
     "R10307": "gym",
-    "G21301": "book_stationery",
-    "G21302": "book_stationery",
+    "G21301": "etc",
+    "G21302": "etc",
     "R10202": "study_cafe",
 }
 STORE_CATEGORY_BY_MIDDLE_CATEGORY_CODE = {
-    "I211": "nightlife",
-    "S207": "beauty",
+    "I211": "etc",
+    "S207": "etc",
 }
 RESTAURANT_EXCLUDED_SUBCATEGORY_CODES = {"I21201", "I20701"}
 

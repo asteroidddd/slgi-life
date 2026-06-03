@@ -343,6 +343,15 @@
   --shadow-floating: 0 1px 2px rgba(23, 23, 28, 0.04),
                      0 4px 12px rgba(23, 23, 28, 0.06);
   --shadow-map-control: 0 8px 24px rgba(16, 24, 40, 0.16);
+
+  --tooltip-bg: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  --tooltip-border: var(--color-border);
+  --tooltip-text: var(--color-text);
+  --tooltip-text-muted: var(--color-text-muted);
+  --tooltip-radius: 6px;
+  --tooltip-shadow: 0 10px 26px rgba(17, 24, 39, 0.16);
+  --tooltip-blur: 12px;
+  --tooltip-z: 3000;
 }
 
 html[data-theme='dark'] {
@@ -424,6 +433,12 @@ html[data-theme='dark'] {
   --shadow-floating: 0 1px 2px rgba(0, 0, 0, 0.22),
                      0 10px 28px rgba(0, 0, 0, 0.28);
   --shadow-map-control: 0 12px 30px rgba(0, 0, 0, 0.30);
+
+  --tooltip-bg: color-mix(in srgb, var(--color-surface) 96%, transparent);
+  --tooltip-border: var(--color-border);
+  --tooltip-text: var(--color-text);
+  --tooltip-text-muted: var(--color-text-muted);
+  --tooltip-shadow: 0 14px 34px rgba(0, 0, 0, 0.38);
 }
 
 /* ==========================================================================
@@ -629,21 +644,21 @@ html[data-theme='dark'] {
  * LEAFLET 오버라이드 — Leaflet이 자체 생성하는 DOM 엘리먼트 스타일
  * ========================================================================= */
 .leaflet-tooltip {
-  background: var(--surface-overlay-bg);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-floating);
+  background: var(--tooltip-bg);
+  color: var(--tooltip-text);
+  border: 1px solid var(--tooltip-border);
+  border-radius: var(--tooltip-radius);
+  box-shadow: var(--tooltip-shadow);
   padding: 8px 12px;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(var(--tooltip-blur));
 }
 
 .leaflet-tooltip-top::before,
 .leaflet-tooltip-bottom::before,
 .leaflet-tooltip-left::before,
 .leaflet-tooltip-right::before {
-  border-top-color: var(--color-border);
-  border-bottom-color: var(--color-border);
+  border-top-color: var(--tooltip-border);
+  border-bottom-color: var(--tooltip-border);
 }
 
 .leaflet-bar {
@@ -687,6 +702,33 @@ html[data-theme='dark'] {
   cursor: not-allowed;
 }
 
+.app-tooltip {
+  border: 1px solid var(--tooltip-border);
+  border-radius: var(--tooltip-radius);
+  background: var(--tooltip-bg);
+  color: var(--tooltip-text);
+  box-shadow: var(--tooltip-shadow);
+  backdrop-filter: blur(var(--tooltip-blur));
+}
+
+.app-tooltip--muted {
+  color: var(--tooltip-text-muted);
+}
+
+.app-tooltip--compact {
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.app-tooltip--info {
+  padding: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.65;
+}
+
 /* Leaflet tooltip inner content — rendered via string HTML (bindTooltip),
  * so these must remain as CSS classes, not Tailwind utilities. */
 .map-tooltip__name {
@@ -727,6 +769,23 @@ html[data-theme='dark'] {
 
 .map-redesign .leaflet-popup-pane {
   z-index: 740;
+}
+
+.map-redesign .leaflet-popup-content-wrapper,
+.map-redesign .leaflet-popup-tip {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-floating);
+}
+
+.map-redesign .leaflet-popup-content {
+  color: var(--color-text);
+}
+
+.map-redesign .leaflet-popup-content p,
+.map-redesign .leaflet-popup-content strong {
+  color: inherit;
 }
 
 .tx-chip {
@@ -993,6 +1052,144 @@ html[data-theme='dark'] {
 .app-floating-button:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
+}
+
+.app-actions {
+  pointer-events: none;
+}
+
+.app-actions > * {
+  pointer-events: auto;
+}
+
+.app-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-heatmap-2);
+  background: var(--surface-floating);
+  color: var(--color-heatmap-5);
+  box-shadow: var(--shadow-floating);
+  backdrop-filter: blur(8px);
+  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.app-action-button:hover {
+  background: var(--color-heatmap-1);
+  border-color: var(--color-heatmap-3);
+  transform: translateY(-1px);
+}
+
+.app-action-button:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.app-action-button svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.2;
+}
+
+.app-ai-button {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.app-action-text-button {
+  width: auto;
+  min-width: 68px;
+  padding-inline: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.app-action-text-button {
+  min-width: 76px;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.app-action-text-button:hover {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.app-main-button {
+  width: 124px;
+  font-weight: 700;
+}
+
+.app-account-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-heatmap-2);
+  background: var(--surface-floating);
+  color: var(--color-heatmap-5);
+  box-shadow: var(--shadow-floating);
+  backdrop-filter: blur(8px);
+  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.app-account-button:hover {
+  background: var(--color-heatmap-1);
+  border-color: var(--color-heatmap-3);
+  transform: translateY(-1px);
+}
+
+.app-account-button svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.2;
+}
+
+.app-back-button {
+  min-width: 116px;
+}
+
+.legal-footer {
+  position: fixed;
+  left: 50%;
+  bottom: 10px;
+  z-index: 1180;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  transform: translateX(-50%);
+  border: 1px solid var(--color-border);
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--color-surface) 86%, transparent);
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  box-shadow: var(--shadow-floating);
+  backdrop-filter: blur(8px);
+}
+
+.legal-footer a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.legal-footer a:hover {
+  color: var(--color-text);
 }
 
 .withdraw-floating-button {

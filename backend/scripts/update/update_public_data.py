@@ -191,6 +191,7 @@ def _run_dataset(dataset: str, args: argparse.Namespace, *, dry_run: bool) -> di
                 dry_run=dry_run,
                 force=args.force,
                 limit=args.limit,
+                request_timeout_seconds=10.0 if dry_run and args.limit is not None else 40.0,
                 update_hira_specialties=args.include_hira_specialties,
             )
         )

@@ -25,21 +25,17 @@ SAFETY_GRADE_METRICS = [
 ]
 
 INFRA_GROUPS = [
-    {"key": "food", "label": "식생활", "categories": ["restaurant", "cafe", "convenience", "mart", "nightlife"]},
-    {"key": "culture", "label": "문화", "categories": ["park", "gym", "beauty", "oliveyoung", "laundry"]},
-    {"key": "study", "label": "학습", "categories": ["library", "book_stationery", "study_cafe"]},
+    {"key": "food", "label": "식생활", "categories": ["restaurant", "cafe", "convenience"]},
+    {"key": "culture", "label": "문화", "categories": ["park", "gym", "oliveyoung", "laundry"]},
+    {"key": "study", "label": "학습", "categories": ["library", "study_cafe"]},
     {"key": "medical", "label": "의료", "categories": ["hospital", "dental", "pharmacy"]},
 ]
-for group in INFRA_GROUPS:
-    if group["key"] == "food" and "daiso" not in group["categories"]:
-        group["categories"].insert(group["categories"].index("mart") + 1, "daiso")
 VISUAL_CATEGORIES = [category for group in INFRA_GROUPS for category in group["categories"]]
-FOOD_CATEGORIES = ["restaurant", "cafe", "convenience", "mart", "daiso", "nightlife"]
+FOOD_CATEGORIES = ["restaurant", "cafe", "convenience"]
 MEDICAL_CATEGORIES = ["pharmacy", "hospital", "dental"]
 CATEGORY_LABELS = {
     "daiso": "다이소",
     "convenience": "편의점",
-    "mart": "슈퍼마켓",
     "restaurant": "음식점",
     "cafe": "카페",
     "hospital": "병원",
@@ -47,11 +43,8 @@ CATEGORY_LABELS = {
     "pharmacy": "약국",
     "park": "공원",
     "library": "도서관",
-    "nightlife": "주점",
     "gym": "헬스장",
-    "beauty": "미용",
-    "laundry": "세탁",
-    "book_stationery": "서점/문구",
+    "laundry": "셀프 빨래방",
     "study_cafe": "스터디카페/독서실",
     "oliveyoung": "올리브영",
 }
@@ -665,21 +658,10 @@ def build_infra_parts(config: RegionConfig, regions: dict[str, dict[str, Any]]) 
         """,
         [codes, open_day],
     )}
-    emergency = {row["code"]: row["count"] for row in fetchall(
-        f"""
-        SELECT f.{config.code_col} AS code, COUNT(DISTINCT e.hpid)::int AS count
-        FROM medical_facility f
-        JOIN medical_emergency e ON e.hpid = f.hpid
-        WHERE f.{config.code_col} = ANY(%s)
-        GROUP BY f.{config.code_col}
-        """,
-        [codes],
-    )}
     out: dict[str, dict[str, Any]] = {}
     seoul_total_density = sum(category_totals.values()) / total_area
     seoul_food_density = sum(category_totals.get(category, 0) for category in FOOD_CATEGORIES) / total_area
     seoul_medical_density = sum(category_totals.get(category, 0) for category in MEDICAL_CATEGORIES) / total_area
-    seoul_emergency_density = sum(emergency.values()) / total_area
     for code, wrapper in regions.items():
         region = wrapper["region"]
         area = region["area_km2"]
@@ -690,16 +672,13 @@ def build_infra_parts(config: RegionConfig, regions: dict[str, dict[str, Any]]) 
         total_density = density(total, area)
         food_density = density(food, area)
         medical_density = density(medical_count, area)
-        emergency_density = density(emergency.get(code, 0), area)
         green_ratio = (park_area.get(code, 0) / (float(area) * 1_000_000.0) * 100) if area else None
         infra_delta = pct_delta(total_density, seoul_total_density)
         food_delta = pct_delta(food_density, seoul_food_density)
         medical_delta = pct_delta(medical_density, seoul_medical_density)
-        emergency_delta = pct_delta(emergency_density, seoul_emergency_density)
         green_delta = pct_delta(green_ratio, seoul_green_ratio)
         infra_tone = tone_from_delta(infra_delta, threshold=0.15)
         medical_tone = tone_from_delta(medical_delta, threshold=0.15)
-        emergency_tone = tone_from_delta(emergency_delta, threshold=0.15)
         green_tone = tone_from_delta(green_delta, threshold=0.15)
         food_tone = tone_from_delta(food_delta, threshold=0.15)
         headline = "생활시설이 충분하고 의료 접근성도 양호합니다"
@@ -707,20 +686,20 @@ def build_infra_parts(config: RegionConfig, regions: dict[str, dict[str, Any]]) 
             headline = "생활시설 밀도가 낮아 주변 확인이 필요합니다"
         elif medical_tone == "bad":
             headline = "의료시설 접근성은 추가 확인이 필요합니다"
-        elif emergency_tone == "bad":
-            headline = "응급실은 주변 지역까지 함께 봐야 합니다"
+        elif food_tone == "bad":
+            headline = "식생활 편의시설은 주변 확인이 필요합니다"
         overview = {
             "region": region,
             "headline": headline,
             "summary": (
                 f"{region['dong_name']}의 생활시설 밀도는 서울 평균보다 {'높은 편' if infra_tone == 'good' else '낮은 편' if infra_tone == 'bad' else '비슷한 편'}입니다. "
                 f"식생활 시설은 {food}곳, 약국·병원·치과는 {medical_count}곳입니다. "
-                f"응급실은 {emergency.get(code, 0)}곳이고, 오늘 운영 중인 의료시설은 {open_medical.get(code, 0)}곳입니다."
+                f"오늘 운영 중인 병원·약국은 {open_medical.get(code, 0)}곳입니다."
             ),
             "quicktakes": [
                 quicktake("생활시설 많음" if infra_tone == "good" else "생활시설 적음" if infra_tone == "bad" else "생활시설 보통", infra_tone),
                 quicktake("의료 접근 양호" if medical_tone != "bad" else "의료 부족", medical_tone),
-                quicktake("응급실 있음" if emergency_tone == "good" else "응급실 없음", emergency_tone),
+                quicktake("녹지 여유" if green_tone == "good" else "녹지 확인" if green_tone == "bad" else "녹지 보통", green_tone),
             ],
             "metrics": [
                 metric("amenity_density", "면적당 시설", round(total_density, 1) if total_density is not None else None, "곳/km²", tone=infra_tone, badge="많음" if infra_tone == "good" else "적음" if infra_tone == "bad" else "보통", description=fmt_delta(infra_delta)),

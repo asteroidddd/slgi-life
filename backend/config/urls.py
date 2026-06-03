@@ -40,6 +40,7 @@ urlpatterns = [
     path("api/", include("apps.service.amenities.urls")),
     path("api/", include("apps.service.heatmap.urls")),
     path("api/", include("apps.service.medical.urls")),
+    path("api/", include("apps.service.recommend.urls")),
     # AI Agent endpoint: POST /api/agent/query
     path("api/", include("apps.ai_agent.urls")),
     path("api/", include("apps.accounts.user.urls")),

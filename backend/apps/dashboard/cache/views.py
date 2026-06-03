@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from copy import deepcopy
+
 from django.contrib.gis.geos import Point
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -8,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.dashboard.cache.models import DashboardAdongCache, DashboardLdongCache
+from apps.dashboard.cache.bulk import CONFIGS, build_transit_parts
 from apps.public_data.regions.models import Adong, Ldong
 
 
@@ -31,6 +34,25 @@ def _intro_payload(cache) -> dict:
     return {**region, "intro": payload.get("intro") or cache.intro}
 
 
+def _dashboard_payload(cache, region_type: str) -> dict:
+    payload = deepcopy(cache.dashboard_payload or {})
+    _refresh_congestion_payload(payload, region_type)
+    return payload
+
+
+def _refresh_congestion_payload(payload: dict, region_type: str) -> None:
+    region = payload.get("region") or {}
+    code = region.get("code")
+    if not code or region_type not in CONFIGS:
+        return
+    fresh = build_transit_parts(CONFIGS[region_type], {code: {"region": region, "scores": {}}})
+    congestion = (fresh.get(code) or {}).get("congestion")
+    if not congestion:
+        return
+    transit_summary = payload.setdefault("transit_summary", {})
+    transit_summary["congestion"] = congestion
+
+
 def _parse_coordinate(value: str | None, *, field: str, minimum: float, maximum: float) -> float:
     if value in (None, ""):
         raise ValidationError({field: f"{field} is required."})
@@ -52,7 +74,7 @@ class DashboardCacheView(APIView):
         if not slug:
             raise ValidationError({"slug": "slug is required."})
         cache = _cache_for(region_type, slug)
-        return Response(cache.dashboard_payload, status=status.HTTP_200_OK)
+        return Response(_dashboard_payload(cache, region_type), status=status.HTTP_200_OK)
 
 
 class RegionIntroView(APIView):
