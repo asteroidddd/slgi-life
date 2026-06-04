@@ -35,7 +35,7 @@ export function BackButton({ fallbackTo, forceFallback = false }: { fallbackTo?:
         }
         navigate(fallbackTo ?? fallbackPath(location.pathname));
       }}
-      className="app-floating-button app-back-button fixed left-5 top-5 z-[1600] no-underline"
+      className="app-floating-button app-back-button fixed left-6 top-6 z-[1600] no-underline"
     >
       뒤로가기
     </button>
@@ -50,6 +50,7 @@ export function AppActions() {
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [aiOpen, setAiOpen] = useState(false);
+  const [aiMounted, setAiMounted] = useState(false);
   const [aiCompareCandidates, setAiCompareCandidates] = useState(false);
   const [loginNotice, setLoginNotice] = useState({ error: '', withdrawn: false });
   const requestedAuth = searchParams.get('auth');
@@ -59,7 +60,6 @@ export function AppActions() {
   const onDashboard = location.pathname.startsWith('/dashboard/');
   const onRealEstate = location.pathname.startsWith('/real-estate');
   const onLegal = location.pathname.startsWith('/legal/');
-  const showRealEstateAction = !location.pathname.startsWith('/real-estate');
   const showNeutralNavigation = onRealEstate || onLegal;
   const showMapAction = !onMap && (onRecommendation || onDashboard || showNeutralNavigation);
   const showConditionAction = !location.pathname.startsWith('/recommend/conditions') && (onMap || onDashboard || showNeutralNavigation);
@@ -94,6 +94,7 @@ export function AppActions() {
     if (requestedAi !== '1') return;
     const context = searchParams.get('context') ?? searchParams.get('ai_context');
     setAiCompareCandidates(context === 'candidates');
+    setAiMounted(true);
     setAiOpen(true);
     const next = new URLSearchParams(searchParams);
     next.delete('ai');
@@ -110,6 +111,7 @@ export function AppActions() {
 
   const openAiPanel = () => {
     setAiCompareCandidates(false);
+    setAiMounted(true);
     setAiOpen(true);
   };
 
@@ -142,27 +144,6 @@ export function AppActions() {
               AI
             </button>
           </Tooltip>
-          {showRealEstateAction ? (
-            <Tooltip label="부동산 도우미" placement="bottom">
-              <button
-                type="button"
-                className="app-action-button app-real-estate-button"
-                aria-label="부동산 도우미로 이동"
-                onClick={() => navigate('/real-estate')}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M3.5 11.25 8.5 6l5 5.25" />
-                  <path d="M5 10.5V20h7.2" />
-                  <path d="M7.8 20v-4.3h3.1V20" />
-                  <path d="M10.5 4.5h5.3l3.2 3.2V20.5h-8.5z" fill="var(--color-surface)" />
-                  <path d="M15.8 4.5v3.2H19" />
-                  <path d="M12.6 11.2h4.6" />
-                  <path d="M12.6 14.2h4.6" />
-                  <path d="M12.6 17.2h3.1" />
-                </svg>
-              </button>
-            </Tooltip>
-          ) : null}
         </div>
         {showMapAction || showConditionAction ? (
           <div className="flex items-center gap-2">
@@ -201,9 +182,11 @@ export function AppActions() {
             : <LoginPanel error={loginNotice.error} withdrawn={loginNotice.withdrawn} />}
         </AuthDialog>
       ) : null}
-      {aiOpen ? (
+      {aiMounted ? (
         <Suspense fallback={null}>
           <AiChatPanel
+            key={user?.id ?? 'guest'}
+            isOpen={aiOpen}
             compareCandidates={aiCompareCandidates}
             onClose={() => setAiOpen(false)}
           />

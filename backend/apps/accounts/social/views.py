@@ -298,7 +298,7 @@ class KakaoCallbackView(APIView):
             if not user.is_active:
                 return _redirect_frontend("login", error="inactive_user")
             login(request, user)
-            return _redirect_frontend("mypage")
+            return _redirect_frontend("login")
         except Exception:
             return _redirect_frontend("login", error="kakao_failed")
 

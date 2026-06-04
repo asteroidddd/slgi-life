@@ -1,4 +1,4 @@
-generated_at: '2026-06-01T09:06:47.699869+00:00'
+generated_at: '2026-06-04T10:31:00.492447+00:00'
 source: Database reference/domain tables
 domains:
   metric:
@@ -117,6 +117,53 @@ domains:
       is_generated: false
       value_guidance: Economic scale/reference only. Do not overuse as direct housing
         recommendation factor.
+    - metric_code: SAFETY_GRADE_TRAFFIC
+      name: 지역안전등급_교통사고
+      unit: 등급
+      category: 안전
+      cycle: A
+      is_generated: false
+      value_guidance: Lower grade number is better. Use ASC for safer areas.
+    - metric_code: TRAFFIC_CULTURE_DRIVE
+      name: 교통문화지수_운전행태영역
+      unit: 점
+      category: 교통
+      cycle: A
+      is_generated: false
+      value_guidance: Higher score is better.
+    - metric_code: TRAFFIC_CULTURE_SAFETY
+      name: 교통문화지수_교통안전영역
+      unit: 점
+      category: 교통
+      cycle: A
+      is_generated: false
+      value_guidance: Higher score is better.
+    - metric_code: TRAFFIC_CULTURE_VULNERABLE
+      name: 교통문화지수_교통약자영역
+      unit: 점
+      category: 교통
+      cycle: A
+      is_generated: false
+      value_guidance: Higher score is better.
+    - metric_code: TRAFFIC_CULTURE_WALK
+      name: 교통문화지수_보행행태영역
+      unit: 점
+      category: 교통
+      cycle: A
+      is_generated: false
+      value_guidance: Higher score is better.
+    - metric_code: VEHICLE_PER_10K_POP
+      name: 인구1만명당자동차등록
+      unit: 대/만명
+      category: 교통
+      cycle: A
+      is_generated: true
+    - metric_code: VEHICLE_REGISTERED
+      name: 자동차등록대수
+      unit: 대
+      category: 교통
+      cycle: A
+      is_generated: false
     - metric_code: GRDP_CURRENT
       name: GRDP_당해년가격
       unit: 백만원
@@ -297,20 +344,6 @@ domains:
       cycle: A
       is_generated: false
       value_guidance: Lower grade number is better. Use ASC for safer areas.
-    - metric_code: SAFETY_GRADE_TRAFFIC
-      name: 지역안전등급_교통사고
-      unit: 등급
-      category: 안전
-      cycle: A
-      is_generated: false
-      value_guidance: Lower grade number is better. Use ASC for safer areas.
-    - metric_code: TRAFFIC_CULTURE_DRIVE
-      name: 교통문화지수_운전행태영역
-      unit: 점
-      category: 교통
-      cycle: A
-      is_generated: false
-      value_guidance: Higher score is better.
     - metric_code: TRAFFIC_CULTURE_INDEX
       name: 교통문화지수
       unit: 점
@@ -318,39 +351,6 @@ domains:
       cycle: A
       is_generated: false
       value_guidance: Higher score is better.
-    - metric_code: TRAFFIC_CULTURE_SAFETY
-      name: 교통문화지수_교통안전영역
-      unit: 점
-      category: 교통
-      cycle: A
-      is_generated: false
-      value_guidance: Higher score is better.
-    - metric_code: TRAFFIC_CULTURE_VULNERABLE
-      name: 교통문화지수_교통약자영역
-      unit: 점
-      category: 교통
-      cycle: A
-      is_generated: false
-      value_guidance: Higher score is better.
-    - metric_code: TRAFFIC_CULTURE_WALK
-      name: 교통문화지수_보행행태영역
-      unit: 점
-      category: 교통
-      cycle: A
-      is_generated: false
-      value_guidance: Higher score is better.
-    - metric_code: VEHICLE_PER_10K_POP
-      name: 인구1만명당자동차등록
-      unit: 대/만명
-      category: 교통
-      cycle: A
-      is_generated: true
-    - metric_code: VEHICLE_REGISTERED
-      name: 자동차등록대수
-      unit: 대
-      category: 교통
-      cycle: A
-      is_generated: false
   ksci_category:
     description: KSCI category reference values.
     usage: Use for commercial/category interpretation when the table is present.
@@ -9112,41 +9112,14 @@ domains:
     - adong_code: '1111056000'
       name: 평창동
       gu_code: '11110'
-    - adong_code: '1111057000'
-      name: 무악동
-      gu_code: '11110'
     - adong_code: '1111058000'
       name: 교남동
       gu_code: '11110'
-    - adong_code: '1111069000'
-      name: 창신3동
-      gu_code: '11110'
-    - adong_code: '1111070000'
-      name: 숭인1동
-      gu_code: '11110'
-    - adong_code: '1111071000'
-      name: 숭인2동
-      gu_code: '11110'
-    - adong_code: '1114052000'
-      name: 소공동
-      gu_code: '11140'
-    - adong_code: '1114054000'
-      name: 회현동
-      gu_code: '11140'
     - adong_code: '1114055000'
       name: 명동
       gu_code: '11140'
-    - adong_code: '1114057000'
-      name: 필동
-      gu_code: '11140'
-    - adong_code: '1114058000'
-      name: 장충동
-      gu_code: '11140'
     - adong_code: '1114059000'
       name: 광희동
-      gu_code: '11140'
-    - adong_code: '1114061500'
-      name: 신당동
       gu_code: '11140'
     - adong_code: '1120062000'
       name: 금호4가동
@@ -9157,24 +9130,6 @@ domains:
     - adong_code: '1120065000'
       name: 성수1가1동
       gu_code: '11200'
-    - adong_code: '1114062500'
-      name: 다산동
-      gu_code: '11140'
-    - adong_code: '1114063500'
-      name: 약수동
-      gu_code: '11140'
-    - adong_code: '1114064500'
-      name: 청구동
-      gu_code: '11140'
-    - adong_code: '1114065000'
-      name: 신당5동
-      gu_code: '11140'
-    - adong_code: '1114066500'
-      name: 동화동
-      gu_code: '11140'
-    - adong_code: '1114067000'
-      name: 황학동
-      gu_code: '11140'
     - adong_code: '1114068000'
       name: 중림동
       gu_code: '11140'
@@ -9205,12 +9160,6 @@ domains:
     - adong_code: '1117062500'
       name: 한강로동
       gu_code: '11170'
-    - adong_code: '1117063000'
-      name: 이촌1동
-      gu_code: '11170'
-    - adong_code: '1117064000'
-      name: 이촌2동
-      gu_code: '11170'
     - adong_code: '1117065000'
       name: 이태원1동
       gu_code: '11170'
@@ -9229,38 +9178,14 @@ domains:
     - adong_code: '1120052000'
       name: 왕십리2동
       gu_code: '11200'
-    - adong_code: '1120053500'
-      name: 왕십리도선동
-      gu_code: '11200'
     - adong_code: '1120054000'
       name: 마장동
       gu_code: '11200'
     - adong_code: '1120055000'
       name: 사근동
       gu_code: '11200'
-    - adong_code: '1120056000'
-      name: 행당1동
-      gu_code: '11200'
-    - adong_code: '1120057000'
-      name: 행당2동
-      gu_code: '11200'
-    - adong_code: '1120058000'
-      name: 응봉동
-      gu_code: '11200'
     - adong_code: '1120059000'
       name: 금호1가동
-      gu_code: '11200'
-    - adong_code: '1120061500'
-      name: 금호2·3가동
-      gu_code: '11200'
-    - adong_code: '1120066000'
-      name: 성수1가2동
-      gu_code: '11200'
-    - adong_code: '1120067000'
-      name: 성수2가1동
-      gu_code: '11200'
-    - adong_code: '1120069000'
-      name: 성수2가3동
       gu_code: '11200'
     - adong_code: '1120072000'
       name: 송정동
@@ -9268,20 +9193,8 @@ domains:
     - adong_code: '1120079000'
       name: 용답동
       gu_code: '11200'
-    - adong_code: '1121571000'
-      name: 화양동
-      gu_code: '11215'
-    - adong_code: '1121573000'
-      name: 군자동
-      gu_code: '11215'
-    - adong_code: '1121574000'
-      name: 중곡1동
-      gu_code: '11215'
     - adong_code: '1121575000'
       name: 중곡2동
-      gu_code: '11215'
-    - adong_code: '1121576000'
-      name: 중곡3동
       gu_code: '11215'
     - adong_code: '1129052500'
       name: 성북동
@@ -9322,9 +9235,6 @@ domains:
     - adong_code: '1144074000'
       name: 상암동
       gu_code: '11440'
-    - adong_code: '1121577000'
-      name: 중곡4동
-      gu_code: '11215'
     - adong_code: '1129078000'
       name: 장위3동
       gu_code: '11290'
@@ -9337,29 +9247,11 @@ domains:
     - adong_code: '1130553500'
       name: 미아동
       gu_code: '11305'
-    - adong_code: '1121578000'
-      name: 능동
-      gu_code: '11215'
-    - adong_code: '1121581000'
-      name: 광장동
-      gu_code: '11215'
-    - adong_code: '1121582000'
-      name: 자양1동
-      gu_code: '11215'
-    - adong_code: '1121583000'
-      name: 자양2동
-      gu_code: '11215'
     - adong_code: '1121584000'
       name: 자양3동
       gu_code: '11215'
-    - adong_code: '1121584700'
-      name: 자양4동
-      gu_code: '11215'
     - adong_code: '1121586000'
       name: 구의2동
-      gu_code: '11215'
-    - adong_code: '1121585000'
-      name: 구의1동
       gu_code: '11215'
     - adong_code: '1123053600'
       name: 용신동
@@ -9367,93 +9259,27 @@ domains:
     - adong_code: '1123054500'
       name: 제기동
       gu_code: '11230'
-    - adong_code: '1121587000'
-      name: 구의3동
-      gu_code: '11215'
-    - adong_code: '1123057000'
-      name: 전농2동
-      gu_code: '11230'
-    - adong_code: '1123060000'
-      name: 답십리1동
-      gu_code: '11230'
-    - adong_code: '1123061000'
-      name: 답십리2동
-      gu_code: '11230'
-    - adong_code: '1123065000'
-      name: 장안1동
-      gu_code: '11230'
     - adong_code: '1123070500'
       name: 청량리동
-      gu_code: '11230'
-    - adong_code: '1123066000'
-      name: 장안2동
       gu_code: '11230'
     - adong_code: '1123072000'
       name: 휘경1동
       gu_code: '11230'
-    - adong_code: '1123071000'
-      name: 회기동
-      gu_code: '11230'
     - adong_code: '1123075000'
       name: 이문2동
       gu_code: '11230'
-    - adong_code: '1126052000'
-      name: 면목2동
-      gu_code: '11260'
-    - adong_code: '1126054000'
-      name: 면목4동
-      gu_code: '11260'
-    - adong_code: '1126055000'
-      name: 면목5동
-      gu_code: '11260'
-    - adong_code: '1126056500'
-      name: 면목본동
-      gu_code: '11260'
     - adong_code: '1126057500'
       name: 면목3·8동
       gu_code: '11260'
     - adong_code: '1126058000'
       name: 상봉1동
       gu_code: '11260'
-    - adong_code: '1126057000'
-      name: 면목7동
-      gu_code: '11260'
-    - adong_code: '1126059000'
-      name: 상봉2동
-      gu_code: '11260'
-    - adong_code: '1126060000'
-      name: 중화1동
-      gu_code: '11260'
-    - adong_code: '1126061000'
-      name: 중화2동
-      gu_code: '11260'
-    - adong_code: '1126062000'
-      name: 묵1동
-      gu_code: '11260'
     - adong_code: '1126065500'
       name: 망우본동
-      gu_code: '11260'
-    - adong_code: '1126063000'
-      name: 묵2동
       gu_code: '11260'
     - adong_code: '1126068000'
       name: 신내1동
       gu_code: '11260'
-    - adong_code: '1126066000'
-      name: 망우3동
-      gu_code: '11260'
-    - adong_code: '1126069000'
-      name: 신내2동
-      gu_code: '11260'
-    - adong_code: '1129068500'
-      name: 길음2동
-      gu_code: '11290'
-    - adong_code: '1129070500'
-      name: 종암동
-      gu_code: '11290'
-    - adong_code: '1129071500'
-      name: 월곡1동
-      gu_code: '11290'
     - adong_code: '1129072500'
       name: 월곡2동
       gu_code: '11290'
@@ -9463,176 +9289,44 @@ domains:
     - adong_code: '1130557500'
       name: 삼각산동
       gu_code: '11305'
-    - adong_code: '1171057000'
-      name: 오금동
-      gu_code: '11710'
-    - adong_code: '1129076000'
-      name: 장위1동
-      gu_code: '11290'
-    - adong_code: '1129077000'
-      name: 장위2동
-      gu_code: '11290'
-    - adong_code: '1130554500'
-      name: 송중동
-      gu_code: '11305'
-    - adong_code: '1130559500'
-      name: 번1동
-      gu_code: '11305'
     - adong_code: '1130561500'
       name: 수유1동
-      gu_code: '11305'
-    - adong_code: '1130560300'
-      name: 번2동
-      gu_code: '11305'
-    - adong_code: '1130560800'
-      name: 번3동
       gu_code: '11305'
     - adong_code: '1130564500'
       name: 우이동
       gu_code: '11305'
-    - adong_code: '1130562500'
-      name: 수유2동
-      gu_code: '11305'
-    - adong_code: '1130563500'
-      name: 수유3동
-      gu_code: '11305'
-    - adong_code: '1132051100'
-      name: 창1동
-      gu_code: '11320'
     - adong_code: '1132051400'
       name: 창4동
-      gu_code: '11320'
-    - adong_code: '1132051200'
-      name: 창2동
       gu_code: '11320'
     - adong_code: '1132052100'
       name: 도봉1동
       gu_code: '11320'
-    - adong_code: '1171058000'
-      name: 송파1동
-      gu_code: '11710'
-    - adong_code: '1132051300'
-      name: 창3동
-      gu_code: '11320'
-    - adong_code: '1171059000'
-      name: 송파2동
-      gu_code: '11710'
-    - adong_code: '1132051500'
-      name: 창5동
-      gu_code: '11320'
-    - adong_code: '1132052200'
-      name: 도봉2동
-      gu_code: '11320'
-    - adong_code: '1132066000'
-      name: 쌍문1동
-      gu_code: '11320'
-    - adong_code: '1132067000'
-      name: 쌍문2동
-      gu_code: '11320'
-    - adong_code: '1132068000'
-      name: 쌍문3동
-      gu_code: '11320'
-    - adong_code: '1171060000'
-      name: 석촌동
-      gu_code: '11710'
-    - adong_code: '1132068100'
-      name: 쌍문4동
-      gu_code: '11320'
-    - adong_code: '1132069000'
-      name: 방학1동
-      gu_code: '11320'
-    - adong_code: '1132070000'
-      name: 방학2동
-      gu_code: '11320'
     - adong_code: '1135057000'
       name: 월계2동
       gu_code: '11350'
-    - adong_code: '1171061000'
-      name: 삼전동
-      gu_code: '11710'
-    - adong_code: '1132071000'
-      name: 방학3동
-      gu_code: '11320'
     - adong_code: '1135059500'
       name: 공릉1동
       gu_code: '11350'
     - adong_code: '1135060000'
       name: 공릉2동
       gu_code: '11350'
-    - adong_code: '1135056000'
-      name: 월계1동
-      gu_code: '11350'
-    - adong_code: '1135058000'
-      name: 월계3동
-      gu_code: '11350'
-    - adong_code: '1135061100'
-      name: 하계1동
-      gu_code: '11350'
-    - adong_code: '1135061200'
-      name: 하계2동
-      gu_code: '11350'
-    - adong_code: '1171062000'
-      name: 가락본동
-      gu_code: '11710'
-    - adong_code: '1135061900'
-      name: 중계본동
-      gu_code: '11350'
-    - adong_code: '1135062100'
-      name: 중계1동
-      gu_code: '11350'
-    - adong_code: '1135062400'
-      name: 중계4동
-      gu_code: '11350'
-    - adong_code: '1135062500'
-      name: 중계2·3동
-      gu_code: '11350'
-    - adong_code: '1174054000'
-      name: 명일2동
-      gu_code: '11740'
     - adong_code: '1135071000'
       name: 상계9동
-      gu_code: '11350'
-    - adong_code: '1135063000'
-      name: 상계1동
       gu_code: '11350'
     - adong_code: '1138052000'
       name: 불광1동
       gu_code: '11380'
-    - adong_code: '1135064000'
-      name: 상계2동
-      gu_code: '11350'
     - adong_code: '1135066500'
       name: 상계3·4동
-      gu_code: '11350'
-    - adong_code: '1135067000'
-      name: 상계5동
-      gu_code: '11350'
-    - adong_code: '1135069500'
-      name: 상계6·7동
       gu_code: '11350'
     - adong_code: '1135070000'
       name: 상계8동
       gu_code: '11350'
-    - adong_code: '1135072000'
-      name: 상계10동
-      gu_code: '11350'
     - adong_code: '1138060000'
       name: 응암3동
       gu_code: '11380'
-    - adong_code: '1138051000'
-      name: 녹번동
-      gu_code: '11380'
     - adong_code: '1138053000'
       name: 불광2동
-      gu_code: '11380'
-    - adong_code: '1138055100'
-      name: 갈현1동
-      gu_code: '11380'
-    - adong_code: '1138055200'
-      name: 갈현2동
-      gu_code: '11380'
-    - adong_code: '1138056000'
-      name: 구산동
       gu_code: '11380'
     - adong_code: '1138065000'
       name: 수색동
@@ -9652,15 +9346,6 @@ domains:
     - adong_code: '1141058500'
       name: 신촌동
       gu_code: '11410'
-    - adong_code: '1138057000'
-      name: 대조동
-      gu_code: '11380'
-    - adong_code: '1138058000'
-      name: 응암1동
-      gu_code: '11380'
-    - adong_code: '1138059000'
-      name: 응암2동
-      gu_code: '11380'
     - adong_code: '1141068500'
       name: 홍은2동
       gu_code: '11410'
@@ -9676,45 +9361,534 @@ domains:
     - adong_code: '1141072000'
       name: 북가좌2동
       gu_code: '11410'
-    - adong_code: '1171063100'
-      name: 가락1동
-      gu_code: '11710'
-    - adong_code: '1138062500'
-      name: 역촌동
-      gu_code: '11380'
     - adong_code: '1144056500'
       name: 공덕동
       gu_code: '11440'
-    - adong_code: '1138063100'
-      name: 신사1동
-      gu_code: '11380'
-    - adong_code: '1138063200'
-      name: 신사2동
-      gu_code: '11380'
-    - adong_code: '1138064000'
-      name: 증산동
-      gu_code: '11380'
     - adong_code: '1144061000'
       name: 염리동
       gu_code: '11440'
-    - adong_code: '1141062000'
-      name: 홍제1동
-      gu_code: '11410'
     - adong_code: '1144065500'
       name: 서강동
       gu_code: '11440'
     - adong_code: '1144066000'
       name: 서교동
       gu_code: '11440'
+    - adong_code: '1144071000'
+      name: 연남동
+      gu_code: '11440'
+    - adong_code: '1150061100'
+      name: 발산1동
+      gu_code: '11500'
+    - adong_code: '1147064000'
+      name: 신정3동
+      gu_code: '11470'
+    - adong_code: '1147054000'
+      name: 목4동
+      gu_code: '11470'
+    - adong_code: '1147062000'
+      name: 신정1동
+      gu_code: '11470'
+    - adong_code: '1150060300'
+      name: 가양1동
+      gu_code: '11500'
+    - adong_code: '1150062000'
+      name: 공항동
+      gu_code: '11500'
+    - adong_code: '1150063000'
+      name: 방화1동
+      gu_code: '11500'
+    - adong_code: '1150064000'
+      name: 방화2동
+      gu_code: '11500'
+    - adong_code: '1147065000'
+      name: 신정4동
+      gu_code: '11470'
+    - adong_code: '1153059500'
+      name: 가리봉동
+      gu_code: '11530'
+    - adong_code: '1153072000'
+      name: 고척1동
+      gu_code: '11530'
+    - adong_code: '1153073000'
+      name: 고척2동
+      gu_code: '11530'
+    - adong_code: '1153074000'
+      name: 개봉1동
+      gu_code: '11530'
+    - adong_code: '1153078000'
+      name: 오류2동
+      gu_code: '11530'
+    - adong_code: '1150053500'
+      name: 등촌3동
+      gu_code: '11500'
+    - adong_code: '1154571000'
+      name: 시흥5동
+      gu_code: '11545'
+    - adong_code: '1156051500'
+      name: 영등포본동
+      gu_code: '11560'
+    - adong_code: '1156053500'
+      name: 영등포동
+      gu_code: '11560'
+    - adong_code: '1156056000'
+      name: 당산2동
+      gu_code: '11560'
+    - adong_code: '1156058500'
+      name: 도림동
+      gu_code: '11560'
+    - adong_code: '1156060500'
+      name: 문래동
+      gu_code: '11560'
+    - adong_code: '1156061000'
+      name: 양평1동
+      gu_code: '11560'
+    - adong_code: '1156062000'
+      name: 양평2동
+      gu_code: '11560'
+    - adong_code: '1156068000'
+      name: 신길6동
+      gu_code: '11560'
+    - adong_code: '1156069000'
+      name: 신길7동
+      gu_code: '11560'
+    - adong_code: '1156072000'
+      name: 대림3동
+      gu_code: '11560'
+    - adong_code: '1159051000'
+      name: 노량진1동
+      gu_code: '11590'
+    - adong_code: '1159052000'
+      name: 노량진2동
+      gu_code: '11590'
+    - adong_code: '1159053000'
+      name: 상도1동
+      gu_code: '11590'
+    - adong_code: '1159054000'
+      name: 상도2동
+      gu_code: '11590'
+    - adong_code: '1159055000'
+      name: 상도3동
+      gu_code: '11590'
+    - adong_code: '1159056000'
+      name: 상도4동
+      gu_code: '11590'
+    - adong_code: '1159060500'
+      name: 흑석동
+      gu_code: '11590'
+    - adong_code: '1154551000'
+      name: 가산동
+      gu_code: '11545'
+    - adong_code: '1154561000'
+      name: 독산1동
+      gu_code: '11545'
+    - adong_code: '1159066000'
+      name: 대방동
+      gu_code: '11590'
+    - adong_code: '1159068000'
+      name: 신대방2동
+      gu_code: '11590'
+    - adong_code: '1162052500'
+      name: 보라매동
+      gu_code: '11620'
+    - adong_code: '1159063000'
+      name: 사당2동
+      gu_code: '11590'
+    - adong_code: '1165061000'
+      name: 방배2동
+      gu_code: '11650'
+    - adong_code: '1162073500'
+      name: 대학동
+      gu_code: '11620'
+    - adong_code: '1162074500'
+      name: 삼성동
+      gu_code: '11620'
+    - adong_code: '1165065100'
+      name: 양재1동
+      gu_code: '11650'
+    - adong_code: '1165065200'
+      name: 양재2동
+      gu_code: '11650'
+    - adong_code: '1165066000'
+      name: 내곡동
+      gu_code: '11650'
+    - adong_code: '1162066500'
+      name: 서림동
+      gu_code: '11620'
+    - adong_code: '1171072000'
+      name: 잠실7동
+      gu_code: '11710'
+    - adong_code: '1162076500'
+      name: 미성동
+      gu_code: '11620'
+    - adong_code: '1171056600'
+      name: 오륜동
+      gu_code: '11710'
+    - adong_code: '1168070000'
+      name: 세곡동
+      gu_code: '11680'
+    - adong_code: '1171064600'
+      name: 장지동
+      gu_code: '11710'
+    - adong_code: '1171064700'
+      name: 위례동
+      gu_code: '11710'
+    - adong_code: '1114060500'
+      name: 을지로동
+      gu_code: '11140'
+    - adong_code: '1111057000'
+      name: 무악동
+      gu_code: '11110'
+    - adong_code: '1111060000'
+      name: 가회동
+      gu_code: '11110'
+    - adong_code: '1111061500'
+      name: 종로1·2·3·4가동
+      gu_code: '11110'
+    - adong_code: '1111063000'
+      name: 종로5·6가동
+      gu_code: '11110'
+    - adong_code: '1111064000'
+      name: 이화동
+      gu_code: '11110'
+    - adong_code: '1111065000'
+      name: 혜화동
+      gu_code: '11110'
+    - adong_code: '1111067000'
+      name: 창신1동
+      gu_code: '11110'
+    - adong_code: '1111068000'
+      name: 창신2동
+      gu_code: '11110'
+    - adong_code: '1111069000'
+      name: 창신3동
+      gu_code: '11110'
+    - adong_code: '1111070000'
+      name: 숭인1동
+      gu_code: '11110'
+    - adong_code: '1111071000'
+      name: 숭인2동
+      gu_code: '11110'
+    - adong_code: '1114052000'
+      name: 소공동
+      gu_code: '11140'
+    - adong_code: '1114054000'
+      name: 회현동
+      gu_code: '11140'
+    - adong_code: '1114057000'
+      name: 필동
+      gu_code: '11140'
+    - adong_code: '1114058000'
+      name: 장충동
+      gu_code: '11140'
+    - adong_code: '1114061500'
+      name: 신당동
+      gu_code: '11140'
+    - adong_code: '1114062500'
+      name: 다산동
+      gu_code: '11140'
+    - adong_code: '1114063500'
+      name: 약수동
+      gu_code: '11140'
+    - adong_code: '1114064500'
+      name: 청구동
+      gu_code: '11140'
+    - adong_code: '1114065000'
+      name: 신당5동
+      gu_code: '11140'
+    - adong_code: '1114066500'
+      name: 동화동
+      gu_code: '11140'
+    - adong_code: '1114067000'
+      name: 황학동
+      gu_code: '11140'
+    - adong_code: '1117063000'
+      name: 이촌1동
+      gu_code: '11170'
+    - adong_code: '1117064000'
+      name: 이촌2동
+      gu_code: '11170'
+    - adong_code: '1120053500'
+      name: 왕십리도선동
+      gu_code: '11200'
+    - adong_code: '1120056000'
+      name: 행당1동
+      gu_code: '11200'
+    - adong_code: '1120057000'
+      name: 행당2동
+      gu_code: '11200'
+    - adong_code: '1120058000'
+      name: 응봉동
+      gu_code: '11200'
+    - adong_code: '1120061500'
+      name: 금호2·3가동
+      gu_code: '11200'
+    - adong_code: '1120066000'
+      name: 성수1가2동
+      gu_code: '11200'
+    - adong_code: '1120067000'
+      name: 성수2가1동
+      gu_code: '11200'
+    - adong_code: '1120069000'
+      name: 성수2가3동
+      gu_code: '11200'
+    - adong_code: '1121571000'
+      name: 화양동
+      gu_code: '11215'
+    - adong_code: '1121573000'
+      name: 군자동
+      gu_code: '11215'
+    - adong_code: '1121574000'
+      name: 중곡1동
+      gu_code: '11215'
+    - adong_code: '1121576000'
+      name: 중곡3동
+      gu_code: '11215'
+    - adong_code: '1121577000'
+      name: 중곡4동
+      gu_code: '11215'
+    - adong_code: '1121578000'
+      name: 능동
+      gu_code: '11215'
+    - adong_code: '1121581000'
+      name: 광장동
+      gu_code: '11215'
+    - adong_code: '1121582000'
+      name: 자양1동
+      gu_code: '11215'
+    - adong_code: '1121583000'
+      name: 자양2동
+      gu_code: '11215'
+    - adong_code: '1121584700'
+      name: 자양4동
+      gu_code: '11215'
+    - adong_code: '1121585000'
+      name: 구의1동
+      gu_code: '11215'
+    - adong_code: '1121587000'
+      name: 구의3동
+      gu_code: '11215'
+    - adong_code: '1123056000'
+      name: 전농1동
+      gu_code: '11230'
+    - adong_code: '1174056000'
+      name: 고덕2동
+      gu_code: '11740'
+    - adong_code: '1123057000'
+      name: 전농2동
+      gu_code: '11230'
+    - adong_code: '1123060000'
+      name: 답십리1동
+      gu_code: '11230'
+    - adong_code: '1123061000'
+      name: 답십리2동
+      gu_code: '11230'
+    - adong_code: '1123065000'
+      name: 장안1동
+      gu_code: '11230'
+    - adong_code: '1123066000'
+      name: 장안2동
+      gu_code: '11230'
+    - adong_code: '1123071000'
+      name: 회기동
+      gu_code: '11230'
+    - adong_code: '1123073000'
+      name: 휘경2동
+      gu_code: '11230'
+    - adong_code: '1123074000'
+      name: 이문1동
+      gu_code: '11230'
+    - adong_code: '1126052000'
+      name: 면목2동
+      gu_code: '11260'
+    - adong_code: '1126054000'
+      name: 면목4동
+      gu_code: '11260'
+    - adong_code: '1126055000'
+      name: 면목5동
+      gu_code: '11260'
+    - adong_code: '1126056500'
+      name: 면목본동
+      gu_code: '11260'
+    - adong_code: '1126057000'
+      name: 면목7동
+      gu_code: '11260'
+    - adong_code: '1126059000'
+      name: 상봉2동
+      gu_code: '11260'
+    - adong_code: '1126060000'
+      name: 중화1동
+      gu_code: '11260'
+    - adong_code: '1126061000'
+      name: 중화2동
+      gu_code: '11260'
+    - adong_code: '1126062000'
+      name: 묵1동
+      gu_code: '11260'
+    - adong_code: '1126063000'
+      name: 묵2동
+      gu_code: '11260'
+    - adong_code: '1126066000'
+      name: 망우3동
+      gu_code: '11260'
+    - adong_code: '1126069000'
+      name: 신내2동
+      gu_code: '11260'
+    - adong_code: '1129068500'
+      name: 길음2동
+      gu_code: '11290'
+    - adong_code: '1129070500'
+      name: 종암동
+      gu_code: '11290'
+    - adong_code: '1129071500'
+      name: 월곡1동
+      gu_code: '11290'
+    - adong_code: '1129076000'
+      name: 장위1동
+      gu_code: '11290'
+    - adong_code: '1129077000'
+      name: 장위2동
+      gu_code: '11290'
+    - adong_code: '1130554500'
+      name: 송중동
+      gu_code: '11305'
+    - adong_code: '1130559500'
+      name: 번1동
+      gu_code: '11305'
+    - adong_code: '1130560300'
+      name: 번2동
+      gu_code: '11305'
+    - adong_code: '1130560800'
+      name: 번3동
+      gu_code: '11305'
+    - adong_code: '1130562500'
+      name: 수유2동
+      gu_code: '11305'
+    - adong_code: '1130563500'
+      name: 수유3동
+      gu_code: '11305'
+    - adong_code: '1130566000'
+      name: 인수동
+      gu_code: '11305'
+    - adong_code: '1132051100'
+      name: 창1동
+      gu_code: '11320'
+    - adong_code: '1132051200'
+      name: 창2동
+      gu_code: '11320'
+    - adong_code: '1132051300'
+      name: 창3동
+      gu_code: '11320'
+    - adong_code: '1132051500'
+      name: 창5동
+      gu_code: '11320'
+    - adong_code: '1132052200'
+      name: 도봉2동
+      gu_code: '11320'
+    - adong_code: '1132066000'
+      name: 쌍문1동
+      gu_code: '11320'
+    - adong_code: '1132067000'
+      name: 쌍문2동
+      gu_code: '11320'
+    - adong_code: '1132068000'
+      name: 쌍문3동
+      gu_code: '11320'
+    - adong_code: '1132068100'
+      name: 쌍문4동
+      gu_code: '11320'
+    - adong_code: '1132069000'
+      name: 방학1동
+      gu_code: '11320'
+    - adong_code: '1132070000'
+      name: 방학2동
+      gu_code: '11320'
+    - adong_code: '1132071000'
+      name: 방학3동
+      gu_code: '11320'
+    - adong_code: '1135056000'
+      name: 월계1동
+      gu_code: '11350'
+    - adong_code: '1135058000'
+      name: 월계3동
+      gu_code: '11350'
+    - adong_code: '1135061100'
+      name: 하계1동
+      gu_code: '11350'
+    - adong_code: '1135061200'
+      name: 하계2동
+      gu_code: '11350'
+    - adong_code: '1135061900'
+      name: 중계본동
+      gu_code: '11350'
+    - adong_code: '1135062100'
+      name: 중계1동
+      gu_code: '11350'
+    - adong_code: '1135062400'
+      name: 중계4동
+      gu_code: '11350'
+    - adong_code: '1135062500'
+      name: 중계2·3동
+      gu_code: '11350'
+    - adong_code: '1135063000'
+      name: 상계1동
+      gu_code: '11350'
+    - adong_code: '1135064000'
+      name: 상계2동
+      gu_code: '11350'
+    - adong_code: '1135067000'
+      name: 상계5동
+      gu_code: '11350'
+    - adong_code: '1135069500'
+      name: 상계6·7동
+      gu_code: '11350'
+    - adong_code: '1135072000'
+      name: 상계10동
+      gu_code: '11350'
+    - adong_code: '1138051000'
+      name: 녹번동
+      gu_code: '11380'
+    - adong_code: '1138055100'
+      name: 갈현1동
+      gu_code: '11380'
+    - adong_code: '1138055200'
+      name: 갈현2동
+      gu_code: '11380'
+    - adong_code: '1138056000'
+      name: 구산동
+      gu_code: '11380'
+    - adong_code: '1138057000'
+      name: 대조동
+      gu_code: '11380'
+    - adong_code: '1138058000'
+      name: 응암1동
+      gu_code: '11380'
+    - adong_code: '1138059000'
+      name: 응암2동
+      gu_code: '11380'
+    - adong_code: '1138062500'
+      name: 역촌동
+      gu_code: '11380'
+    - adong_code: '1138063100'
+      name: 신사1동
+      gu_code: '11380'
+    - adong_code: '1138063200'
+      name: 신사2동
+      gu_code: '11380'
+    - adong_code: '1141061500'
+      name: 연희동
+      gu_code: '11410'
+    - adong_code: '1138064000'
+      name: 증산동
+      gu_code: '11380'
+    - adong_code: '1141062000'
+      name: 홍제1동
+      gu_code: '11410'
     - adong_code: '1141064000'
       name: 홍제3동
       gu_code: '11410'
     - adong_code: '1141065500'
       name: 홍제2동
       gu_code: '11410'
-    - adong_code: '1144071000'
-      name: 연남동
-      gu_code: '11440'
     - adong_code: '1141066000'
       name: 홍은1동
       gu_code: '11410'
@@ -9727,9 +9901,6 @@ domains:
     - adong_code: '1144059000'
       name: 용강동
       gu_code: '11440'
-    - adong_code: '1171063200'
-      name: 가락2동
-      gu_code: '11710'
     - adong_code: '1144060000'
       name: 대흥동
       gu_code: '11440'
@@ -9739,38 +9910,26 @@ domains:
     - adong_code: '1144068000'
       name: 합정동
       gu_code: '11440'
+    - adong_code: '1144072000'
+      name: 성산1동
+      gu_code: '11440'
     - adong_code: '1144069000'
       name: 망원1동
       gu_code: '11440'
     - adong_code: '1144070000'
       name: 망원2동
       gu_code: '11440'
-    - adong_code: '1150061100'
-      name: 발산1동
-      gu_code: '11500'
-    - adong_code: '1171064100'
-      name: 문정1동
-      gu_code: '11710'
-    - adong_code: '1174055000'
-      name: 고덕1동
-      gu_code: '11740'
     - adong_code: '1144073000'
       name: 성산2동
       gu_code: '11440'
     - adong_code: '1147051000'
       name: 목1동
       gu_code: '11470'
-    - adong_code: '1147064000'
-      name: 신정3동
-      gu_code: '11470'
     - adong_code: '1147052000'
       name: 목2동
       gu_code: '11470'
     - adong_code: '1147053000'
       name: 목3동
-      gu_code: '11470'
-    - adong_code: '1147054000'
-      name: 목4동
       gu_code: '11470'
     - adong_code: '1147055000'
       name: 목5동
@@ -9796,39 +9955,9 @@ domains:
     - adong_code: '1147061100'
       name: 신월7동
       gu_code: '11470'
-    - adong_code: '1147062000'
-      name: 신정1동
-      gu_code: '11470'
-    - adong_code: '1150060300'
-      name: 가양1동
-      gu_code: '11500'
     - adong_code: '1147063000'
       name: 신정2동
       gu_code: '11470'
-    - adong_code: '1150062000'
-      name: 공항동
-      gu_code: '11500'
-    - adong_code: '1150063000'
-      name: 방화1동
-      gu_code: '11500'
-    - adong_code: '1150064000'
-      name: 방화2동
-      gu_code: '11500'
-    - adong_code: '1147065000'
-      name: 신정4동
-      gu_code: '11470'
-    - adong_code: '1153059500'
-      name: 가리봉동
-      gu_code: '11530'
-    - adong_code: '1153072000'
-      name: 고척1동
-      gu_code: '11530'
-    - adong_code: '1153073000'
-      name: 고척2동
-      gu_code: '11530'
-    - adong_code: '1153074000'
-      name: 개봉1동
-      gu_code: '11530'
     - adong_code: '1147067000'
       name: 신정6동
       gu_code: '11470'
@@ -9838,9 +9967,6 @@ domains:
     - adong_code: '1150051000'
       name: 염창동
       gu_code: '11500'
-    - adong_code: '1153078000'
-      name: 오류2동
-      gu_code: '11530'
     - adong_code: '1150052000'
       name: 등촌1동
       gu_code: '11500'
@@ -9850,12 +9976,6 @@ domains:
     - adong_code: '1150053000'
       name: 등촌2동
       gu_code: '11500'
-    - adong_code: '1150053500'
-      name: 등촌3동
-      gu_code: '11500'
-    - adong_code: '1154567000'
-      name: 시흥1동
-      gu_code: '11545'
     - adong_code: '1150054000'
       name: 화곡1동
       gu_code: '11500'
@@ -9868,36 +9988,30 @@ domains:
     - adong_code: '1150057000'
       name: 화곡4동
       gu_code: '11500'
-    - adong_code: '1154571000'
-      name: 시흥5동
-      gu_code: '11545'
-    - adong_code: '1156051500'
-      name: 영등포본동
-      gu_code: '11560'
-    - adong_code: '1156053500'
-      name: 영등포동
-      gu_code: '11560'
     - adong_code: '1150059000'
       name: 화곡본동
       gu_code: '11500'
     - adong_code: '1150059100'
       name: 화곡6동
       gu_code: '11500'
-    - adong_code: '1156056000'
-      name: 당산2동
-      gu_code: '11560'
-    - adong_code: '1156058500'
-      name: 도림동
-      gu_code: '11560'
-    - adong_code: '1156060500'
-      name: 문래동
-      gu_code: '11560'
-    - adong_code: '1156061000'
-      name: 양평1동
-      gu_code: '11560'
-    - adong_code: '1156062000'
-      name: 양평2동
-      gu_code: '11560'
+    - adong_code: '1150064100'
+      name: 방화3동
+      gu_code: '11500'
+    - adong_code: '1153051000'
+      name: 신도림동
+      gu_code: '11530'
+    - adong_code: '1153052000'
+      name: 구로1동
+      gu_code: '11530'
+    - adong_code: '1153053000'
+      name: 구로2동
+      gu_code: '11530'
+    - adong_code: '1153054000'
+      name: 구로3동
+      gu_code: '11530'
+    - adong_code: '1153055000'
+      name: 구로4동
+      gu_code: '11530'
     - adong_code: '1150059300'
       name: 화곡8동
       gu_code: '11500'
@@ -9910,42 +10024,15 @@ domains:
     - adong_code: '1150061500'
       name: 우장산동
       gu_code: '11500'
-    - adong_code: '1156068000'
-      name: 신길6동
-      gu_code: '11560'
-    - adong_code: '1156069000'
-      name: 신길7동
-      gu_code: '11560'
     - adong_code: '1153056000'
       name: 구로5동
       gu_code: '11530'
-    - adong_code: '1156072000'
-      name: 대림3동
-      gu_code: '11560'
-    - adong_code: '1159051000'
-      name: 노량진1동
-      gu_code: '11590'
-    - adong_code: '1159052000'
-      name: 노량진2동
-      gu_code: '11590'
-    - adong_code: '1159053000'
-      name: 상도1동
-      gu_code: '11590'
-    - adong_code: '1159054000'
-      name: 상도2동
-      gu_code: '11590'
-    - adong_code: '1159055000'
-      name: 상도3동
-      gu_code: '11590'
-    - adong_code: '1159056000'
-      name: 상도4동
-      gu_code: '11590'
-    - adong_code: '1159060500'
-      name: 흑석동
-      gu_code: '11590'
-    - adong_code: '1174060000'
-      name: 천호1동
-      gu_code: '11740'
+    - adong_code: '1153079000'
+      name: 수궁동
+      gu_code: '11530'
+    - adong_code: '1153080000'
+      name: 항동
+      gu_code: '11530'
     - adong_code: '1153075000'
       name: 개봉2동
       gu_code: '11530'
@@ -9955,33 +10042,27 @@ domains:
     - adong_code: '1153077000'
       name: 오류1동
       gu_code: '11530'
-    - adong_code: '1154551000'
-      name: 가산동
-      gu_code: '11545'
-    - adong_code: '1154561000'
-      name: 독산1동
-      gu_code: '11545'
     - adong_code: '1154562000'
       name: 독산2동
       gu_code: '11545'
-    - adong_code: '1159066000'
-      name: 대방동
-      gu_code: '11590'
     - adong_code: '1154563000'
       name: 독산3동
       gu_code: '11545'
-    - adong_code: '1159068000'
-      name: 신대방2동
-      gu_code: '11590'
-    - adong_code: '1162052500'
-      name: 보라매동
-      gu_code: '11620'
     - adong_code: '1154564000'
       name: 독산4동
+      gu_code: '11545'
+    - adong_code: '1154567000'
+      name: 시흥1동
       gu_code: '11545'
     - adong_code: '1154568000'
       name: 시흥2동
       gu_code: '11545'
+    - adong_code: '1156063000'
+      name: 신길1동
+      gu_code: '11560'
+    - adong_code: '1174057000'
+      name: 암사1동
+      gu_code: '11740'
     - adong_code: '1154569000'
       name: 시흥3동
       gu_code: '11545'
@@ -10006,36 +10087,21 @@ domains:
     - adong_code: '1156070000'
       name: 대림1동
       gu_code: '11560'
-    - adong_code: '1171065000'
-      name: 잠실본동
-      gu_code: '11710'
     - adong_code: '1156071000'
       name: 대림2동
       gu_code: '11560'
-    - adong_code: '1171067000'
-      name: 잠실2동
-      gu_code: '11710'
     - adong_code: '1159062000'
       name: 사당1동
       gu_code: '11590'
-    - adong_code: '1159063000'
-      name: 사당2동
-      gu_code: '11590'
-    - adong_code: '1165061000'
-      name: 방배2동
-      gu_code: '11650'
+    - adong_code: '1174064000'
+      name: 성내1동
+      gu_code: '11740'
     - adong_code: '1159064000'
       name: 사당3동
       gu_code: '11590'
     - adong_code: '1159065000'
       name: 사당4동
       gu_code: '11590'
-    - adong_code: '1162073500'
-      name: 대학동
-      gu_code: '11620'
-    - adong_code: '1162074500'
-      name: 삼성동
-      gu_code: '11620'
     - adong_code: '1159065100'
       name: 사당5동
       gu_code: '11590'
@@ -10063,45 +10129,24 @@ domains:
     - adong_code: '1162061500'
       name: 중앙동
       gu_code: '11620'
-    - adong_code: '1165065100'
-      name: 양재1동
-      gu_code: '11650'
-    - adong_code: '1165065200'
-      name: 양재2동
-      gu_code: '11650'
-    - adong_code: '1165066000'
-      name: 내곡동
-      gu_code: '11650'
-    - adong_code: '1171068000'
-      name: 잠실3동
-      gu_code: '11710'
+    - adong_code: '1174053000'
+      name: 명일1동
+      gu_code: '11740'
     - adong_code: '1162062500'
       name: 인헌동
       gu_code: '11620'
     - adong_code: '1162063000'
       name: 남현동
       gu_code: '11620'
-    - adong_code: '1171069000'
-      name: 잠실4동
-      gu_code: '11710'
     - adong_code: '1162064500'
       name: 서원동
       gu_code: '11620'
     - adong_code: '1162065500'
       name: 신원동
       gu_code: '11620'
-    - adong_code: '1162066500'
-      name: 서림동
-      gu_code: '11620'
-    - adong_code: '1171071000'
-      name: 잠실6동
-      gu_code: '11710'
     - adong_code: '1162068500'
       name: 신사동
       gu_code: '11620'
-    - adong_code: '1171072000'
-      name: 잠실7동
-      gu_code: '11710'
     - adong_code: '1162069500'
       name: 신림동
       gu_code: '11620'
@@ -10111,12 +10156,6 @@ domains:
     - adong_code: '1162072500'
       name: 조원동
       gu_code: '11620'
-    - adong_code: '1162076500'
-      name: 미성동
-      gu_code: '11620'
-    - adong_code: '1171056600'
-      name: 오륜동
-      gu_code: '11710'
     - adong_code: '1162077500'
       name: 난곡동
       gu_code: '11620'
@@ -10126,15 +10165,9 @@ domains:
     - adong_code: '1165052000'
       name: 서초2동
       gu_code: '11650'
-    - adong_code: '1174053000'
-      name: 명일1동
-      gu_code: '11740'
     - adong_code: '1165053000'
       name: 서초3동
       gu_code: '11650'
-    - adong_code: '1168070000'
-      name: 세곡동
-      gu_code: '11680'
     - adong_code: '1165053100'
       name: 서초4동
       gu_code: '11650'
@@ -10162,9 +10195,6 @@ domains:
     - adong_code: '1165060000'
       name: 방배1동
       gu_code: '11650'
-    - adong_code: '1174064000'
-      name: 성내1동
-      gu_code: '11740'
     - adong_code: '1165062000'
       name: 방배3동
       gu_code: '11650'
@@ -10183,12 +10213,6 @@ domains:
     - adong_code: '1168054500'
       name: 압구정동
       gu_code: '11680'
-    - adong_code: '1171064600'
-      name: 장지동
-      gu_code: '11710'
-    - adong_code: '1171064700'
-      name: 위례동
-      gu_code: '11710'
     - adong_code: '1168056500'
       name: 청담동
       gu_code: '11680'
@@ -10210,9 +10234,6 @@ domains:
     - adong_code: '1168064000'
       name: 역삼1동
       gu_code: '11680'
-    - adong_code: '1114060500'
-      name: 을지로동
-      gu_code: '11140'
     - adong_code: '1168065000'
       name: 역삼2동
       gu_code: '11680'
@@ -10222,6 +10243,9 @@ domains:
     - adong_code: '1168065600'
       name: 도곡2동
       gu_code: '11680'
+    - adong_code: '1174051500'
+      name: 강일동
+      gu_code: '11740'
     - adong_code: '1168066000'
       name: 개포1동
       gu_code: '11680'
@@ -10264,95 +10288,71 @@ domains:
     - adong_code: '1171056100'
       name: 방이1동
       gu_code: '11710'
-    - adong_code: '1111060000'
-      name: 가회동
-      gu_code: '11110'
-    - adong_code: '1111061500'
-      name: 종로1·2·3·4가동
-      gu_code: '11110'
-    - adong_code: '1111063000'
-      name: 종로5·6가동
-      gu_code: '11110'
-    - adong_code: '1111064000'
-      name: 이화동
-      gu_code: '11110'
-    - adong_code: '1111065000'
-      name: 혜화동
-      gu_code: '11110'
-    - adong_code: '1111067000'
-      name: 창신1동
-      gu_code: '11110'
-    - adong_code: '1111068000'
-      name: 창신2동
-      gu_code: '11110'
     - adong_code: '1171056200'
       name: 방이2동
       gu_code: '11710'
-    - adong_code: '1123056000'
-      name: 전농1동
-      gu_code: '11230'
-    - adong_code: '1123073000'
-      name: 휘경2동
-      gu_code: '11230'
-    - adong_code: '1123074000'
-      name: 이문1동
-      gu_code: '11230'
-    - adong_code: '1130566000'
-      name: 인수동
-      gu_code: '11305'
-    - adong_code: '1141061500'
-      name: 연희동
-      gu_code: '11410'
-    - adong_code: '1144072000'
-      name: 성산1동
-      gu_code: '11440'
-    - adong_code: '1150064100'
-      name: 방화3동
-      gu_code: '11500'
-    - adong_code: '1153051000'
-      name: 신도림동
-      gu_code: '11530'
-    - adong_code: '1153052000'
-      name: 구로1동
-      gu_code: '11530'
-    - adong_code: '1153053000'
-      name: 구로2동
-      gu_code: '11530'
-    - adong_code: '1153054000'
-      name: 구로3동
-      gu_code: '11530'
-    - adong_code: '1153055000'
-      name: 구로4동
-      gu_code: '11530'
-    - adong_code: '1153079000'
-      name: 수궁동
-      gu_code: '11530'
-    - adong_code: '1153080000'
-      name: 항동
-      gu_code: '11530'
-    - adong_code: '1156063000'
-      name: 신길1동
-      gu_code: '11560'
-    - adong_code: '1174051500'
-      name: 강일동
+    - adong_code: '1171057000'
+      name: 오금동
+      gu_code: '11710'
+    - adong_code: '1171058000'
+      name: 송파1동
+      gu_code: '11710'
+    - adong_code: '1171059000'
+      name: 송파2동
+      gu_code: '11710'
+    - adong_code: '1171060000'
+      name: 석촌동
+      gu_code: '11710'
+    - adong_code: '1171061000'
+      name: 삼전동
+      gu_code: '11710'
+    - adong_code: '1171062000'
+      name: 가락본동
+      gu_code: '11710'
+    - adong_code: '1171063100'
+      name: 가락1동
+      gu_code: '11710'
+    - adong_code: '1171063200'
+      name: 가락2동
+      gu_code: '11710'
+    - adong_code: '1171064100'
+      name: 문정1동
+      gu_code: '11710'
+    - adong_code: '1174054000'
+      name: 명일2동
       gu_code: '11740'
     - adong_code: '1171064200'
       name: 문정2동
       gu_code: '11710'
+    - adong_code: '1171065000'
+      name: 잠실본동
+      gu_code: '11710'
+    - adong_code: '1171067000'
+      name: 잠실2동
+      gu_code: '11710'
+    - adong_code: '1171068000'
+      name: 잠실3동
+      gu_code: '11710'
+    - adong_code: '1171069000'
+      name: 잠실4동
+      gu_code: '11710'
+    - adong_code: '1171071000'
+      name: 잠실6동
+      gu_code: '11710'
+    - adong_code: '1174055000'
+      name: 고덕1동
+      gu_code: '11740'
     - adong_code: '1174052500'
       name: 상일1동
       gu_code: '11740'
     - adong_code: '1174052600'
       name: 상일2동
       gu_code: '11740'
-    - adong_code: '1174056000'
-      name: 고덕2동
-      gu_code: '11740'
-    - adong_code: '1174057000'
-      name: 암사1동
-      gu_code: '11740'
     - adong_code: '1174059000'
       name: 암사3동
+      gu_code: '11740'
+    - adong_code: '1174060000'
+      name: 천호1동
       gu_code: '11740'
     - adong_code: '1174061000'
       name: 천호2동
@@ -10383,33 +10383,297 @@ domains:
     - name
     - gu_code
     rows:
+    - ldong_code: '1111011900'
+      name: 세종로
+      gu_code: '11110'
+    - ldong_code: '1111012500'
+      name: 중학동
+      gu_code: '11110'
+    - ldong_code: '1111014400'
+      name: 사간동
+      gu_code: '11110'
+    - ldong_code: '1111013500'
+      name: 관철동
+      gu_code: '11110'
+    - ldong_code: '1111014500'
+      name: 송현동
+      gu_code: '11110'
+    - ldong_code: '1111015100'
+      name: 묘동
+      gu_code: '11110'
+    - ldong_code: '1156011700'
+      name: 당산동
+      gu_code: '11560'
+    - ldong_code: '1156011800'
+      name: 도림동
+      gu_code: '11560'
+    - ldong_code: '1111017700'
+      name: 평동
+      gu_code: '11110'
+    - ldong_code: '1114010700'
+      name: 삼각동
+      gu_code: '11140'
+    - ldong_code: '1114010900'
+      name: 장교동
+      gu_code: '11140'
+    - ldong_code: '1114011600'
+      name: 남대문로3가
+      gu_code: '11140'
+    - ldong_code: '1114014400'
+      name: 장충동2가
+      gu_code: '11140'
+    - ldong_code: '1114012200'
+      name: 회현동2가
+      gu_code: '11140'
+    - ldong_code: '1114012500'
+      name: 충무로2가
+      gu_code: '11140'
+    - ldong_code: '1114012800'
+      name: 남산동1가
+      gu_code: '11140'
+    - ldong_code: '1114013000'
+      name: 남산동3가
+      gu_code: '11140'
+    - ldong_code: '1114013300'
+      name: 충무로5가
+      gu_code: '11140'
+    - ldong_code: '1114016200'
+      name: 신당동
+      gu_code: '11140'
+    - ldong_code: '1129012700'
+      name: 보문동5가
+      gu_code: '11290'
+    - ldong_code: '1114014900'
+      name: 을지로7가
+      gu_code: '11140'
+    - ldong_code: '1117010500'
+      name: 남영동
+      gu_code: '11170'
+    - ldong_code: '1114015800'
+      name: 충무로3가
+      gu_code: '11140'
+    - ldong_code: '1171010600'
+      name: 삼전동
+      gu_code: '11710'
+    - ldong_code: '1117011900'
+      name: 효창동
+      gu_code: '11170'
+    - ldong_code: '1120010200'
+      name: 하왕십리동
+      gu_code: '11200'
+    - ldong_code: '1111015200'
+      name: 봉익동
+      gu_code: '11110'
+    - ldong_code: '1111015300'
+      name: 돈의동
+      gu_code: '11110'
+    - ldong_code: '1117012800'
+      name: 한강로3가
+      gu_code: '11170'
+    - ldong_code: '1117012900'
+      name: 이촌동
+      gu_code: '11170'
+    - ldong_code: '1117013000'
+      name: 이태원동
+      gu_code: '11170'
+    - ldong_code: '1117013100'
+      name: 한남동
+      gu_code: '11170'
+    - ldong_code: '1120010500'
+      name: 마장동
+      gu_code: '11200'
+    - ldong_code: '1120010600'
+      name: 사근동
+      gu_code: '11200'
+    - ldong_code: '1120010700'
+      name: 행당동
+      gu_code: '11200'
+    - ldong_code: '1111015400'
+      name: 장사동
+      gu_code: '11110'
+    - ldong_code: '1111015500'
+      name: 관수동
+      gu_code: '11110'
     - ldong_code: '1111010100'
       name: 청운동
       gu_code: '11110'
     - ldong_code: '1111010800'
       name: 통인동
       gu_code: '11110'
+    - ldong_code: '1129010300'
+      name: 돈암동
+      gu_code: '11290'
+    - ldong_code: '1123010500'
+      name: 답십리동
+      gu_code: '11230'
+    - ldong_code: '1126010200'
+      name: 상봉동
+      gu_code: '11260'
+    - ldong_code: '1126010300'
+      name: 중화동
+      gu_code: '11260'
+    - ldong_code: '1126010600'
+      name: 신내동
+      gu_code: '11260'
+    - ldong_code: '1129013300'
+      name: 정릉동
+      gu_code: '11290'
+    - ldong_code: '1129013400'
+      name: 길음동
+      gu_code: '11290'
+    - ldong_code: '1129013800'
+      name: 장위동
+      gu_code: '11290'
+    - ldong_code: '1130510100'
+      name: 미아동
+      gu_code: '11305'
+    - ldong_code: '1130510300'
+      name: 수유동
+      gu_code: '11305'
     - ldong_code: '1111010900'
       name: 누상동
       gu_code: '11110'
+    - ldong_code: '1135010500'
+      name: 상계동
+      gu_code: '11350'
+    - ldong_code: '1129010200'
+      name: 성북동1가
+      gu_code: '11290'
     - ldong_code: '1111011000'
       name: 누하동
       gu_code: '11110'
-    - ldong_code: '1174010100'
-      name: 명일동
-      gu_code: '11740'
+    - ldong_code: '1129012200'
+      name: 안암동2가
+      gu_code: '11290'
+    - ldong_code: '1141011900'
+      name: 북가좌동
+      gu_code: '11410'
+    - ldong_code: '1144010200'
+      name: 공덕동
+      gu_code: '11440'
     - ldong_code: '1111011100'
       name: 옥인동
       gu_code: '11110'
     - ldong_code: '1111011200'
       name: 체부동
       gu_code: '11110'
+    - ldong_code: '1147010100'
+      name: 신정동
+      gu_code: '11470'
+    - ldong_code: '1147010300'
+      name: 신월동
+      gu_code: '11470'
+    - ldong_code: '1150010200'
+      name: 등촌동
+      gu_code: '11500'
+    - ldong_code: '1150010300'
+      name: 화곡동
+      gu_code: '11500'
+    - ldong_code: '1150010500'
+      name: 마곡동
+      gu_code: '11500'
+    - ldong_code: '1150010800'
+      name: 공항동
+      gu_code: '11500'
+    - ldong_code: '1150010900'
+      name: 방화동
+      gu_code: '11500'
+    - ldong_code: '1150011000'
+      name: 개화동
+      gu_code: '11500'
+    - ldong_code: '1150011100'
+      name: 과해동
+      gu_code: '11500'
+    - ldong_code: '1153010200'
+      name: 구로동
+      gu_code: '11530'
+    - ldong_code: '1153010600'
+      name: 고척동
+      gu_code: '11530'
+    - ldong_code: '1153010700'
+      name: 개봉동
+      gu_code: '11530'
+    - ldong_code: '1153010800'
+      name: 오류동
+      gu_code: '11530'
+    - ldong_code: '1154510100'
+      name: 가산동
+      gu_code: '11545'
+    - ldong_code: '1154510200'
+      name: 독산동
+      gu_code: '11545'
+    - ldong_code: '1154510300'
+      name: 시흥동
+      gu_code: '11545'
+    - ldong_code: '1156010100'
+      name: 영등포동
+      gu_code: '11560'
+    - ldong_code: '1144010600'
+      name: 토정동
+      gu_code: '11440'
+    - ldong_code: '1156013100'
+      name: 양화동
+      gu_code: '11560'
+    - ldong_code: '1156013200'
+      name: 신길동
+      gu_code: '11560'
+    - ldong_code: '1156013300'
+      name: 대림동
+      gu_code: '11560'
+    - ldong_code: '1171010500'
+      name: 석촌동
+      gu_code: '11710'
+    - ldong_code: '1159010800'
+      name: 대방동
+      gu_code: '11590'
+    - ldong_code: '1162010100'
+      name: 봉천동
+      gu_code: '11620'
+    - ldong_code: '1162010200'
+      name: 신림동
+      gu_code: '11620'
+    - ldong_code: '1165010100'
+      name: 방배동
+      gu_code: '11650'
+    - ldong_code: '1165010200'
+      name: 양재동
+      gu_code: '11650'
+    - ldong_code: '1171010400'
+      name: 송파동
+      gu_code: '11710'
+    - ldong_code: '1165011100'
+      name: 신원동
+      gu_code: '11650'
+    - ldong_code: '1171010900'
+      name: 장지동
+      gu_code: '11710'
+    - ldong_code: '1111010600'
+      name: 통의동
+      gu_code: '11110'
+    - ldong_code: '1111010200'
+      name: 신교동
+      gu_code: '11110'
+    - ldong_code: '1111010700'
+      name: 적선동
+      gu_code: '11110'
     - ldong_code: '1111011300'
       name: 필운동
+      gu_code: '11110'
+    - ldong_code: '1111010300'
+      name: 궁정동
       gu_code: '11110'
     - ldong_code: '1111011400'
       name: 내자동
       gu_code: '11110'
+    - ldong_code: '1111010400'
+      name: 효자동
+      gu_code: '11110'
+    - ldong_code: '1111010500'
+      name: 창성동
+      gu_code: '11110'
+    - ldong_code: '1174011000'
+      name: 강일동
+      gu_code: '11740'
     - ldong_code: '1111011500'
       name: 사직동
       gu_code: '11110'
@@ -10425,12 +10689,6 @@ domains:
     - ldong_code: '1111012000'
       name: 신문로1가
       gu_code: '11110'
-    - ldong_code: '1174010800'
-      name: 성내동
-      gu_code: '11740'
-    - ldong_code: '1111011900'
-      name: 세종로
-      gu_code: '11110'
     - ldong_code: '1111012100'
       name: 신문로2가
       gu_code: '11110'
@@ -10442,9 +10700,6 @@ domains:
       gu_code: '11110'
     - ldong_code: '1111012400'
       name: 수송동
-      gu_code: '11110'
-    - ldong_code: '1111012500'
-      name: 중학동
       gu_code: '11110'
     - ldong_code: '1111012600'
       name: 종로1가
@@ -10458,12 +10713,6 @@ domains:
     - ldong_code: '1111012900'
       name: 견지동
       gu_code: '11110'
-    - ldong_code: '1111014400'
-      name: 사간동
-      gu_code: '11110'
-    - ldong_code: '1156011000'
-      name: 여의도동
-      gu_code: '11560'
     - ldong_code: '1111013000'
       name: 와룡동
       gu_code: '11110'
@@ -10473,11 +10722,11 @@ domains:
     - ldong_code: '1111013200'
       name: 운니동
       gu_code: '11110'
+    - ldong_code: '1111013300'
+      name: 익선동
+      gu_code: '11110'
     - ldong_code: '1111013400'
       name: 경운동
-      gu_code: '11110'
-    - ldong_code: '1111013500'
-      name: 관철동
       gu_code: '11110'
     - ldong_code: '1111013600'
       name: 인사동
@@ -10488,6 +10737,12 @@ domains:
     - ldong_code: '1111013800'
       name: 종로2가
       gu_code: '11110'
+    - ldong_code: '1111013900'
+      name: 팔판동
+      gu_code: '11110'
+    - ldong_code: '1165010800'
+      name: 서초동
+      gu_code: '11650'
     - ldong_code: '1111014000'
       name: 삼청동
       gu_code: '11110'
@@ -10500,24 +10755,15 @@ domains:
     - ldong_code: '1111014300'
       name: 화동
       gu_code: '11110'
-    - ldong_code: '1111014500'
-      name: 송현동
-      gu_code: '11110'
-    - ldong_code: '1156011100'
-      name: 당산동1가
-      gu_code: '11560'
-    - ldong_code: '1156011200'
-      name: 당산동2가
-      gu_code: '11560'
     - ldong_code: '1111014600'
       name: 가회동
       gu_code: '11110'
     - ldong_code: '1111014700'
       name: 재동
       gu_code: '11110'
-    - ldong_code: '1156011300'
-      name: 당산동3가
-      gu_code: '11560'
+    - ldong_code: '1174010100'
+      name: 명일동
+      gu_code: '11740'
     - ldong_code: '1111014800'
       name: 계동
       gu_code: '11110'
@@ -10527,8 +10773,8 @@ domains:
     - ldong_code: '1111015000'
       name: 훈정동
       gu_code: '11110'
-    - ldong_code: '1111015100'
-      name: 묘동
+    - ldong_code: '1111015600'
+      name: 종로3가
       gu_code: '11110'
     - ldong_code: '1111015700'
       name: 인의동
@@ -10536,14 +10782,14 @@ domains:
     - ldong_code: '1111015800'
       name: 예지동
       gu_code: '11110'
-    - ldong_code: '1156011400'
-      name: 당산동4가
-      gu_code: '11560'
     - ldong_code: '1111015900'
       name: 원남동
       gu_code: '11110'
     - ldong_code: '1111016000'
       name: 연지동
+      gu_code: '11110'
+    - ldong_code: '1111016100'
+      name: 종로4가
       gu_code: '11110'
     - ldong_code: '1111016200'
       name: 효제동
@@ -10551,26 +10797,17 @@ domains:
     - ldong_code: '1111016300'
       name: 종로5가
       gu_code: '11110'
-    - ldong_code: '1156011500'
-      name: 당산동5가
-      gu_code: '11560'
     - ldong_code: '1111016400'
       name: 종로6가
       gu_code: '11110'
-    - ldong_code: '1156011600'
-      name: 당산동6가
-      gu_code: '11560'
-    - ldong_code: '1156011700'
-      name: 당산동
-      gu_code: '11560'
-    - ldong_code: '1156011800'
-      name: 도림동
-      gu_code: '11560'
     - ldong_code: '1111016500'
       name: 이화동
       gu_code: '11110'
     - ldong_code: '1111016600'
       name: 연건동
+      gu_code: '11110'
+    - ldong_code: '1111017600'
+      name: 교남동
       gu_code: '11110'
     - ldong_code: '1111016700'
       name: 충신동
@@ -10590,9 +10827,9 @@ domains:
     - ldong_code: '1111017200'
       name: 명륜4가
       gu_code: '11110'
-    - ldong_code: '1156011900'
-      name: 문래동1가
-      gu_code: '11560'
+    - ldong_code: '1174010500'
+      name: 길동
+      gu_code: '11740'
     - ldong_code: '1111017300'
       name: 명륜3가
       gu_code: '11110'
@@ -10602,27 +10839,24 @@ domains:
     - ldong_code: '1111017500'
       name: 숭인동
       gu_code: '11110'
-    - ldong_code: '1111017700'
-      name: 평동
-      gu_code: '11110'
     - ldong_code: '1111017800'
       name: 송월동
       gu_code: '11110'
     - ldong_code: '1111017900'
       name: 홍파동
       gu_code: '11110'
-    - ldong_code: '1156012000'
-      name: 문래동2가
-      gu_code: '11560'
+    - ldong_code: '1111018000'
+      name: 교북동
+      gu_code: '11110'
+    - ldong_code: '1114011000'
+      name: 수표동
+      gu_code: '11140'
     - ldong_code: '1111018100'
       name: 행촌동
       gu_code: '11110'
     - ldong_code: '1111018200'
       name: 구기동
       gu_code: '11110'
-    - ldong_code: '1156012100'
-      name: 문래동3가
-      gu_code: '11560'
     - ldong_code: '1111018300'
       name: 평창동
       gu_code: '11110'
@@ -10656,14 +10890,8 @@ domains:
     - ldong_code: '1114010600'
       name: 남대문로1가
       gu_code: '11140'
-    - ldong_code: '1114010700'
-      name: 삼각동
-      gu_code: '11140'
     - ldong_code: '1114010800'
       name: 수하동
-      gu_code: '11140'
-    - ldong_code: '1114010900'
-      name: 장교동
       gu_code: '11140'
     - ldong_code: '1114011100'
       name: 소공동
@@ -10671,14 +10899,14 @@ domains:
     - ldong_code: '1114011200'
       name: 남창동
       gu_code: '11140'
+    - ldong_code: '1114011300'
+      name: 북창동
+      gu_code: '11140'
     - ldong_code: '1114011400'
       name: 태평로2가
       gu_code: '11140'
     - ldong_code: '1114011500'
       name: 남대문로2가
-      gu_code: '11140'
-    - ldong_code: '1114011600'
-      name: 남대문로3가
       gu_code: '11140'
     - ldong_code: '1114011700'
       name: 남대문로4가
@@ -10692,20 +10920,11 @@ domains:
     - ldong_code: '1114012000'
       name: 봉래동2가
       gu_code: '11140'
-    - ldong_code: '1156012200'
-      name: 문래동4가
-      gu_code: '11560'
-    - ldong_code: '1114014400'
-      name: 장충동2가
-      gu_code: '11140'
-    - ldong_code: '1156012300'
-      name: 문래동5가
-      gu_code: '11560'
+    - ldong_code: '1165010900'
+      name: 내곡동
+      gu_code: '11650'
     - ldong_code: '1114012100'
       name: 회현동1가
-      gu_code: '11140'
-    - ldong_code: '1114012200'
-      name: 회현동2가
       gu_code: '11140'
     - ldong_code: '1114012300'
       name: 회현동3가
@@ -10713,32 +10932,20 @@ domains:
     - ldong_code: '1114012400'
       name: 충무로1가
       gu_code: '11140'
-    - ldong_code: '1114012500'
-      name: 충무로2가
-      gu_code: '11140'
     - ldong_code: '1114012600'
       name: 명동1가
       gu_code: '11140'
     - ldong_code: '1114012700'
       name: 명동2가
       gu_code: '11140'
-    - ldong_code: '1114012800'
-      name: 남산동1가
-      gu_code: '11140'
     - ldong_code: '1114012900'
       name: 남산동2가
-      gu_code: '11140'
-    - ldong_code: '1114013000'
-      name: 남산동3가
       gu_code: '11140'
     - ldong_code: '1114013100'
       name: 저동1가
       gu_code: '11140'
     - ldong_code: '1114013200'
       name: 충무로4가
-      gu_code: '11140'
-    - ldong_code: '1114013300'
-      name: 충무로5가
       gu_code: '11140'
     - ldong_code: '1114013400'
       name: 인현동2가
@@ -10752,12 +10959,15 @@ domains:
     - ldong_code: '1114013700'
       name: 필동1가
       gu_code: '11140'
+    - ldong_code: '1165011000'
+      name: 염곡동
+      gu_code: '11650'
     - ldong_code: '1114013800'
       name: 필동2가
       gu_code: '11140'
-    - ldong_code: '1114016200'
-      name: 신당동
-      gu_code: '11140'
+    - ldong_code: '1168010100'
+      name: 역삼동
+      gu_code: '11680'
     - ldong_code: '1114013900'
       name: 필동3가
       gu_code: '11140'
@@ -10770,9 +10980,6 @@ domains:
     - ldong_code: '1114014200'
       name: 예장동
       gu_code: '11140'
-    - ldong_code: '1129012700'
-      name: 보문동5가
-      gu_code: '11290'
     - ldong_code: '1114014300'
       name: 장충동1가
       gu_code: '11140'
@@ -10787,9 +10994,6 @@ domains:
       gu_code: '11140'
     - ldong_code: '1114014800'
       name: 을지로6가
-      gu_code: '11140'
-    - ldong_code: '1114014900'
-      name: 을지로7가
       gu_code: '11140'
     - ldong_code: '1114015000'
       name: 을지로4가
@@ -10806,9 +11010,9 @@ domains:
     - ldong_code: '1114015400'
       name: 오장동
       gu_code: '11140'
-    - ldong_code: '1117010500'
-      name: 남영동
-      gu_code: '11170'
+    - ldong_code: '1114016400'
+      name: 무학동
+      gu_code: '11140'
     - ldong_code: '1114015500'
       name: 을지로3가
       gu_code: '11140'
@@ -10818,18 +11022,12 @@ domains:
     - ldong_code: '1114015700'
       name: 산림동
       gu_code: '11140'
-    - ldong_code: '1114015800'
-      name: 충무로3가
-      gu_code: '11140'
     - ldong_code: '1114015900'
       name: 초동
       gu_code: '11140'
     - ldong_code: '1114016000'
       name: 인현동1가
       gu_code: '11140'
-    - ldong_code: '1171010600'
-      name: 삼전동
-      gu_code: '11710'
     - ldong_code: '1114016100'
       name: 저동2가
       gu_code: '11140'
@@ -10842,15 +11040,15 @@ domains:
     - ldong_code: '1114016600'
       name: 서소문동
       gu_code: '11140'
-    - ldong_code: '1156012400'
-      name: 문래동6가
-      gu_code: '11560'
+    - ldong_code: '1168010300'
+      name: 개포동
+      gu_code: '11680'
     - ldong_code: '1114016700'
       name: 정동
       gu_code: '11140'
-    - ldong_code: '1156012500'
-      name: 양평동1가
-      gu_code: '11560'
+    - ldong_code: '1168010500'
+      name: 삼성동
+      gu_code: '11680'
     - ldong_code: '1114016800'
       name: 순화동
       gu_code: '11140'
@@ -10881,50 +11079,44 @@ domains:
     - ldong_code: '1117010300'
       name: 용산동4가
       gu_code: '11170'
-    - ldong_code: '1156012600'
-      name: 양평동2가
-      gu_code: '11560'
+    - ldong_code: '1168010600'
+      name: 대치동
+      gu_code: '11680'
     - ldong_code: '1117010400'
       name: 갈월동
       gu_code: '11170'
-    - ldong_code: '1117011900'
-      name: 효창동
-      gu_code: '11170'
+    - ldong_code: '1168010700'
+      name: 신사동
+      gu_code: '11680'
     - ldong_code: '1117010600'
       name: 용산동1가
       gu_code: '11170'
+    - ldong_code: '1168010800'
+      name: 논현동
+      gu_code: '11680'
+    - ldong_code: '1168011000'
+      name: 압구정동
+      gu_code: '11680'
     - ldong_code: '1117010700'
       name: 동자동
       gu_code: '11170'
     - ldong_code: '1117010800'
       name: 서계동
       gu_code: '11170'
-    - ldong_code: '1120010200'
-      name: 하왕십리동
-      gu_code: '11200'
-    - ldong_code: '1111015200'
-      name: 봉익동
-      gu_code: '11110'
+    - ldong_code: '1129010600'
+      name: 동소문동3가
+      gu_code: '11290'
+    - ldong_code: '1168011800'
+      name: 도곡동
+      gu_code: '11680'
+    - ldong_code: '1171010100'
+      name: 잠실동
+      gu_code: '11710'
     - ldong_code: '1117010900'
       name: 청파동1가
       gu_code: '11170'
     - ldong_code: '1117011000'
       name: 청파동2가
-      gu_code: '11170'
-    - ldong_code: '1111015300'
-      name: 돈의동
-      gu_code: '11110'
-    - ldong_code: '1117012800'
-      name: 한강로3가
-      gu_code: '11170'
-    - ldong_code: '1117012900'
-      name: 이촌동
-      gu_code: '11170'
-    - ldong_code: '1117013000'
-      name: 이태원동
-      gu_code: '11170'
-    - ldong_code: '1117013100'
-      name: 한남동
       gu_code: '11170'
     - ldong_code: '1117011100'
       name: 청파동3가
@@ -10938,48 +11130,30 @@ domains:
     - ldong_code: '1117011400'
       name: 신창동
       gu_code: '11170'
-    - ldong_code: '1156012800'
-      name: 양평동4가
-      gu_code: '11560'
+    - ldong_code: '1171010200'
+      name: 신천동
+      gu_code: '11710'
     - ldong_code: '1117011500'
       name: 산천동
       gu_code: '11170'
+    - ldong_code: '1171010300'
+      name: 풍납동
+      gu_code: '11710'
     - ldong_code: '1117011600'
       name: 청암동
       gu_code: '11170'
-    - ldong_code: '1120010500'
-      name: 마장동
-      gu_code: '11200'
-    - ldong_code: '1120010600'
-      name: 사근동
-      gu_code: '11200'
-    - ldong_code: '1120010700'
-      name: 행당동
-      gu_code: '11200'
-    - ldong_code: '1111015400'
-      name: 장사동
-      gu_code: '11110'
     - ldong_code: '1117011700'
       name: 원효로3가
       gu_code: '11170'
-    - ldong_code: '1111015500'
-      name: 관수동
-      gu_code: '11110'
-    - ldong_code: '1156012900'
-      name: 양평동5가
-      gu_code: '11560'
     - ldong_code: '1117011800'
       name: 원효로4가
       gu_code: '11170'
     - ldong_code: '1117012000'
       name: 도원동
       gu_code: '11170'
-    - ldong_code: '1156013000'
-      name: 양평동6가
-      gu_code: '11560'
-    - ldong_code: '1111015600'
-      name: 종로3가
-      gu_code: '11110'
+    - ldong_code: '1171010700'
+      name: 가락동
+      gu_code: '11710'
     - ldong_code: '1117012100'
       name: 용문동
       gu_code: '11170'
@@ -10989,9 +11163,6 @@ domains:
     - ldong_code: '1117012300'
       name: 신계동
       gu_code: '11170'
-    - ldong_code: '1114011300'
-      name: 북창동
-      gu_code: '11140'
     - ldong_code: '1117012400'
       name: 한강로1가
       gu_code: '11170'
@@ -11007,9 +11178,6 @@ domains:
     - ldong_code: '1117013200'
       name: 동빙고동
       gu_code: '11170'
-    - ldong_code: '1129010300'
-      name: 돈암동
-      gu_code: '11290'
     - ldong_code: '1117013300'
       name: 서빙고동
       gu_code: '11170'
@@ -11019,18 +11187,15 @@ domains:
     - ldong_code: '1117013500'
       name: 용산동6가
       gu_code: '11170'
-    - ldong_code: '1123010500'
-      name: 답십리동
-      gu_code: '11230'
     - ldong_code: '1117013600'
       name: 보광동
       gu_code: '11170'
     - ldong_code: '1120010100'
       name: 상왕십리동
       gu_code: '11200'
-    - ldong_code: '1162010300'
-      name: 남현동
-      gu_code: '11620'
+    - ldong_code: '1174010600'
+      name: 둔촌동
+      gu_code: '11740'
     - ldong_code: '1120010300'
       name: 홍익동
       gu_code: '11200'
@@ -11040,21 +11205,15 @@ domains:
     - ldong_code: '1120010800'
       name: 응봉동
       gu_code: '11200'
-    - ldong_code: '1126010200'
-      name: 상봉동
-      gu_code: '11260'
-    - ldong_code: '1126010300'
-      name: 중화동
-      gu_code: '11260'
     - ldong_code: '1120010900'
       name: 금호동1가
+      gu_code: '11200'
+    - ldong_code: '1120012200'
+      name: 용답동
       gu_code: '11200'
     - ldong_code: '1120011000'
       name: 금호동2가
       gu_code: '11200'
-    - ldong_code: '1126010600'
-      name: 신내동
-      gu_code: '11260'
     - ldong_code: '1120011100'
       name: 금호동3가
       gu_code: '11200'
@@ -11082,12 +11241,12 @@ domains:
     - ldong_code: '1121510300'
       name: 구의동
       gu_code: '11215'
-    - ldong_code: '1129013300'
-      name: 정릉동
-      gu_code: '11290'
-    - ldong_code: '1129013400'
-      name: 길음동
-      gu_code: '11290'
+    - ldong_code: '1123010900'
+      name: 휘경동
+      gu_code: '11230'
+    - ldong_code: '1123011000'
+      name: 이문동
+      gu_code: '11230'
     - ldong_code: '1121510400'
       name: 광장동
       gu_code: '11215'
@@ -11106,21 +11265,15 @@ domains:
     - ldong_code: '1123010200'
       name: 용두동
       gu_code: '11230'
-    - ldong_code: '1129013800'
-      name: 장위동
+    - ldong_code: '1129010100'
+      name: 성북동
       gu_code: '11290'
     - ldong_code: '1123010300'
       name: 제기동
       gu_code: '11230'
-    - ldong_code: '1130510100'
-      name: 미아동
-      gu_code: '11305'
     - ldong_code: '1123010400'
       name: 전농동
       gu_code: '11230'
-    - ldong_code: '1130510300'
-      name: 수유동
-      gu_code: '11305'
     - ldong_code: '1123010600'
       name: 장안동
       gu_code: '11230'
@@ -11133,21 +11286,12 @@ domains:
     - ldong_code: '1126010100'
       name: 면목동
       gu_code: '11260'
-    - ldong_code: '1111016100'
-      name: 종로4가
-      gu_code: '11110'
     - ldong_code: '1126010400'
       name: 묵동
       gu_code: '11260'
-    - ldong_code: '1135010500'
-      name: 상계동
-      gu_code: '11350'
     - ldong_code: '1126010500'
       name: 망우동
       gu_code: '11260'
-    - ldong_code: '1129010200'
-      name: 성북동1가
-      gu_code: '11290'
     - ldong_code: '1129010400'
       name: 동소문동1가
       gu_code: '11290'
@@ -11199,15 +11343,15 @@ domains:
     - ldong_code: '1129012100'
       name: 안암동1가
       gu_code: '11290'
-    - ldong_code: '1129012200'
-      name: 안암동2가
-      gu_code: '11290'
     - ldong_code: '1129012300'
       name: 안암동3가
       gu_code: '11290'
     - ldong_code: '1129012400'
       name: 안암동4가
       gu_code: '11290'
+    - ldong_code: '1159010900'
+      name: 신대방동
+      gu_code: '11590'
     - ldong_code: '1129012500'
       name: 안암동5가
       gu_code: '11290'
@@ -11229,9 +11373,9 @@ domains:
     - ldong_code: '1129013200'
       name: 보문동3가
       gu_code: '11290'
-    - ldong_code: '1165010700'
-      name: 반포동
-      gu_code: '11650'
+    - ldong_code: '1162010300'
+      name: 남현동
+      gu_code: '11620'
     - ldong_code: '1129013500'
       name: 종암동
       gu_code: '11290'
@@ -11256,18 +11400,18 @@ domains:
     - ldong_code: '1132010600'
       name: 방학동
       gu_code: '11320'
-    - ldong_code: '1141011900'
-      name: 북가좌동
-      gu_code: '11410'
     - ldong_code: '1132010700'
       name: 창동
       gu_code: '11320'
-    - ldong_code: '1144010200'
-      name: 공덕동
-      gu_code: '11440'
     - ldong_code: '1132010800'
       name: 도봉동
       gu_code: '11320'
+    - ldong_code: '1135010200'
+      name: 월계동
+      gu_code: '11350'
+    - ldong_code: '1135010300'
+      name: 공릉동
+      gu_code: '11350'
     - ldong_code: '1135010400'
       name: 하계동
       gu_code: '11350'
@@ -11283,9 +11427,6 @@ domains:
     - ldong_code: '1138010300'
       name: 불광동
       gu_code: '11380'
-    - ldong_code: '1111018000'
-      name: 교북동
-      gu_code: '11110'
     - ldong_code: '1138010400'
       name: 갈현동
       gu_code: '11380'
@@ -11295,8 +11436,8 @@ domains:
     - ldong_code: '1138010600'
       name: 대조동
       gu_code: '11380'
-    - ldong_code: '1165011000'
-      name: 염곡동
+    - ldong_code: '1165010700'
+      name: 반포동
       gu_code: '11650'
     - ldong_code: '1138010700'
       name: 응암동
@@ -11307,96 +11448,48 @@ domains:
     - ldong_code: '1138010900'
       name: 신사동
       gu_code: '11380'
-    - ldong_code: '1111013300'
-      name: 익선동
-      gu_code: '11110'
-    - ldong_code: '1168010100'
-      name: 역삼동
-      gu_code: '11680'
     - ldong_code: '1138011000'
       name: 증산동
       gu_code: '11380'
-    - ldong_code: '1168010600'
-      name: 대치동
-      gu_code: '11680'
-    - ldong_code: '1168010700'
-      name: 신사동
-      gu_code: '11680'
+    - ldong_code: '1171011100'
+      name: 방이동
+      gu_code: '11710'
     - ldong_code: '1138011400'
       name: 진관동
       gu_code: '11380'
-    - ldong_code: '1147010100'
-      name: 신정동
-      gu_code: '11470'
+    - ldong_code: '1141012000'
+      name: 남가좌동
+      gu_code: '11410'
     - ldong_code: '1141010100'
       name: 충정로2가
       gu_code: '11410'
-    - ldong_code: '1147010300'
-      name: 신월동
-      gu_code: '11470'
-    - ldong_code: '1168011000'
-      name: 압구정동
-      gu_code: '11680'
     - ldong_code: '1141010200'
       name: 충정로3가
       gu_code: '11410'
-    - ldong_code: '1150010200'
-      name: 등촌동
-      gu_code: '11500'
-    - ldong_code: '1150010300'
-      name: 화곡동
-      gu_code: '11500'
     - ldong_code: '1141010300'
       name: 합동
       gu_code: '11410'
     - ldong_code: '1141010400'
       name: 미근동
       gu_code: '11410'
-    - ldong_code: '1150010500'
-      name: 마곡동
-      gu_code: '11500'
     - ldong_code: '1141010500'
       name: 냉천동
       gu_code: '11410'
     - ldong_code: '1141010600'
       name: 천연동
       gu_code: '11410'
-    - ldong_code: '1150010800'
-      name: 공항동
-      gu_code: '11500'
-    - ldong_code: '1150010900'
-      name: 방화동
-      gu_code: '11500'
-    - ldong_code: '1150011000'
-      name: 개화동
-      gu_code: '11500'
-    - ldong_code: '1150011100'
-      name: 과해동
-      gu_code: '11500'
     - ldong_code: '1141010700'
       name: 옥천동
       gu_code: '11410'
     - ldong_code: '1141010800'
       name: 영천동
       gu_code: '11410'
-    - ldong_code: '1153010200'
-      name: 구로동
-      gu_code: '11530'
     - ldong_code: '1141010900'
       name: 현저동
       gu_code: '11410'
-    - ldong_code: '1153010600'
-      name: 고척동
-      gu_code: '11530'
-    - ldong_code: '1153010700'
-      name: 개봉동
-      gu_code: '11530'
-    - ldong_code: '1153010800'
-      name: 오류동
-      gu_code: '11530'
-    - ldong_code: '1168011800'
-      name: 도곡동
-      gu_code: '11680'
+    - ldong_code: '1171011200'
+      name: 오금동
+      gu_code: '11710'
     - ldong_code: '1141011000'
       name: 북아현동
       gu_code: '11410'
@@ -11406,24 +11499,12 @@ domains:
     - ldong_code: '1141011200'
       name: 대현동
       gu_code: '11410'
-    - ldong_code: '1171010100'
-      name: 잠실동
-      gu_code: '11710'
+    - ldong_code: '1144012000'
+      name: 서교동
+      gu_code: '11440'
     - ldong_code: '1141011300'
       name: 대신동
       gu_code: '11410'
-    - ldong_code: '1154510100'
-      name: 가산동
-      gu_code: '11545'
-    - ldong_code: '1154510200'
-      name: 독산동
-      gu_code: '11545'
-    - ldong_code: '1154510300'
-      name: 시흥동
-      gu_code: '11545'
-    - ldong_code: '1156010100'
-      name: 영등포동
-      gu_code: '11560'
     - ldong_code: '1141011400'
       name: 신촌동
       gu_code: '11410'
@@ -11433,6 +11514,15 @@ domains:
     - ldong_code: '1141011600'
       name: 창천동
       gu_code: '11410'
+    - ldong_code: '1144012500'
+      name: 성산동
+      gu_code: '11440'
+    - ldong_code: '1156010700'
+      name: 영등포동6가
+      gu_code: '11560'
+    - ldong_code: '1174010800'
+      name: 성내동
+      gu_code: '11740'
     - ldong_code: '1141011700'
       name: 연희동
       gu_code: '11410'
@@ -11445,45 +11535,30 @@ domains:
     - ldong_code: '1144010300'
       name: 신공덕동
       gu_code: '11440'
-    - ldong_code: '1171010200'
-      name: 신천동
-      gu_code: '11710'
     - ldong_code: '1144010400'
       name: 도화동
       gu_code: '11440'
     - ldong_code: '1144010500'
       name: 용강동
       gu_code: '11440'
-    - ldong_code: '1144010600'
-      name: 토정동
-      gu_code: '11440'
     - ldong_code: '1144010700'
       name: 마포동
       gu_code: '11440'
+    - ldong_code: '1150011200'
+      name: 오곡동
+      gu_code: '11500'
+    - ldong_code: '1150011300'
+      name: 오쇠동
+      gu_code: '11500'
     - ldong_code: '1144010800'
       name: 대흥동
       gu_code: '11440'
-    - ldong_code: '1171010300'
-      name: 풍납동
-      gu_code: '11710'
     - ldong_code: '1144010900'
       name: 염리동
       gu_code: '11440'
     - ldong_code: '1144011000'
       name: 노고산동
       gu_code: '11440'
-    - ldong_code: '1156013100'
-      name: 양화동
-      gu_code: '11560'
-    - ldong_code: '1156013200'
-      name: 신길동
-      gu_code: '11560'
-    - ldong_code: '1156013300'
-      name: 대림동
-      gu_code: '11560'
-    - ldong_code: '1171010500'
-      name: 석촌동
-      gu_code: '11710'
     - ldong_code: '1144011100'
       name: 신수동
       gu_code: '11440'
@@ -11499,30 +11574,15 @@ domains:
     - ldong_code: '1144011500'
       name: 상수동
       gu_code: '11440'
-    - ldong_code: '1159010800'
-      name: 대방동
-      gu_code: '11590'
     - ldong_code: '1144011600'
       name: 하중동
       gu_code: '11440'
     - ldong_code: '1144011700'
       name: 신정동
       gu_code: '11440'
-    - ldong_code: '1162010100'
-      name: 봉천동
-      gu_code: '11620'
-    - ldong_code: '1162010200'
-      name: 신림동
-      gu_code: '11620'
     - ldong_code: '1144011800'
       name: 당인동
       gu_code: '11440'
-    - ldong_code: '1165010100'
-      name: 방배동
-      gu_code: '11650'
-    - ldong_code: '1165010200'
-      name: 양재동
-      gu_code: '11650'
     - ldong_code: '1144012100'
       name: 동교동
       gu_code: '11440'
@@ -11538,15 +11598,9 @@ domains:
     - ldong_code: '1144012600'
       name: 중동
       gu_code: '11440'
-    - ldong_code: '1171010400'
-      name: 송파동
-      gu_code: '11710'
     - ldong_code: '1144012700'
       name: 상암동
       gu_code: '11440'
-    - ldong_code: '1165011100'
-      name: 신원동
-      gu_code: '11650'
     - ldong_code: '1147010200'
       name: 목동
       gu_code: '11470'
@@ -11556,6 +11610,18 @@ domains:
     - ldong_code: '1150010400'
       name: 가양동
       gu_code: '11500'
+    - ldong_code: '1156013400'
+      name: 양평동
+      gu_code: '11560'
+    - ldong_code: '1159010100'
+      name: 노량진동
+      gu_code: '11590'
+    - ldong_code: '1159010200'
+      name: 상도동
+      gu_code: '11590'
+    - ldong_code: '1159010300'
+      name: 상도1동
+      gu_code: '11590'
     - ldong_code: '1150010600'
       name: 내발산동
       gu_code: '11500'
@@ -11574,117 +11640,93 @@ domains:
     - ldong_code: '1153011000'
       name: 온수동
       gu_code: '11530'
-    - ldong_code: '1171010900'
-      name: 장지동
-      gu_code: '11710'
     - ldong_code: '1153011100'
       name: 천왕동
       gu_code: '11530'
     - ldong_code: '1153011200'
       name: 항동
       gu_code: '11530'
-    - ldong_code: '1111010600'
-      name: 통의동
-      gu_code: '11110'
-    - ldong_code: '1111010200'
-      name: 신교동
-      gu_code: '11110'
-    - ldong_code: '1111010700'
-      name: 적선동
-      gu_code: '11110'
     - ldong_code: '1156010200'
       name: 영등포동1가
       gu_code: '11560'
-    - ldong_code: '1111013900'
-      name: 팔판동
-      gu_code: '11110'
-    - ldong_code: '1111010300'
-      name: 궁정동
-      gu_code: '11110'
-    - ldong_code: '1111010400'
-      name: 효자동
-      gu_code: '11110'
-    - ldong_code: '1111010500'
-      name: 창성동
-      gu_code: '11110'
     - ldong_code: '1156010300'
       name: 영등포동2가
       gu_code: '11560'
     - ldong_code: '1156010400'
       name: 영등포동3가
       gu_code: '11560'
-    - ldong_code: '1174011000'
-      name: 강일동
-      gu_code: '11740'
-    - ldong_code: '1111017600'
-      name: 교남동
-      gu_code: '11110'
-    - ldong_code: '1114011000'
-      name: 수표동
-      gu_code: '11140'
-    - ldong_code: '1114016400'
-      name: 무학동
-      gu_code: '11140'
-    - ldong_code: '1129010600'
-      name: 동소문동3가
-      gu_code: '11290'
-    - ldong_code: '1120012200'
-      name: 용답동
-      gu_code: '11200'
-    - ldong_code: '1123010900'
-      name: 휘경동
-      gu_code: '11230'
-    - ldong_code: '1123011000'
-      name: 이문동
-      gu_code: '11230'
-    - ldong_code: '1129010100'
-      name: 성북동
-      gu_code: '11290'
-    - ldong_code: '1135010200'
-      name: 월계동
-      gu_code: '11350'
-    - ldong_code: '1135010300'
-      name: 공릉동
-      gu_code: '11350'
-    - ldong_code: '1141012000'
-      name: 남가좌동
-      gu_code: '11410'
-    - ldong_code: '1144012000'
-      name: 서교동
-      gu_code: '11440'
-    - ldong_code: '1144012500'
-      name: 성산동
-      gu_code: '11440'
-    - ldong_code: '1156010700'
-      name: 영등포동6가
+    - ldong_code: '1156011000'
+      name: 여의도동
       gu_code: '11560'
-    - ldong_code: '1150011200'
-      name: 오곡동
-      gu_code: '11500'
-    - ldong_code: '1150011300'
-      name: 오쇠동
-      gu_code: '11500'
-    - ldong_code: '1156013400'
-      name: 양평동
+    - ldong_code: '1156011100'
+      name: 당산동1가
       gu_code: '11560'
-    - ldong_code: '1159010100'
-      name: 노량진동
-      gu_code: '11590'
-    - ldong_code: '1159010200'
-      name: 상도동
-      gu_code: '11590'
-    - ldong_code: '1159010300'
-      name: 상도1동
-      gu_code: '11590'
-    - ldong_code: '1168010800'
-      name: 논현동
-      gu_code: '11680'
+    - ldong_code: '1156011200'
+      name: 당산동2가
+      gu_code: '11560'
     - ldong_code: '1168010400'
       name: 청담동
       gu_code: '11680'
+    - ldong_code: '1156011300'
+      name: 당산동3가
+      gu_code: '11560'
+    - ldong_code: '1156011400'
+      name: 당산동4가
+      gu_code: '11560'
+    - ldong_code: '1156011500'
+      name: 당산동5가
+      gu_code: '11560'
+    - ldong_code: '1156011600'
+      name: 당산동6가
+      gu_code: '11560'
+    - ldong_code: '1156011900'
+      name: 문래동1가
+      gu_code: '11560'
+    - ldong_code: '1156012000'
+      name: 문래동2가
+      gu_code: '11560'
+    - ldong_code: '1156012100'
+      name: 문래동3가
+      gu_code: '11560'
+    - ldong_code: '1156012200'
+      name: 문래동4가
+      gu_code: '11560'
+    - ldong_code: '1156012300'
+      name: 문래동5가
+      gu_code: '11560'
+    - ldong_code: '1156012400'
+      name: 문래동6가
+      gu_code: '11560'
+    - ldong_code: '1156012500'
+      name: 양평동1가
+      gu_code: '11560'
+    - ldong_code: '1156012600'
+      name: 양평동2가
+      gu_code: '11560'
+    - ldong_code: '1171011400'
+      name: 마천동
+      gu_code: '11710'
+    - ldong_code: '1156012700'
+      name: 양평동3가
+      gu_code: '11560'
+    - ldong_code: '1156012800'
+      name: 양평동4가
+      gu_code: '11560'
+    - ldong_code: '1156012900'
+      name: 양평동5가
+      gu_code: '11560'
+    - ldong_code: '1156013000'
+      name: 양평동6가
+      gu_code: '11560'
+    - ldong_code: '1159010400'
+      name: 본동
+      gu_code: '11590'
     - ldong_code: '1156010500'
       name: 영등포동4가
       gu_code: '11560'
+    - ldong_code: '1159010500'
+      name: 흑석동
+      gu_code: '11590'
     - ldong_code: '1156010600'
       name: 영등포동5가
       gu_code: '11560'
@@ -11694,23 +11736,11 @@ domains:
     - ldong_code: '1156010900'
       name: 영등포동8가
       gu_code: '11560'
-    - ldong_code: '1156012700'
-      name: 양평동3가
-      gu_code: '11560'
-    - ldong_code: '1159010400'
-      name: 본동
-      gu_code: '11590'
-    - ldong_code: '1159010500'
-      name: 흑석동
-      gu_code: '11590'
     - ldong_code: '1159010600'
       name: 동작동
       gu_code: '11590'
     - ldong_code: '1159010700'
       name: 사당동
-      gu_code: '11590'
-    - ldong_code: '1159010900'
-      name: 신대방동
       gu_code: '11590'
     - ldong_code: '1165010300'
       name: 우면동
@@ -11721,18 +11751,6 @@ domains:
     - ldong_code: '1165010600'
       name: 잠원동
       gu_code: '11650'
-    - ldong_code: '1165010800'
-      name: 서초동
-      gu_code: '11650'
-    - ldong_code: '1165010900'
-      name: 내곡동
-      gu_code: '11650'
-    - ldong_code: '1168010300'
-      name: 개포동
-      gu_code: '11680'
-    - ldong_code: '1168010500'
-      name: 삼성동
-      gu_code: '11680'
     - ldong_code: '1168011100'
       name: 세곡동
       gu_code: '11680'
@@ -11748,35 +11766,17 @@ domains:
     - ldong_code: '1168011500'
       name: 수서동
       gu_code: '11680'
-    - ldong_code: '1171010700'
-      name: 가락동
-      gu_code: '11710'
     - ldong_code: '1171010800'
       name: 문정동
       gu_code: '11710'
-    - ldong_code: '1171011100'
-      name: 방이동
-      gu_code: '11710'
-    - ldong_code: '1171011200'
-      name: 오금동
-      gu_code: '11710'
     - ldong_code: '1171011300'
       name: 거여동
-      gu_code: '11710'
-    - ldong_code: '1171011400'
-      name: 마천동
       gu_code: '11710'
     - ldong_code: '1174010200'
       name: 고덕동
       gu_code: '11740'
     - ldong_code: '1174010300'
       name: 상일동
-      gu_code: '11740'
-    - ldong_code: '1174010500'
-      name: 길동
-      gu_code: '11740'
-    - ldong_code: '1174010600'
-      name: 둔촌동
       gu_code: '11740'
     - ldong_code: '1174010700'
       name: 암사동
@@ -11791,20 +11791,6 @@ domains:
     - id
     - name
     rows:
-    - id: B001
-      name: 한국방송통신대학교
-    - id: C001
-      name: 동양미래대학교
-    - id: C002
-      name: 명지전문대학
-    - id: C003
-      name: 배화여자대학교
-    - id: C004
-      name: 삼육보건대학교
-    - id: C005
-      name: 서울여자간호대학교
-    - id: V001
-      name: 국제예술대학교
     - id: C006
       name: 서일대학교
     - id: C007
@@ -11825,26 +11811,28 @@ domains:
       name: 가톨릭대학교 성신교정
     - id: U002
       name: 가톨릭대학교 성의교정
-    - id: U003
-      name: 감리교신학대학교
     - id: U004
       name: 건국대학교 서울캠퍼스
     - id: U005
       name: 경기대학교 서울캠퍼스
     - id: U006
       name: 경희대학교 서울캠퍼스
-    - id: U010
-      name: 그리스도대학교
-    - id: U011
-      name: 덕성여자대학교
-    - id: U012
-      name: 동국대학교 서울캠퍼스
+    - id: V001
+      name: 국제예술대학교
+    - id: V002
+      name: 정화예술대학교
     - id: U007
       name: 고려대학교 서울캠퍼스
     - id: U008
       name: 광운대학교
     - id: U009
       name: 국민대학교
+    - id: U010
+      name: 그리스도대학교
+    - id: U011
+      name: 덕성여자대학교
+    - id: U012
+      name: 동국대학교 서울캠퍼스
     - id: U013
       name: 동덕여자대학교
     - id: U014
@@ -11861,20 +11849,10 @@ domains:
       name: 서울과학기술대학교
     - id: U020
       name: 서울기독대학교
-    - id: U030
-      name: 세종대학교
     - id: U021
       name: 서울대학교 관악캠퍼스
     - id: U022
       name: 서울대학교 연건캠퍼스
-    - id: U027
-      name: 성균관대학교 인문사회과학캠퍼스
-    - id: U028
-      name: 성신여자대학교 돈암수정캠퍼스
-    - id: U029
-      name: 성신여자대학교 운정그린캠퍼스
-    - id: U044
-      name: 한성대학교
     - id: U023
       name: 서울시립대학교
     - id: U024
@@ -11883,28 +11861,46 @@ domains:
       name: 서울한영대학교
     - id: U026
       name: 성공회대학교
-    - id: U045
-      name: 한신대학교
+    - id: U027
+      name: 성균관대학교 인문사회과학캠퍼스
+    - id: U028
+      name: 성신여자대학교 돈암수정캠퍼스
+    - id: U029
+      name: 성신여자대학교 운정그린캠퍼스
+    - id: U030
+      name: 세종대학교
     - id: U031
       name: 숙명여자대학교
     - id: U032
       name: 숭실대학교
     - id: U033
       name: 연세대학교 신촌캠퍼스
-    - id: U034
-      name: 울산대학교 의과대학
-    - id: U046
-      name: 한양대학교 서울캠퍼스
     - id: U035
       name: 이화여자대학교
     - id: U036
       name: 장로회신학대학교
     - id: U037
       name: 중앙대학교 서울캠퍼스
+    - id: B001
+      name: 한국방송통신대학교
+    - id: C001
+      name: 동양미래대학교
+    - id: C002
+      name: 명지전문대학
+    - id: C003
+      name: 배화여자대학교
+    - id: C004
+      name: 삼육보건대학교
+    - id: C005
+      name: 서울여자간호대학교
     - id: U038
       name: 총신대학교
     - id: U039
       name: 추계예술대학교
+    - id: U003
+      name: 감리교신학대학교
+    - id: U034
+      name: 울산대학교 의과대학
     - id: U040
       name: 한국과학기술원 서울캠퍼스
     - id: U041
@@ -11913,7 +11909,11 @@ domains:
       name: 한국외국어대학교 서울캠퍼스
     - id: U043
       name: 한국체육대학교
+    - id: U044
+      name: 한성대학교
+    - id: U045
+      name: 한신대학교
+    - id: U046
+      name: 한양대학교 서울캠퍼스
     - id: U047
       name: 홍익대학교 서울캠퍼스
-    - id: V002
-      name: 정화예술대학교

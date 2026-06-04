@@ -34,6 +34,7 @@ interface ChatMessage {
 }
 
 interface AiChatPanelProps {
+  isOpen: boolean;
   compareCandidates?: boolean;
   onClose: () => void;
 }
@@ -58,12 +59,14 @@ function buildCandidateComparePrompt() {
 }
 
 export default function AiChatPanel({
+  isOpen,
   compareCandidates = false,
   onClose,
 }: AiChatPanelProps) {
   const { user, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
+    if (!isOpen) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
@@ -71,10 +74,10 @@ export default function AiChatPanel({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [isOpen, onClose]);
 
   return (
-    <div className="fixed inset-0 z-[1680] pointer-events-none" aria-live="polite">
+    <div className={`fixed inset-0 z-[1680] pointer-events-none ${isOpen ? '' : 'hidden'}`} aria-hidden={!isOpen} aria-live="polite">
       <button
         type="button"
         className="absolute inset-0 pointer-events-auto bg-black/20"
@@ -411,7 +414,7 @@ function ChatWorkspace({ canUseDemo, compareCandidates }: { canUseDemo: boolean;
     <>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-divider px-5 py-2">
         <span className="text-[12px] text-text-muted">
-          {conversationId ? '대화 이어가는 중' : '새 대화'} · 새로고침하면 현재 대화가 초기화됩니다.
+          {conversationId ? '대화 이어가는 중' : '새 대화'} · 창을 닫아도 현재 대화가 유지됩니다.
         </span>
         <div className="flex items-center gap-2">
           <button

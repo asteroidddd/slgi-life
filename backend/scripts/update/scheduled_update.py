@@ -294,7 +294,17 @@ TASKS: tuple[Task, ...] = (
         ),
     ),
     Task("metrics", "public_data", "P02", "monthly", run_public("metrics"), deps=("regions",), monthly_day=1, extra={"signal_on_success": True}),
-    Task("populations", "public_data", "P03", "monthly", run_public("populations"), deps=("regions",), monthly_day=1, heavy=True),
+    Task(
+        "populations",
+        "public_data",
+        "P03",
+        "monthly",
+        run_public("populations"),
+        deps=("regions",),
+        monthly_day=1,
+        heavy=True,
+        extra={"allow_partial": True},
+    ),
     Task("rent_deals", "public_data", "P04", "daily", run_public("rent_deals"), deps=("regions",), heavy=True, extra={"signal_on_success": True}),
     Task("univ", "public_data", "P05", "file_change", run_public("univ"), deps=("regions",), file_paths=("data/university_boundaries.geojson",)),
     Task("bus_stop", "public_data", "P06A", "daily", run_public("bus", skip_congestion=True), deps=("regions",)),
@@ -335,24 +345,13 @@ TASKS: tuple[Task, ...] = (
         deps=("stores", "daiso", "medical", "library", "subway", "bus_stop"),
         run_on_dependency_change=True,
     ),
-    Task("rent_deal_cache", "service", "S02", "on_change", run_service("rent_deal_cache"), deps=("rent_deals",), run_on_dependency_change=True, heavy=True),
-    Task(
-        "rent_deal_summary_cache",
-        "service",
-        "S03",
-        "on_change",
-        run_service("rent_deal_summary_cache"),
-        deps=("rent_deal_cache",),
-        run_on_dependency_change=True,
-        heavy=True,
-    ),
     Task(
         "current_scores",
         "service",
-        "S04",
+        "S02",
         "on_change",
         run_service("current"),
-        deps=("rent_deal_summary_cache", "amenity", "bus_stop", "subway", "metrics"),
+        deps=("rent_deals", "amenity", "bus_stop", "subway", "metrics"),
         run_on_dependency_change=True,
     ),
     Task(
@@ -363,7 +362,7 @@ TASKS: tuple[Task, ...] = (
         run_dashboard,
         deps=(
             "current_scores",
-            "rent_deal_summary_cache",
+            "rent_deals",
             "bus_congestion",
             "subway",
             "bus_stop",
@@ -522,6 +521,22 @@ def run_task(task: Task, args: argparse.Namespace, dry_run: bool, source_hash: s
                 status = unsuccessful_status(result)
             last_result = result
             last_status = status
+            if status == "partial" and task.extra.get("allow_partial"):
+                result = {
+                    **result,
+                    "scheduler_warning_status": "partial",
+                    "scheduler_warning_reason": "allowed_partial_result",
+                }
+                return save_task_result(
+                    task,
+                    status="success",
+                    reason="executed_with_partial_warning",
+                    source_hash=source_hash,
+                    result=result,
+                    changed=task_success_should_signal_change(task, due_reason, result),
+                    attempts=attempt,
+                    started_at=started_at,
+                )
             if status == "success":
                 return save_task_result(
                     task,

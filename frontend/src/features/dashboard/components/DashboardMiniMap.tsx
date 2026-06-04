@@ -20,10 +20,16 @@ import type { AdongScore } from '@/features/common/types/api';
 import 'leaflet/dist/leaflet.css';
 
 const SEOUL_CENTER: [number, number] = [37.5665, 126.978];
-const MINI_ZOOM = 13;
+export const DASHBOARD_MINI_MAP_ZOOM = 13;
 
 type DongFeature = Feature<Geometry, AdongFeatureProps>;
 type RegionMaskFeature = Feature<Polygon, { name: string }>;
+
+export interface DashboardMiniMapView {
+  lat: number;
+  lng: number;
+  zoom: number;
+}
 
 const REGION_MASK_OUTER_RING = [
   [124.0, 33.0],
@@ -89,6 +95,7 @@ interface DashboardMiniMapProps {
   regionLevel: 'adong' | 'ldong';
   selectedSlug: string | null;
   onRegionSelect: (slug: string) => void;
+  onViewportChange?: (view: DashboardMiniMapView) => void;
 }
 
 export default function DashboardMiniMap({
@@ -96,6 +103,7 @@ export default function DashboardMiniMap({
   regionLevel,
   selectedSlug,
   onRegionSelect,
+  onViewportChange,
 }: DashboardMiniMapProps) {
   const navigate = useNavigate();
   const { theme } = useTheme();
@@ -117,9 +125,10 @@ export default function DashboardMiniMap({
     [regions, selectedSlug],
   );
 
-  const center: [number, number] = selectedRegion
-    ? [selectedRegion.lat, selectedRegion.lng]
-    : SEOUL_CENTER;
+  const center = useMemo<[number, number]>(
+    () => (selectedRegion ? [selectedRegion.lat, selectedRegion.lng] : SEOUL_CENTER),
+    [selectedRegion],
+  );
 
   const selectedFeature = useMemo<DongFeature | null>(() => {
     const features = geojson && 'features' in geojson ? geojson.features : [];
@@ -149,6 +158,9 @@ export default function DashboardMiniMap({
   );
 
   const maxZoom = getVWorldMaxNativeZoom(theme);
+  const tileUrl = useMemo(() => getVWorldTileUrl(theme), [theme]);
+  const tileLayerKey = useMemo(() => `vworld-${theme}-${maxZoom}-${tileUrl}`, [maxZoom, theme, tileUrl]);
+  const mapContainerKey = useMemo(() => `dashboard-mini-map-${theme}-${tileUrl}`, [theme, tileUrl]);
 
   const styleFn = useCallback(
     (feature?: Feature<Geometry, AdongFeatureProps>) => {
@@ -224,8 +236,9 @@ export default function DashboardMiniMap({
   return (
     <div ref={containerRef} className="relative w-full h-full min-h-[300px] rounded-[var(--radius-sm)] overflow-hidden border border-border">
       <MapContainer
+        key={mapContainerKey}
         center={center}
-        zoom={MINI_ZOOM}
+        zoom={DASHBOARD_MINI_MAP_ZOOM}
         maxZoom={maxZoom}
         zoomSnap={0}
         zoomDelta={0.25}
@@ -236,12 +249,20 @@ export default function DashboardMiniMap({
         style={{ width: '100%', height: '100%', minHeight: 300 }}
       >
         <TileLayer
-          url={getVWorldTileUrl(theme)}
+          key={tileLayerKey}
+          url={tileUrl}
           attribution={VWORLD_ATTRIBUTION}
           maxZoom={maxZoom}
           maxNativeZoom={maxZoom}
         />
-        <MiniMapViewport center={center} zoom={MINI_ZOOM} bounds={selectedBounds} maxZoom={maxZoom} />
+        <MiniMapThemeRefresh tileLayerKey={tileLayerKey} />
+        <MiniMapViewport
+          center={center}
+          zoom={DASHBOARD_MINI_MAP_ZOOM}
+          bounds={selectedBounds}
+          maxZoom={maxZoom}
+          onViewportChange={onViewportChange}
+        />
         {false ? <GeoJSON key={selectedMaskKey} data={selectedMask as RegionMaskFeature} style={REGION_MASK_STYLE} interactive={false} /> : null}
         <GeoJSON
           key={layerKey}
@@ -254,11 +275,11 @@ export default function DashboardMiniMap({
       <button
         type="button"
         onClick={handleMapOpen}
-        className="absolute right-3 top-3 z-10 h-8 rounded-[var(--radius-sm)] border border-border bg-surface/90 px-3 text-[12px] font-semibold text-text-muted shadow-sm transition-colors hover:bg-surface hover:text-text"
-        aria-label="지도로 이동"
-        title="지도로 이동"
+        className="absolute right-3 top-3 z-[800] h-8 rounded-[var(--radius-sm)] border border-border bg-surface/90 px-3 text-[12px] font-semibold text-text-muted shadow-sm transition-colors hover:bg-surface hover:text-text"
+        aria-label="지도에서 보기"
+        title="지도에서 보기"
       >
-        지도로 이동
+        지도에서 보기
       </button>
 
       {expanding ? (
@@ -271,7 +292,35 @@ export default function DashboardMiniMap({
   );
 }
 
-function MiniMapViewport({ center, zoom, bounds, maxZoom }: { center: [number, number]; zoom: number; bounds: LatLngBounds | null; maxZoom: number }) {
+function MiniMapThemeRefresh({ tileLayerKey }: { tileLayerKey: string }) {
+  const map = useMap();
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      map.invalidateSize(false);
+      map.eachLayer((layer) => {
+        if (layer instanceof L.TileLayer) {
+          layer.redraw();
+        }
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [map, tileLayerKey]);
+  return null;
+}
+
+function MiniMapViewport({
+  center,
+  zoom,
+  bounds,
+  maxZoom,
+  onViewportChange,
+}: {
+  center: [number, number];
+  zoom: number;
+  bounds: LatLngBounds | null;
+  maxZoom: number;
+  onViewportChange?: (view: DashboardMiniMapView) => void;
+}) {
   const map = useMap();
   useEffect(() => {
     if (bounds) {
@@ -284,12 +333,17 @@ function MiniMapViewport({ center, zoom, bounds, maxZoom }: { center: [number, n
       if (size.y > 0 && yDistance > 0) {
         const verticalZoom = Math.min(maxZoom, Math.log2(size.y / yDistance));
         map.setView(boundsCenter, verticalZoom, { animate: true });
+        onViewportChange?.({ lat: boundsCenter.lat, lng: boundsCenter.lng, zoom: verticalZoom });
       } else {
-        map.fitBounds(bounds, { animate: true, padding: [0, 0], maxZoom });
+        const fittedZoom = Math.min(maxZoom, map.getBoundsZoom(bounds, false, L.point(0, 0)));
+        map.setView(boundsCenter, fittedZoom, { animate: true });
+        onViewportChange?.({ lat: boundsCenter.lat, lng: boundsCenter.lng, zoom: fittedZoom });
       }
       return;
     }
-    map.setView(center, Math.min(zoom, maxZoom), { animate: true });
-  }, [bounds, center, map, maxZoom, zoom]);
+    const nextZoom = Math.min(zoom, maxZoom);
+    map.setView(center, nextZoom, { animate: true });
+    onViewportChange?.({ lat: center[0], lng: center[1], zoom: nextZoom });
+  }, [bounds, center, map, maxZoom, onViewportChange, zoom]);
   return null;
 }

@@ -45,17 +45,6 @@ function consumeAuthReturnPath() {
   }
 }
 
-function withAuthMode(path: string, mode: 'login' | 'mypage') {
-  try {
-    const url = new URL(path, window.location.origin);
-    if (url.origin !== window.location.origin) return `/select?auth=${mode}`;
-    url.searchParams.set('auth', mode);
-    return `${url.pathname}${url.search}${url.hash}`;
-  } catch {
-    return `/select?auth=${mode}`;
-  }
-}
-
 export function LoginPanel({ error = '', withdrawn = false }: { error?: string; withdrawn?: boolean }) {
   const location = useLocation();
 
@@ -108,7 +97,7 @@ export default function Login() {
   }
 
   if (user) {
-    return <Navigate to={withAuthMode(consumeAuthReturnPath(), 'mypage')} replace />;
+    return <Navigate to={consumeAuthReturnPath()} replace />;
   }
 
   const next = new URLSearchParams();

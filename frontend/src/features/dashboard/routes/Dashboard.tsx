@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
-import DashboardMiniMap from '@/features/dashboard/components/DashboardMiniMap';
+import DashboardMiniMap, {
+  DASHBOARD_MINI_MAP_ZOOM,
+  type DashboardMiniMapView,
+} from '@/features/dashboard/components/DashboardMiniMap';
 import DashboardSections from '@/features/dashboard/components/DashboardSections';
-import { candidateFromScore, candidateMapPath, useCandidateRegions } from '@/features/candidates/lib/candidates';
+import { candidateFromScore, useCandidateRegions } from '@/features/candidates/lib/candidates';
 import { useAdongScores, useLdongScores } from '@/features/common/hooks/useAdongs';
 import { getDashboardRegionAtPoint, getDashboardRegionIntro } from '@/features/common/lib/api';
 import { dashboardLayoutVars } from '@/features/dashboard/lib/dashboardTransition';
+import ListingLinkPanel from '@/features/real-estate/components/ListingLinkPanel';
 import { DEFAULT_WEIGHTS } from '@/features/common/types/api';
 import type { AdongScore } from '@/features/common/types/api';
 
@@ -40,6 +44,7 @@ export default function Dashboard() {
   const { addCandidate, hasCandidate, removeCandidate } = useCandidateRegions();
   const [regionSearch, setRegionSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const [listingMapView, setListingMapView] = useState<DashboardMiniMapView | null>(null);
 
   const regionLevel: RegionLevel = regionType === 'adong' ? 'adong' : 'ldong';
   const adongScoresQuery = useAdongScores(DEFAULT_WEIGHTS);
@@ -75,6 +80,7 @@ export default function Dashboard() {
 
   const handleRegionChange = useCallback(
     (slug: string) => {
+      setListingMapView(null);
       navigate(`/dashboard/${regionLevel}/${encodeURIComponent(slug)}`, { replace: true });
     },
     [navigate, regionLevel],
@@ -93,6 +99,7 @@ export default function Dashboard() {
           nextSlug = nextRegions[0]?.slug ?? '';
         }
       }
+      setListingMapView(null);
       setRegionSearch('');
       navigate(`/dashboard/${nextLevel}/${encodeURIComponent(nextSlug)}`, { replace: true });
     },
@@ -207,7 +214,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-          <section className="rounded-card border border-border bg-surface p-5 shadow-sm">
+          <section data-dashboard-main-card="true" className="rounded-card border border-border bg-surface p-5 shadow-sm">
             <div className="grid min-h-[var(--dashboard-mini-map-height)] grid-cols-2 gap-[var(--dashboard-grid-gap)]">
               <div className="flex min-w-0 flex-col px-2 pb-1">
                 <div>
@@ -216,33 +223,6 @@ export default function Dashboard() {
                   <p className="m-0 mt-4 max-w-none text-[16px] leading-7 text-text-muted">
                     {introQuery.data?.intro || fallbackIntro(selectedRegion)}
                   </p>
-                  {selectedRegion && selectedCandidate && false ? (
-                    <div className="mt-5 flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => addCandidate(selectedCandidate!)}
-                        className={`h-10 rounded-sm border px-4 text-[13px] font-semibold transition ${
-                          selectedSaved
-                            ? 'border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]'
-                            : 'border-border bg-surface-alt text-text-muted hover:border-primary hover:text-primary'
-                        }`}
-                      >
-                        {selectedSaved ? '담은 동네' : '후보에 담기'}
-                      </button>
-                      <Link
-                        to={candidateMapPath(selectedCandidate!)}
-                        className="inline-flex h-10 items-center justify-center rounded-sm border border-border bg-surface-alt px-4 text-[13px] font-semibold text-text-muted no-underline transition hover:border-primary hover:bg-primary-soft hover:text-primary"
-                      >
-                        지도에서 보기
-                      </Link>
-                      <Link
-                        to={`/real-estate?tab=analysis&address=${encodeURIComponent(`서울특별시 ${selectedRegion.gu} ${selectedRegion.name}`)}`}
-                        className="inline-flex h-10 items-center justify-center rounded-sm bg-primary px-4 text-[13px] font-semibold text-surface no-underline transition hover:bg-primary-hover hover:text-surface"
-                      >
-                        부동산 도우미
-                      </Link>
-                    </div>
-                  ) : null}
                 </div>
 
                 <div className="mt-auto grid grid-cols-5 gap-2 px-1 pt-5">
@@ -263,6 +243,7 @@ export default function Dashboard() {
                   regionLevel={regionLevel}
                   selectedSlug={effectiveSlug ?? null}
                   onRegionSelect={handleRegionChange}
+                  onViewportChange={setListingMapView}
                 />
               </div>
             </div>
@@ -274,6 +255,7 @@ export default function Dashboard() {
           />
         </div>
       </div>
+      <ListingLinkPanel region={selectedRegion} zoom={DASHBOARD_MINI_MAP_ZOOM} mapView={listingMapView} />
       {selectedRegion ? (
         <>
           <button

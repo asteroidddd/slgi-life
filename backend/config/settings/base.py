@@ -82,8 +82,7 @@ LOCAL_APPS = [
     "apps.service.map",
     "apps.service.rent_deal",
     "apps.dashboard.cache",
-    # LLM 질의 API. 현재 모델은 없지만 URL/DRF 뷰 등록을 위해 Django 앱으로 둔다.
-    "apps.caches.rent_deal.apps.RentDealCacheConfig",
+    "apps.caches.rent_deal.apps.RentDealGeocodeCacheConfig",
     "apps.caches.region_stats.apps.RegionStatsCacheConfig",
     "apps.ai_agent",
     "apps.public_data.regions",

@@ -36,9 +36,10 @@ PUBLIC_ORDER = (
     "parks",
     "library",
 )
-SERVICE_ORDER = ("amenity", "rent_deal_cache", "rent_deal_summary_cache", "current")
+SERVICE_ORDER = ("amenity", "current")
 DASHBOARD_ORDER = ("dashboard_cache",)
 MAINTENANCE_ORDER = ("ai_stale_keys",)
+NON_BLOCKING_PARTIAL_PUBLIC_DATASETS = {"populations"}
 
 RESET_MANAGED_TABLES = (
     "django_admin_log",
@@ -63,9 +64,6 @@ RESET_MANAGED_TABLES = (
     "amenity_adong",
     "amenity_ldong",
     "amenity",
-    "rent_deal_grid_monthly_cache",
-    "rent_deal_ldong_monthly_cache",
-    "rent_deal_cache",
 )
 
 STOP_REQUESTED = False
@@ -428,7 +426,7 @@ def _run_flow(args: argparse.Namespace) -> dict[str, Any]:
         if _contains_rate_limited(dataset_result):
             status = "rate_limited"
         elif _contains_unsuccessful(dataset_result):
-            status = "partial"
+            status = "warning" if dataset in NON_BLOCKING_PARTIAL_PUBLIC_DATASETS else "partial"
         else:
             status = "success"
         result["steps"].append(

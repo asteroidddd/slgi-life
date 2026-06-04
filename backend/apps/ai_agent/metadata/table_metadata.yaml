@@ -341,7 +341,11 @@ dashboard_adong_cache:
   key_column: adong_code
   join_path: dashboard_adong_cache.adong_code = adong.adong_code
   note: |
-    행정동 기준 거래 시세, 교통 접근성, 생활 인프라, 안전 요약을 프론트 응답용 JSON으로 저장
+    행정동 기준 거래 시세, 교통 접근성, 생활 인프라, 안전 요약을 프론트 응답용 JSON으로 저장.
+    동네를 간단히 파악하거나 대시보드 수준의 설명만 필요할 때 우선 사용.
+    정확한 근거, 세부 필터, 원자료 검증이 필요하면 rent_deal, amenity, bus_stop, bus_congestion,
+    subway_station, medical_facility, library, park, gu_metric 등 원본/파생 테이블을 직접 조회.
+    JSON 컬럼은 화면 표시용 구조라 필드가 바뀔 수 있으므로 세부 계산 근거로 과신하지 말 것.
     컬럼: region_payload, intro, rent_summary, transit_summary, infra_summary, safety_summary, dashboard_payload
 
 dashboard_ldong_cache:
@@ -350,13 +354,9 @@ dashboard_ldong_cache:
   key_column: ldong_code
   join_path: dashboard_ldong_cache.ldong_code = ldong.ldong_code
   note: |
-    법정동 기준 거래 시세, 교통 접근성, 생활 인프라, 안전 요약을 프론트 응답용 JSON으로 저장
+    법정동 기준 거래 시세, 교통 접근성, 생활 인프라, 안전 요약을 프론트 응답용 JSON으로 저장.
+    동네를 간단히 파악하거나 대시보드 수준의 설명만 필요할 때 우선 사용.
+    정확한 근거, 세부 필터, 원자료 검증이 필요하면 rent_deal, amenity, bus_stop, bus_congestion,
+    subway_station, medical_facility, library, park, gu_metric 등 원본/파생 테이블을 직접 조회.
+    JSON 컬럼은 화면 표시용 구조라 필드가 바뀔 수 있으므로 세부 계산 근거로 과신하지 말 것.
     컬럼: region_payload, intro, rent_summary, transit_summary, infra_summary, safety_summary, dashboard_payload
-
-rent_deal_cache:
-  description: 프론트 지도/목록용 전월세 캐시 테이블
-  category: 부동산
-  key_column: id
-  note: |
-    빠른 개별 거래 조회용. 컬럼은 type_code, deposit, monthly_rent, converted_rent, area_m2, lng, lat, contract_ymd
-    통계/추천/평균 산정은 원천 rent_deal 우선. 지도 핀이나 최근 거래 목록이 필요할 때만 제한적으로 사용

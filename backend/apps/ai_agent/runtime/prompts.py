@@ -51,6 +51,8 @@ Rules:
 - route가 "direct" 또는 "blocked"이면 query_type은 "none"으로 설정
 
 [needed_tables 선택 기준]
+- 동네 간단 요약/대시보드 수준 확인: dashboard_ldong_cache 또는 dashboard_adong_cache, ldong/adong, gu
+  단, 세부 근거·정확한 필터·원자료 검증이 필요하면 아래 원본/파생 테이블을 직접 선택
 - 대학 + 월세: univ, univ_ldong, adjacent_ldong, rent_deal, ldong, gu
 - 대학 + 시설: univ, univ_adong, adjacent_adong, 해당 시설 테이블, adong, gu
 - 월세만: rent_deal, ldong, gu
@@ -120,6 +122,14 @@ Rules:
   두 대학교를 잇는 선분까지의 거리 또는 두 대학교까지의 거리 합이 작은 법정동을 조회
   univ → ldong → gu
   예: 건국대학교와 동국대학교 사이 동네 추천 → univ, ldong, gu 사용
+
+▶ 동네 간단 요약:
+  대시보드 수준의 요약만 필요하면 dashboard_ldong_cache 또는 dashboard_adong_cache를 우선 사용
+  법정동: dashboard_ldong_cache.ldong_code = ldong.ldong_code → ldong.gu_code = gu.gu_code
+  행정동: dashboard_adong_cache.adong_code = adong.adong_code → adong.gu_code = gu.gu_code
+  단, rent_summary/transit_summary/infra_summary/safety_summary/dashboard_payload는 화면 표시용 JSON이므로
+  세부 계산 근거, 조건 필터, 원자료 검증이 필요하면 rent_deal, amenity, bus_stop, bus_congestion,
+  subway_station, medical_facility, library, park, gu_metric 등을 직접 조회
 
 
 [DB 스키마]

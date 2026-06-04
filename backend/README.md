@@ -64,9 +64,9 @@ docker compose ps
 | `apps.accounts.user` | 사용자, 로그인, 로그아웃 |
 | `apps.accounts.profile` | 내 정보, 주소, 대학 선택지 |
 | `apps.accounts.social` | Kakao 로그인 |
-| `apps.accounts.favorites` | 즐겨찾기, 담은 동네, 저장된 추천 조건 |
-| `apps.ai_agent` | 자연어 질의, SQL guard, BYOK API KEY |
-| `apps.dashboard.cache` | 동네 정보 화면 캐시, 지역 소개, 안전 WMS 프록시 |
+| `apps.accounts.favorites` | 담은 동네, 저장된 추천 조건, 호환용 즐겨찾기 API |
+| `apps.ai_agent` | 자연어 질의, SQL guard, BYOK API KEY, 대시보드 캐시/원천 테이블 안내 metadata |
+| `apps.dashboard.cache` | 동네 정보 화면 캐시, AI 간단 동네 요약용 JSON, 지역 소개, 안전 WMS 프록시 |
 | `apps.public_data.*` | 공공데이터 원천 모델과 업데이터 |
 | `apps.service.map` | 검색, 서울 마스크, 교통 경로 |
 | `apps.service.heatmap` | 행정동/법정동 GeoJSON과 점수 |
@@ -116,8 +116,8 @@ docker compose ps
 | `POST /api/auth/kakao/webhook` | `accounts.social` | Kakao webhook |
 | `GET/PATCH /api/users/me` | `accounts` | 내 정보 조회/수정 |
 | `GET /api/users/universities` | `accounts` | 대학 선택지 |
-| `GET/POST /api/users/me/favorites` | `accounts` | 즐겨찾기 조회/추가 |
-| `DELETE /api/users/me/favorites/<slug>` | `accounts` | 즐겨찾기 삭제 |
+| `GET/POST /api/users/me/favorites` | `accounts` | 호환용 즐겨찾기 조회/추가 |
+| `DELETE /api/users/me/favorites/<slug>` | `accounts` | 호환용 즐겨찾기 삭제 |
 | `GET/PUT /api/users/me/candidate-regions` | `accounts` | 담은 동네 조회/저장 |
 | `GET/PUT /api/users/me/recommendation-conditions` | `accounts` | 추천 조건 조회/저장 |
 

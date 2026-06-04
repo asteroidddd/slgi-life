@@ -120,7 +120,6 @@ AI_SCHEMA_FALLBACK_TABLES = {
     "park_adong",
     "park_ldong",
     "rent_deal",
-    "rent_deal_cache",
     "rent_deal_ldong_adong_map",
     "seoul",
     "seoul_metric",

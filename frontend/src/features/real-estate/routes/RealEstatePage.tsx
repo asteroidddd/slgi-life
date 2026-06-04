@@ -13,7 +13,7 @@ import zigbangLogo from '@/assets/logos/real-estate/zigbang.png';
 import { analyzeRentListing } from '@/features/common/lib/api';
 import type { RentListingAnalysisResponse, RentListingType } from '@/features/common/types/api';
 
-type RealEstateHelperTab = 'checklist' | 'analysis' | 'links';
+export type RealEstateHelperTab = 'checklist' | 'analysis' | 'links';
 type RealEstateLink = {
   logoSrc: string;
   logoAlt: string;
@@ -140,29 +140,32 @@ export default function RealEstatePage() {
   );
 }
 
-function RealEstateChecklist() {
+export function RealEstateChecklist() {
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3">
       <ChecklistCard title="계약 전" hint="가격과 권리관계를 먼저 확인합니다." items={[
-        '국토교통부 실거래가, 주변 매물, KB 시세로 가격이 과하지 않은지 확인',
-        '전세가율 확인. 전세가가 매매가의 80%를 넘으면 위험 신호로 보기',
+        '국토교통부 실거래가와 주변 매물로 보증금·월세가 과하지 않은지 확인',
         '등기부등본으로 소유자, 근저당, 가압류, 압류, 가처분 확인',
-        '신탁등기가 있으면 신탁사 동의 여부 확인',
-        '건축물대장으로 위반건축물 여부 확인',
-        'HUG 전세보증금 반환보증 가능 여부 확인',
+        '다가구·단독주택이면 전입세대와 선순위 보증금 규모 확인',
+        '임대인 국세·지방세 체납 여부 확인 요청',
+        '건축물대장으로 위반건축물, 용도, 면적이 계약 내용과 맞는지 확인',
+        '신탁등기가 있으면 신탁사 동의와 임대 권한 확인',
+        'HUG 등 전세보증금 반환보증 가입 가능 여부 확인',
       ]} />
       <ChecklistCard title="계약 당일" hint="계약서와 당사자 정보를 맞춥니다." items={[
         '임대인 신분증과 등기부상 소유자 일치 확인',
         '대리인 계약이면 위임장, 인감증명서, 임대인 직접 연락 확인',
-        '공인중개사 등록 상태와 정상 영업 여부 확인',
+        '공인중개사 등록 상태, 자격증, 중개사무소 정보, 공제증서 확인',
         '계약금 입금 계좌가 임대인 명의인지 확인',
-        '잔금 전까지 권리 변동 금지 특약 넣기',
+        '잔금 다음 날까지 권리 변동 금지 특약 넣기',
+        '보증보험 가입 협조, 위반건축물·체납·선순위 권리 고지 특약 넣기',
       ]} />
       <ChecklistCard title="잔금과 입주 후" hint="대항력과 보증 안전장치를 마무리합니다." items={[
         '잔금 직전 등기부등본 재발급 후 권리 변동 확인',
         '입주 즉시 전입신고와 확정일자 처리',
-        '전월세 계약 신고 대상이면 신고 여부 확인',
-        '보증보험 가입 완료',
+        '전월세 계약 신고 대상이면 신고 완료 여부 확인',
+        '보증보험 가입 완료와 보증서 발급 확인',
+        '보증금을 돌려받기 전 전출하지 말고, 필요하면 임차권등기명령 검토',
       ]} />
     </div>
   );
@@ -170,15 +173,15 @@ function RealEstateChecklist() {
 
 function ChecklistCard({ title, hint, items }: { title: string; hint: string; items: string[] }) {
   return (
-    <section className="rounded-card border border-border bg-surface p-4">
+    <section className="border-t border-border pt-3 first:border-t-0 first:pt-0">
       <strong className="block text-[15px] text-primary">{title}</strong>
       <span className="mt-1 block text-[12px] leading-5 text-text-muted">{hint}</span>
-      <ul className="m-0 mt-3 grid gap-2 p-0">
+      <ul className="m-0 mt-2 grid gap-1.5 p-0">
         {items.map((item, index) => {
           const id = `realestate-check-${title}-${index}`;
           return (
-            <li key={item} className="grid grid-cols-[20px_1fr] items-start gap-2 text-[13px] leading-6 text-text-muted">
-              <input id={id} type="checkbox" className="peer mt-1 h-[16px] w-[16px] accent-primary" />
+            <li key={item} className="grid grid-cols-[18px_1fr] items-start gap-2 text-[13px] leading-5 text-text-muted">
+              <input id={id} type="checkbox" className="peer mt-0.5 h-[15px] w-[15px] accent-primary" />
               <label htmlFor={id} className="cursor-pointer peer-checked:text-text-subtle">{item}</label>
             </li>
           );
@@ -188,7 +191,7 @@ function ChecklistCard({ title, hint, items }: { title: string; hint: string; it
   );
 }
 
-function RealEstateListingAnalysis({
+export function RealEstateListingAnalysis({
   address,
   areaM2,
   listingType,
@@ -225,13 +228,10 @@ function RealEstateListingAnalysis({
 }) {
   return (
     <div className="grid gap-4">
-      <section className="grid gap-3 rounded-card border border-border bg-surface p-4">
-        <div>
-          <h2 className="m-0 text-[18px] font-bold">매물 분석</h2>
-          <p className="m-0 mt-1 text-[12px] leading-5 text-text-muted">
-            입력한 매물을 같은 법정동의 최근 실거래와 비교합니다. 환산월세는 분석 결과에서 함께 표시됩니다.
-          </p>
-        </div>
+      <section className="grid gap-3">
+        <p className="m-0 text-[12px] leading-5 text-text-muted">
+          입력한 매물을 같은 법정동의 최근 실거래와 비교합니다. 환산월세는 분석 결과에서 함께 표시됩니다.
+        </p>
         <label className="grid gap-1 text-[12px] font-bold text-text-muted">
           매물 주소
           <input
@@ -301,14 +301,14 @@ function NumberField({ label, value, onChange, step = 1 }: { label: string; valu
 
 function ListingAnalysisResult({ analysis }: { analysis: RentListingAnalysisResponse }) {
   const toneClass = analysis.verdict.tone === 'bad'
-    ? 'border-danger/25 bg-danger-soft text-danger'
+    ? 'border-danger text-danger'
     : analysis.verdict.tone === 'good'
-      ? 'border-success/25 bg-success-soft text-success'
-      : 'border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)]';
+      ? 'border-success text-success'
+      : 'border-[var(--color-heatmap-4)] text-[var(--color-heatmap-5)]';
   const delta = analysis.stats.delta_to_median_pct;
   return (
-    <section className="grid gap-3 rounded-card border border-border bg-surface p-4">
-      <div className={`rounded-card border p-4 ${toneClass}`}>
+    <section className="grid gap-3 border-t border-border pt-4">
+      <div className={`border-l-4 py-1 pl-3 ${toneClass}`}>
         <span className="block text-[12px] font-bold opacity-80">분석 결과</span>
         <strong className="mt-1 block text-[26px] leading-none">{analysis.verdict.label}</strong>
         <p className="m-0 mt-2 text-[13px] leading-6">{analysis.verdict.summary}</p>
@@ -338,7 +338,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function RealEstateLinks() {
+export function RealEstateLinks() {
   return (
     <div className="grid gap-4">
       <LinkGroup title="매물·시세 확인" caption="가격 비교" links={[

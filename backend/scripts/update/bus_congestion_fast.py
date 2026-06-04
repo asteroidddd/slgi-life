@@ -37,6 +37,8 @@ DISCOVERY_GUS = ("11680", "11500", "11710", "11440")
 BUS_SERVICE_START_HOUR = 4
 BUS_SERVICE_END_HOUR = 27
 BUS_SERVICE_HOURS = tuple(range(BUS_SERVICE_START_HOUR, BUS_SERVICE_END_HOUR + 1))
+STAGE_TABLE_NAME = "tmp_bus_congestion_accum"
+PAGE_TASK_CHUNK_FACTOR = 3
 
 
 @dataclass(frozen=True)
@@ -426,39 +428,72 @@ def _merge_rows(
     return stats
 
 
-def _upsert_date_rows(aggregate: dict[tuple[int, date, time], list[Decimal]]) -> int:
+def _create_stage_table() -> None:
+    with connection.cursor() as cursor:
+        cursor.execute(f"DROP TABLE IF EXISTS {STAGE_TABLE_NAME}")
+        cursor.execute(
+            f"""
+            CREATE TEMP TABLE {STAGE_TABLE_NAME} (
+                bus_stop_id bigint NOT NULL,
+                date date NOT NULL,
+                time time without time zone NOT NULL,
+                total_congestion numeric(18,6) NOT NULL,
+                sample_count integer NOT NULL,
+                PRIMARY KEY (bus_stop_id, date, time)
+            ) ON COMMIT PRESERVE ROWS
+            """
+        )
+
+
+def _drop_stage_table() -> None:
+    with connection.cursor() as cursor:
+        cursor.execute(f"DROP TABLE IF EXISTS {STAGE_TABLE_NAME}")
+
+
+def _upsert_stage_rows(aggregate: dict[tuple[int, date, time], list[Decimal]]) -> int:
     rows = [
-        (stop_id, date_value, time_value, total / count)
+        (stop_id, date_value, time_value, total, int(count))
         for (stop_id, date_value, time_value), (total, count) in sorted(aggregate.items())
         if count > 0
     ]
     if not rows:
         return 0
 
+    with connection.cursor() as cursor:
+        cursor.executemany(
+            f"""
+            INSERT INTO {STAGE_TABLE_NAME}
+                (bus_stop_id, date, time, total_congestion, sample_count)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (bus_stop_id, date, time)
+            DO UPDATE SET
+                total_congestion = {STAGE_TABLE_NAME}.total_congestion + EXCLUDED.total_congestion,
+                sample_count = {STAGE_TABLE_NAME}.sample_count + EXCLUDED.sample_count
+            """,
+            rows,
+        )
+    return len(rows)
+
+
+def _stage_row_count() -> int:
+    with connection.cursor() as cursor:
+        cursor.execute(f"SELECT COUNT(*) FROM {STAGE_TABLE_NAME}")
+        row = cursor.fetchone()
+    return int(row[0] or 0) if row else 0
+
+
+def _finalize_stage_rows() -> int:
     with transaction.atomic():
         with connection.cursor() as cursor:
             cursor.execute(
-                """
-                CREATE TEMP TABLE tmp_bus_congestion (
-                    bus_stop_id bigint,
-                    date date,
-                    time time without time zone,
-                    congestion numeric(8,3)
-                ) ON COMMIT DROP
-                """
-            )
-            cursor.executemany(
-                """
-                INSERT INTO tmp_bus_congestion (bus_stop_id, date, time, congestion)
-                VALUES (%s, %s, %s, %s)
-                """,
-                rows,
-            )
-            cursor.execute(
-                """
+                f"""
                 INSERT INTO bus_congestion (bus_stop_id, date, time, congestion)
-                SELECT bus_stop_id, date, time, congestion
-                FROM tmp_bus_congestion
+                SELECT
+                    bus_stop_id,
+                    date,
+                    time,
+                    (total_congestion / NULLIF(sample_count, 0))::numeric(12,4)
+                FROM {STAGE_TABLE_NAME}
                 ON CONFLICT (bus_stop_id, date, time)
                 DO UPDATE SET congestion = EXCLUDED.congestion
                 """
@@ -489,69 +524,85 @@ def _load_one_date(
             "hours": service_status["hours"],
         }
 
-    aggregate: dict[tuple[int, date, time], list[Decimal]] = defaultdict(lambda: [Decimal(0), Decimal(0)])
     stats = {"raw": 0, "parsed": 0, "unmatched": 0, "bad": 0, "pages": 0}
     total_pages = 0
+    staged_batches = 0
+    staged_aggregate_rows = 0
 
-    with ThreadPoolExecutor(max_workers=options.workers) as executor:
-        first_futures = {
-            executor.submit(
-                _fetch_page,
-                api_key=api_key,
-                ymd=ymd,
-                gu_code=gu_code,
-                page=1,
-                options=options,
-                limiter=limiter,
-                counter=counter,
-            ): gu_code
-            for gu_code in gu_codes
-        }
-        page_tasks: list[tuple[str, int]] = []
-        for future in as_completed(first_futures):
-            gu_code = first_futures[future]
-            total, rows, _status = future.result()
-            pages = int(math.ceil(total / options.page_size)) if total else 0
-            total_pages += pages
-            stats["pages"] += 1
-            row_stats = _merge_rows(aggregate, rows, stop_id_map, service_date)
-            for key, value in row_stats.items():
-                stats[key] += value
-            for page in range(2, pages + 1):
-                page_tasks.append((gu_code, page))
+    def stage_rows(rows: list[dict[str, Any]]) -> None:
+        nonlocal staged_batches, staged_aggregate_rows
+        page_aggregate: dict[tuple[int, date, time], list[Decimal]] = defaultdict(lambda: [Decimal(0), Decimal(0)])
+        row_stats = _merge_rows(page_aggregate, rows, stop_id_map, service_date)
+        for key, value in row_stats.items():
+            stats[key] += value
+        if page_aggregate:
+            staged_aggregate_rows += _upsert_stage_rows(page_aggregate)
+            staged_batches += 1
 
-        futures = {
-            executor.submit(
-                _fetch_page,
-                api_key=api_key,
-                ymd=ymd,
-                gu_code=gu_code,
-                page=page,
-                options=options,
-                limiter=limiter,
-                counter=counter,
-            ): (gu_code, page)
-            for gu_code, page in page_tasks
-        }
-        for future in as_completed(futures):
-            _gu_code, _page = futures[future]
-            _total, rows, _status = future.result()
-            stats["pages"] += 1
-            row_stats = _merge_rows(aggregate, rows, stop_id_map, service_date)
-            for key, value in row_stats.items():
-                stats[key] += value
+    def page_chunks(items: list[tuple[str, int]]) -> list[list[tuple[str, int]]]:
+        size = max(1, options.workers * PAGE_TASK_CHUNK_FACTOR)
+        return [items[index : index + size] for index in range(0, len(items), size)]
 
-    if options.dry_run:
-        imported = 0
-    else:
-        imported = _upsert_date_rows(aggregate)
+    _create_stage_table()
+    try:
+        with ThreadPoolExecutor(max_workers=options.workers) as executor:
+            first_futures = {
+                executor.submit(
+                    _fetch_page,
+                    api_key=api_key,
+                    ymd=ymd,
+                    gu_code=gu_code,
+                    page=1,
+                    options=options,
+                    limiter=limiter,
+                    counter=counter,
+                ): gu_code
+                for gu_code in gu_codes
+            }
+            page_tasks: list[tuple[str, int]] = []
+            for future in as_completed(first_futures):
+                gu_code = first_futures[future]
+                total, rows, _status = future.result()
+                pages = int(math.ceil(total / options.page_size)) if total else 0
+                total_pages += pages
+                stats["pages"] += 1
+                stage_rows(rows)
+                for page in range(2, pages + 1):
+                    page_tasks.append((gu_code, page))
+
+            for chunk in page_chunks(page_tasks):
+                futures = {
+                    executor.submit(
+                        _fetch_page,
+                        api_key=api_key,
+                        ymd=ymd,
+                        gu_code=gu_code,
+                        page=page,
+                        options=options,
+                        limiter=limiter,
+                        counter=counter,
+                    ): (gu_code, page)
+                    for gu_code, page in chunk
+                }
+                for future in as_completed(futures):
+                    _gu_code, _page = futures[future]
+                    _total, rows, _status = future.result()
+                    stats["pages"] += 1
+                    stage_rows(rows)
+
+        aggregate_rows = _stage_row_count()
+        imported = 0 if options.dry_run else _finalize_stage_rows()
+    finally:
+        _drop_stage_table()
 
     return {
         "ymd": ymd,
         "status": "success",
         "completed": True,
         "imported": imported,
-        "aggregate_rows": len(aggregate),
+        "aggregate_rows": aggregate_rows,
+        "staged_batches": staged_batches,
+        "staged_aggregate_rows": staged_aggregate_rows,
         "total_pages": total_pages,
         "previous_missing_hours": service_status["missing_hours"],
         **stats,
@@ -584,6 +635,7 @@ def update_bus_congestion_fast(options: FastBusCongestionOptions) -> dict[str, A
     target_dates = _target_dates(api_key, latest, options, limiter, counter)
     results: dict[str, Any] = {}
     completed_dates: list[str] = []
+    failed_dates: dict[str, Any] = {}
 
     for ymd in target_dates:
         if _deadline_reached(options):
@@ -595,34 +647,71 @@ def update_bus_congestion_fast(options: FastBusCongestionOptions) -> dict[str, A
                 "latest_ymd": latest.strftime("%Y%m%d"),
                 "target_dates": target_dates,
                 "completed_dates": completed_dates,
+                "failed_dates": failed_dates,
                 "results": results,
                 "api_calls": counter.value,
                 "reason": "deadline_reached",
             }
-        item = _load_one_date(
-            api_key=api_key,
-            ymd=ymd,
-            gu_codes=gu_codes,
-            stop_id_map=stop_id_map,
-            options=options,
-            limiter=limiter,
-            counter=counter,
-        )
+        try:
+            item = _load_one_date(
+                api_key=api_key,
+                ymd=ymd,
+                gu_codes=gu_codes,
+                stop_id_map=stop_id_map,
+                options=options,
+                limiter=limiter,
+                counter=counter,
+            )
+        except RateLimitedError:
+            raise
+        except TimeoutError as exc:
+            if "deadline" in str(exc).lower():
+                failed_dates[ymd] = {"type": type(exc).__name__, "message": str(exc)}
+                results[ymd] = {
+                    "ymd": ymd,
+                    "status": "failed",
+                    "completed": False,
+                    "error": failed_dates[ymd],
+                }
+                return {
+                    "target": "bus_congestion",
+                    "dry_run": False,
+                    "status": "partial",
+                    "completed": False,
+                    "latest_ymd": latest.strftime("%Y%m%d"),
+                    "target_dates": target_dates,
+                    "completed_dates": completed_dates,
+                    "failed_dates": failed_dates,
+                    "results": results,
+                    "api_calls": counter.value,
+                    "reason": "deadline_reached",
+                }
+            raise
+        except Exception as exc:
+            failed_dates[ymd] = {"type": type(exc).__name__, "message": str(exc)}
+            item = {
+                "ymd": ymd,
+                "status": "failed",
+                "completed": False,
+                "error": failed_dates[ymd],
+            }
         results[ymd] = item
         if item.get("completed"):
             completed_dates.append(ymd)
 
-    with connection.cursor() as cursor:
-        cursor.execute("ANALYZE bus_congestion")
+    if completed_dates:
+        with connection.cursor() as cursor:
+            cursor.execute("ANALYZE bus_congestion")
 
     return {
         "target": "bus_congestion",
         "dry_run": False,
-        "status": "success",
-        "completed": True,
+        "status": "partial" if failed_dates else "success",
+        "completed": not failed_dates,
         "latest_ymd": latest.strftime("%Y%m%d"),
         "target_dates": target_dates,
         "completed_dates": completed_dates,
+        "failed_dates": failed_dates,
         "results": results,
         "api_calls": counter.value,
         "retention_days": options.days,

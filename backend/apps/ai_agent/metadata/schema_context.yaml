@@ -1,4 +1,4 @@
-generated_at: '2026-06-01T09:06:47.612467+00:00'
+generated_at: '2026-06-04T10:31:00.472863+00:00'
 source: Django introspection + AI schema allowlist + table_metadata.yaml
 tables:
   adjacent_adong:
@@ -35,14 +35,14 @@ tables:
       to_table: adong
       to_column: adong_code
     indexes:
+    - name: adjacent_adong_pkey
+      columns:
+      - id
+      unique: true
     - name: adjacent_adong_adong_code_a_adong_code_b_fb50afeb_uniq
       columns:
       - adong1_code
       - adong2_code
-      unique: true
-    - name: adjacent_adong_pkey
-      columns:
-      - id
       unique: true
     - name: adjacent_adong_adong_code_a_7fd146d2
       columns:
@@ -97,14 +97,14 @@ tables:
       to_table: gu
       to_column: gu_code
     indexes:
+    - name: adjacent_gu_pkey
+      columns:
+      - id
+      unique: true
     - name: adjacent_gu_gu_code_a_gu_code_b_65b791d7_uniq
       columns:
       - gu1_code
       - gu2_code
-      unique: true
-    - name: adjacent_gu_pkey
-      columns:
-      - id
       unique: true
     - name: adjacent_gu_gu_code_a_36790694
       columns:
@@ -159,14 +159,14 @@ tables:
       to_table: ldong
       to_column: ldong_code
     indexes:
+    - name: adjacent_ldong_pkey
+      columns:
+      - id
+      unique: true
     - name: adjacent_ldong_ldong_code_a_ldong_code_b_eb082b75_uniq
       columns:
       - ldong1_code
       - ldong2_code
-      unique: true
-    - name: adjacent_ldong_pkey
-      columns:
-      - id
       unique: true
     - name: adjacent_ldong_ldong_code_a_98e98d53
       columns:
@@ -340,14 +340,14 @@ tables:
       to_table: adong
       to_column: adong_code
     indexes:
+    - name: adong_population_pkey
+      columns:
+      - id
+      unique: true
     - name: adong_population_adong_code_date_7ddc57d8_uniq
       columns:
       - adong_code
       - date
-      unique: true
-    - name: adong_population_pkey
-      columns:
-      - id
       unique: true
     - name: adong_popul_adong_c_d66610_idx
       columns:
@@ -475,21 +475,21 @@ tables:
     primary_key:
     - id
     foreign_keys:
-    - column: adong_code
-      to_table: adong
-      to_column: adong_code
     - column: amenity_id
       to_table: amenity
       to_column: id
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
     indexes:
+    - name: amenity_adong_pkey
+      columns:
+      - id
+      unique: true
     - name: amenity_adong_amenity_id_adong_code_ae362611_uniq
       columns:
       - amenity_id
       - adong_code
-      unique: true
-    - name: amenity_adong_pkey
-      columns:
-      - id
       unique: true
     - name: amenity_adong_adong_code_00d5792c
       columns:
@@ -540,14 +540,14 @@ tables:
       to_table: ldong
       to_column: ldong_code
     indexes:
+    - name: amenity_ldong_pkey
+      columns:
+      - id
+      unique: true
     - name: amenity_ldong_amenity_id_ldong_code_2bc76455_uniq
       columns:
       - amenity_id
       - ldong_code
-      unique: true
-    - name: amenity_ldong_pkey
-      columns:
-      - id
       unique: true
     - name: amenity_ldong_amenity_id_e5cdcb3c
       columns:
@@ -604,15 +604,15 @@ tables:
     - id
     foreign_keys: []
     indexes:
+    - name: bus_congestion_pkey
+      columns:
+      - id
+      unique: true
     - name: bus_congestion_bus_stop_id_date_time_afce85db_uniq
       columns:
       - bus_stop_id
       - date
       - time
-      unique: true
-    - name: bus_congestion_pkey
-      columns:
-      - id
       unique: true
     - name: bus_congest_bus_sto_c2984d_idx
       columns:
@@ -675,12 +675,12 @@ tables:
     primary_key:
     - id
     foreign_keys:
-    - column: adong_code
-      to_table: adong
-      to_column: adong_code
     - column: ldong_code
       to_table: ldong
       to_column: ldong_code
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
     indexes:
     - name: bus_stop_pkey
       columns:
@@ -723,7 +723,8 @@ tables:
 
       RouteCongestionLevel API의 tzon 24~27은 다음 날짜 00:00~03:00으로 저장됨.
 
-      특정 서비스일 D의 버스 혼잡도 전체 흐름은 date=D AND time>=04:00 또는 date=D+1 AND time<04:00 조건으로 조회.
+      특정 서비스일 D의 버스 혼잡도 전체 흐름은 date=D AND time>=04:00 또는 date=D+1 AND time<04:00 조건으로
+      조회.
 
       location NULL 719건 존재 (가상/차고지). map 반환 시 WHERE location IS NOT NULL 필수
 
@@ -1260,7 +1261,15 @@ tables:
       unique: false
     geometry_columns: []
     join_hint: dashboard_adong_cache.adong_code = adong.adong_code
-    note: '행정동 기준 거래 시세, 교통 접근성, 생활 인프라, 안전 요약을 프론트 응답용 JSON으로 저장
+    note: '행정동 기준 거래 시세, 교통 접근성, 생활 인프라, 안전 요약을 프론트 응답용 JSON으로 저장.
+
+      동네를 간단히 파악하거나 대시보드 수준의 설명만 필요할 때 우선 사용.
+
+      정확한 근거, 세부 필터, 원자료 검증이 필요하면 rent_deal, amenity, bus_stop, bus_congestion,
+
+      subway_station, medical_facility, library, park, gu_metric 등 원본/파생 테이블을 직접 조회.
+
+      JSON 컬럼은 화면 표시용 구조라 필드가 바뀔 수 있으므로 세부 계산 근거로 과신하지 말 것.
 
       컬럼: region_payload, intro, rent_summary, transit_summary, infra_summary, safety_summary,
       dashboard_payload
@@ -1355,7 +1364,15 @@ tables:
       unique: false
     geometry_columns: []
     join_hint: dashboard_ldong_cache.ldong_code = ldong.ldong_code
-    note: '법정동 기준 거래 시세, 교통 접근성, 생활 인프라, 안전 요약을 프론트 응답용 JSON으로 저장
+    note: '법정동 기준 거래 시세, 교통 접근성, 생활 인프라, 안전 요약을 프론트 응답용 JSON으로 저장.
+
+      동네를 간단히 파악하거나 대시보드 수준의 설명만 필요할 때 우선 사용.
+
+      정확한 근거, 세부 필터, 원자료 검증이 필요하면 rent_deal, amenity, bus_stop, bus_congestion,
+
+      subway_station, medical_facility, library, park, gu_metric 등 원본/파생 테이블을 직접 조회.
+
+      JSON 컬럼은 화면 표시용 구조라 필드가 바뀔 수 있으므로 세부 계산 근거로 과신하지 말 것.
 
       컬럼: region_payload, intro, rent_summary, transit_summary, infra_summary, safety_summary,
       dashboard_payload
@@ -1486,15 +1503,15 @@ tables:
       to_table: metric
       to_column: metric_code
     indexes:
+    - name: gu_metric_pkey
+      columns:
+      - id
+      unique: true
     - name: gu_metric_gu_code_date_metric_code_6d9f6cbd_uniq
       columns:
       - gu_code
       - date
       - metric_code
-      unique: true
-    - name: gu_metric_pkey
-      columns:
-      - id
       unique: true
     - name: gu_metric_date_669330_idx
       columns:
@@ -1762,14 +1779,14 @@ tables:
       to_table: ldong
       to_column: ldong_code
     indexes:
+    - name: ldong_population_pkey
+      columns:
+      - id
+      unique: true
     - name: ldong_population_ldong_code_date_5cac2134_uniq
       columns:
       - ldong_code
       - date
-      unique: true
-    - name: ldong_population_pkey
-      columns:
-      - id
       unique: true
     - name: ldong_popul_date_4249ae_idx
       columns:
@@ -1938,14 +1955,14 @@ tables:
       to_table: library
       to_column: id
     indexes:
+    - name: library_hours_pkey
+      columns:
+      - id
+      unique: true
     - name: library_hours_library_id_day_type_a17e23f3_uniq
       columns:
       - library_id
       - day_type
-      unique: true
-    - name: library_hours_pkey
-      columns:
-      - id
       unique: true
     - name: ix_library_hours_day_type
       columns:
@@ -2181,14 +2198,14 @@ tables:
       to_table: medical_facility
       to_column: hpid
     indexes:
+    - name: medical_facility_hours_pkey
+      columns:
+      - id
+      unique: true
     - name: medical_facility_hours_hpid_day_type_bf9a9019_uniq
       columns:
       - hpid
       - day_type
-      unique: true
-    - name: medical_facility_hours_pkey
-      columns:
-      - id
       unique: true
     - name: medical_facility_hours_hpid_c8f05146
       columns:
@@ -2248,14 +2265,14 @@ tables:
       to_table: medical_hira_mapping
       to_column: hira_ykiho
     indexes:
+    - name: medical_facility_specialty_pkey
+      columns:
+      - id
+      unique: true
     - name: medical_facility_special_hira_ykiho_specialty_nam_44bb01b2_uniq
       columns:
       - hira_ykiho
       - specialty_name
-      unique: true
-    - name: medical_facility_specialty_pkey
-      columns:
-      - id
       unique: true
     - name: medical_facility_specialty_hira_ykiho_9f51149e
       columns:
@@ -2301,13 +2318,13 @@ tables:
       to_table: medical_facility
       to_column: hpid
     indexes:
-    - name: medical_hira_mapping_hira_ykiho_key
-      columns:
-      - hira_ykiho
-      unique: true
     - name: medical_hira_mapping_pkey
       columns:
       - hpid
+      unique: true
+    - name: medical_hira_mapping_hira_ykiho_key
+      columns:
+      - hira_ykiho
       unique: true
     - name: medical_hira_mapping_hira_ykiho_2e60b1a3_like
       columns:
@@ -2375,14 +2392,14 @@ tables:
       to_table: medical_facility
       to_column: hpid
     indexes:
+    - name: medical_holiday_care_pkey
+      columns:
+      - id
+      unique: true
     - name: medical_holiday_care_hpid_care_date_cebb4e60_uniq
       columns:
       - hpid
       - care_date
-      unique: true
-    - name: medical_holiday_care_pkey
-      columns:
-      - id
       unique: true
     - name: medical_holiday_care_hpid_12b28049
       columns:
@@ -2732,14 +2749,14 @@ tables:
       to_table: park
       to_column: id
     indexes:
+    - name: park_adong_pkey
+      columns:
+      - id
+      unique: true
     - name: park_adong_park_id_adong_code_3eb56c60_uniq
       columns:
       - park_id
       - adong_code
-      unique: true
-    - name: park_adong_pkey
-      columns:
-      - id
       unique: true
     - name: park_adong_adong_code_88094120
       columns:
@@ -2794,14 +2811,14 @@ tables:
       to_table: park
       to_column: id
     indexes:
+    - name: park_ldong_pkey
+      columns:
+      - id
+      unique: true
     - name: park_ldong_park_id_ldong_code_f27459fc_uniq
       columns:
       - park_id
       - ldong_code
-      unique: true
-    - name: park_ldong_pkey
-      columns:
-      - id
       unique: true
     - name: park_ldong_ldong_code_5a3f50ca
       columns:
@@ -3069,208 +3086,6 @@ tables:
       location(POINT): 개별 매물 좌표. map 타입 반환 시 ST_Y/ST_X 사용
 
       '
-  rent_deal_cache:
-    description: 프론트 지도/목록용 전월세 캐시 테이블
-    category: 부동산
-    app_label: rent_deal_service
-    model: RentDealCache
-    columns:
-    - name: id
-      type: character varying
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: type_code
-      type: character
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: deposit
-      type: integer
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: monthly_rent
-      type: smallint
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: converted_rent
-      type: smallint
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: area_m2
-      type: real
-      nullable: true
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: lng
-      type: double precision
-      nullable: true
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: lat
-      type: double precision
-      nullable: true
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: contract_ymd
-      type: integer
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: ldong_code
-      type: character varying
-      nullable: true
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: adong_code
-      type: character varying
-      nullable: true
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: gu_code
-      type: character varying
-      nullable: true
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    primary_key: []
-    foreign_keys: []
-    indexes:
-    - name: rent_deal_cache_gu_loc_idx
-      columns:
-      - gu_code
-      unique: false
-    - name: rent_deal_cache_match_filter_idx
-      columns:
-      - type_code
-      - contract_ymd
-      - adong_code
-      - area_m2
-      - converted_rent
-      - deposit
-      - monthly_rent
-      unique: false
-    geometry_columns: []
-    join_hint: ''
-    note: '빠른 개별 거래 조회용. 컬럼은 type_code, deposit, monthly_rent, converted_rent, area_m2,
-      lng, lat, contract_ymd
-
-      통계/추천/평균 산정은 원천 rent_deal 우선. 지도 핀이나 최근 거래 목록이 필요할 때만 제한적으로 사용
-
-      '
-  rent_deal_grid_monthly_cache:
-    description: ''
-    category: ''
-    app_label: rent_deal_service
-    model: RentDealGridMonthlyCache
-    columns:
-    - name: cache_key
-      type: character varying
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: grid_id
-      type: character varying
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: grid_size_m
-      type: smallint
-      nullable: false
-      default: '300'
-      primary_key: false
-      foreign_key: ''
-    - name: gu_code
-      type: character varying
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: gu_name
-      type: character varying
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: year_month
-      type: integer
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: type_code
-      type: character
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: avg_converted_rent
-      type: smallint
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: deal_count
-      type: integer
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: center_lng
-      type: double precision
-      nullable: true
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: center_lat
-      type: double precision
-      nullable: true
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    primary_key: []
-    foreign_keys: []
-    indexes:
-    - name: rent_grid_center_idx
-      columns:
-      - center_lng
-      - center_lat
-      unique: false
-    - name: rent_grid_gu_idx
-      columns:
-      - gu_code
-      unique: false
-    - name: rent_grid_month_type_idx
-      columns:
-      - year_month
-      - type_code
-      unique: false
-    - name: rent_grid_type_month_center_idx
-      columns:
-      - type_code
-      - year_month
-      - center_lng
-      - center_lat
-      unique: false
-    geometry_columns: []
-    join_hint: ''
-    note: ''
   rent_deal_ldong_adong_map:
     description: 법정동↔행정동 코드 매핑 테이블
     category: 행정구역
@@ -3292,12 +3107,12 @@ tables:
     primary_key:
     - ldong_code
     foreign_keys:
-    - column: adong_code
-      to_table: adong
-      to_column: adong_code
     - column: ldong_code
       to_table: ldong
       to_column: ldong_code
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
     indexes:
     - name: rent_deal_ldong_adong_map_pkey
       columns:
@@ -3326,99 +3141,6 @@ tables:
       실제 DB에서 일부 행은 adong_code가 NULL. 월세 기본 집계 기준은 rent_deal.ldong_code → ldong 유지
 
       '
-  rent_deal_ldong_monthly_cache:
-    description: ''
-    category: ''
-    app_label: rent_deal_service
-    model: RentDealLdongMonthlyCache
-    columns:
-    - name: cache_key
-      type: character varying
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: ldong_code
-      type: character varying
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: ldong_name
-      type: character varying
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: gu_code
-      type: character varying
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: gu_name
-      type: character varying
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: year_month
-      type: integer
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: type_code
-      type: character
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: avg_converted_rent
-      type: smallint
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: deal_count
-      type: integer
-      nullable: false
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: center_lng
-      type: double precision
-      nullable: true
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    - name: center_lat
-      type: double precision
-      nullable: true
-      default: ''
-      primary_key: false
-      foreign_key: ''
-    primary_key: []
-    foreign_keys: []
-    indexes:
-    - name: rent_ldong_code_idx
-      columns:
-      - ldong_code
-      unique: false
-    - name: rent_ldong_month_type_idx
-      columns:
-      - year_month
-      - type_code
-      unique: false
-    - name: rent_ldong_type_month_code_idx
-      columns:
-      - type_code
-      - year_month
-      - ldong_code
-      unique: false
-    geometry_columns: []
-    join_hint: ''
-    note: ''
   seoul:
     description: 서울시 단일 행정구역
     category: 행정구역
@@ -3523,12 +3245,12 @@ tables:
     primary_key:
     - id
     foreign_keys:
-    - column: metric_code
-      to_table: metric
-      to_column: metric_code
     - column: seoul_code
       to_table: seoul
       to_column: code
+    - column: metric_code
+      to_table: metric
+      to_column: metric_code
     indexes:
     - name: seoul_metric_pkey
       columns:
@@ -3635,15 +3357,15 @@ tables:
     primary_key:
     - id
     foreign_keys:
-    - column: adong_code
-      to_table: adong
-      to_column: adong_code
-    - column: category_code
-      to_table: business_category
-      to_column: subcategory_code
     - column: ksci_code
       to_table: ksci_category
       to_column: ksci_code
+    - column: category_code
+      to_table: business_category
+      to_column: subcategory_code
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
     - column: ldong_code
       to_table: ldong
       to_column: ldong_code
@@ -3763,10 +3485,6 @@ tables:
       to_table: subway_station
       to_column: id
     indexes:
-    - name: subway_congestion_pkey
-      columns:
-      - id
-      unique: true
     - name: subway_congestion_station_id_day_type_dire_3f7ba7c6_uniq
       columns:
       - station_id
@@ -3774,6 +3492,10 @@ tables:
       - direction
       - express_yn
       - time
+      unique: true
+    - name: subway_congestion_pkey
+      columns:
+      - id
       unique: true
     - name: subway_cong_day_typ_f2d5b8_idx
       columns:
@@ -3992,12 +3714,12 @@ tables:
     primary_key:
     - id
     foreign_keys:
-    - column: adong_code
-      to_table: adong
-      to_column: adong_code
     - column: univ_id
       to_table: univ
       to_column: id
+    - column: adong_code
+      to_table: adong
+      to_column: adong_code
     indexes:
     - name: univ_adong_pkey
       columns:
@@ -4054,12 +3776,12 @@ tables:
     primary_key:
     - id
     foreign_keys:
-    - column: ldong_code
-      to_table: ldong
-      to_column: ldong_code
     - column: univ_id
       to_table: univ
       to_column: id
+    - column: ldong_code
+      to_table: ldong
+      to_column: ldong_code
     indexes:
     - name: univ_ldong_pkey
       columns:
