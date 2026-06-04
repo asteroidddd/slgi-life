@@ -5,8 +5,9 @@ import * as L from 'leaflet';
 import type { LatLngBoundsExpression, Map as LeafletMap } from 'leaflet';
 import type { Feature, MultiPolygon, Polygon } from 'geojson';
 
+import { useAuth } from '@/features/common/contexts/AuthContext';
 import { useTheme } from '@/features/common/contexts/ThemeContext';
-import { api } from '@/features/common/lib/api';
+import { api, getNeighborhoodCommuteTime, getUniversityOptions } from '@/features/common/lib/api';
 import { VWORLD_MAX_ZOOM, getVWorldMaxNativeZoom, getVWorldTileUrl } from '@/features/map/lib/vworld';
 import { useAdongGeoJson, useLdongGeoJson } from '@/features/map/hooks/useAdongGeoJson';
 
@@ -924,6 +925,75 @@ function normalizeSafetySeoulText(text: string) {
     .replace(/서울 평균 안전 지표/g, '서울 기준 안전 지표');
 }
 
+function normalizeSchoolName(value: string) {
+  return value.trim().replace(/\s+/g, ' ');
+}
+
+function formatCommuteDuration(minutes: number | null | undefined) {
+  if (typeof minutes !== 'number' || !Number.isFinite(minutes)) return '정보 없음';
+  const safeMinutes = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(safeMinutes / 60);
+  const remain = safeMinutes % 60;
+  if (hours <= 0) return `${remain}분`;
+  if (remain === 0) return `${hours}시간`;
+  return `${hours}시간 ${remain}분`;
+}
+
+function UniversityCommutePanel({
+  schools,
+  selectedUniversityId,
+  universityLoading,
+  universityName,
+  travelMinutes,
+  commuteLoading,
+  commuteError,
+  onUniversityChange,
+}: {
+  schools: Array<{ id: string; name: string; school_type: string }>;
+  selectedUniversityId: string;
+  universityLoading: boolean;
+  universityName: string;
+  travelMinutes: number | null;
+  commuteLoading: boolean;
+  commuteError: boolean;
+  onUniversityChange: (universityId: string) => void;
+}) {
+  let statusText = '대학을 선택하면 조건 추천에 쓰는 통학 시간을 확인할 수 있습니다.';
+  if (selectedUniversityId && commuteLoading) statusText = '통학 시간 확인 중입니다.';
+  else if (selectedUniversityId && commuteError) statusText = '통학 시간 정보를 불러오지 못했습니다.';
+  else if (selectedUniversityId && travelMinutes == null) statusText = '해당 대학 기준 통학 시간 정보가 없습니다.';
+  else if (selectedUniversityId) statusText = `${universityName}까지 ${formatCommuteDuration(travelMinutes)} 기준입니다.`;
+
+  return (
+    <div className="mt-3 grid grid-cols-[minmax(0,1fr)_260px] items-center gap-4 rounded-card border border-border bg-surface-alt px-4 py-3">
+      <div className="min-w-0">
+        <p className="m-0 text-[12px] font-bold text-primary">대학 통학 시간</p>
+        <div className="mt-1 flex items-end gap-3">
+          <strong className="text-[24px] leading-none text-text">
+            {selectedUniversityId && !commuteLoading && !commuteError ? formatCommuteDuration(travelMinutes) : '-'}
+          </strong>
+          <span className="min-w-0 truncate text-[13px] font-semibold text-text-muted">{statusText}</span>
+        </div>
+      </div>
+      <label className="grid gap-1.5">
+        <span className="text-[12px] font-bold text-text-muted">대학 기준</span>
+        <select
+          value={selectedUniversityId}
+          onChange={(event) => onUniversityChange(event.target.value)}
+          className="h-10 rounded-[8px] border border-border bg-surface px-3 text-[14px] font-bold text-text outline-none transition focus:border-primary"
+        >
+          <option value="">{universityLoading ? '대학 불러오는 중' : '대학 선택'}</option>
+          {schools.map((school) => (
+            <option key={school.id} value={school.id}>
+              {school.name}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
 function normalizeInfraText(text?: string) {
   if (!text) return '';
   return text
@@ -1295,8 +1365,26 @@ function SafetyWmsMap({ regionLevel, slug, meta }: { regionLevel: RegionLevel; s
 }
 
 export default function DashboardSections({ region, regionLevel, slug }: DashboardSectionsProps) {
+  const { user } = useAuth();
   const basePath = slug ? `${regionLevel}:${slug}` : null;
   const dashboardCache = useDashboardData<DashboardCacheResponse>('dashboard-cache', slug ? endpoint('cache', regionLevel, slug) : null);
+  const [selectedUniversityId, setSelectedUniversityId] = useState('');
+  const [userSchoolDefaultApplied, setUserSchoolDefaultApplied] = useState(false);
+  const universitiesQuery = useQuery({
+    queryKey: ['users', 'universities'],
+    queryFn: getUniversityOptions,
+    staleTime: 300_000,
+  });
+  const selectedUniversity = useMemo(
+    () => universitiesQuery.data?.schools.find((school) => school.id === selectedUniversityId) ?? null,
+    [selectedUniversityId, universitiesQuery.data?.schools],
+  );
+  const commuteQuery = useQuery({
+    queryKey: ['dashboard', 'commute-time', regionLevel, slug, selectedUniversityId],
+    queryFn: () => getNeighborhoodCommuteTime(regionLevel, slug!, selectedUniversityId),
+    enabled: !!slug && !!selectedUniversityId,
+    staleTime: 300_000,
+  });
   const rentSummary = { data: dashboardCache.data?.rent_summary };
   const transitOverview = { data: dashboardCache.data?.transit_summary?.overview };
   const congestion = { data: dashboardCache.data?.transit_summary?.congestion };
@@ -1338,6 +1426,25 @@ export default function DashboardSections({ region, regionLevel, slug }: Dashboa
   const infraHeadline = normalizeInfraText(infraOverview.data?.headline);
   const infraSummary = normalizeInfraText(infraOverview.data?.summary);
   const infraQuicktakes = normalizeInfraQuicktakes(infraOverview.data?.quicktakes);
+
+  useEffect(() => {
+    setUserSchoolDefaultApplied(false);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (userSchoolDefaultApplied || selectedUniversityId || !user?.school) return;
+    const schools = universitiesQuery.data?.schools ?? [];
+    if (schools.length === 0) return;
+    const userSchoolName = normalizeSchoolName(user.school);
+    const matchedSchool = schools.find((school) => normalizeSchoolName(school.name) === userSchoolName);
+    if (matchedSchool) setSelectedUniversityId(matchedSchool.id);
+    setUserSchoolDefaultApplied(true);
+  }, [
+    selectedUniversityId,
+    universitiesQuery.data?.schools,
+    user?.school,
+    userSchoolDefaultApplied,
+  ]);
 
   return (
     <div className="mt-5 grid gap-4" data-region={basePath ?? ''}>
@@ -1410,6 +1517,16 @@ export default function DashboardSections({ region, regionLevel, slug }: Dashboa
             </Card>
           </div>
         </div>
+        <UniversityCommutePanel
+          schools={universitiesQuery.data?.schools ?? []}
+          selectedUniversityId={selectedUniversityId}
+          universityLoading={universitiesQuery.isLoading}
+          universityName={selectedUniversity?.name ?? ''}
+          travelMinutes={commuteQuery.data?.travel_minutes ?? null}
+          commuteLoading={commuteQuery.isFetching}
+          commuteError={commuteQuery.isError}
+          onUniversityChange={setSelectedUniversityId}
+        />
       </section>
 
       <section className="rounded-card border border-border bg-surface p-5 shadow-sm">

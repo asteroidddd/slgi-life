@@ -16,6 +16,8 @@ import type {
   MedicalFacilitiesResponse,
   MedicalSpecialtyGroupsResponse,
   MapSearchResponse,
+  NeighborhoodCommuteTimeResponse,
+  NeighborhoodCompareResponse,
   FavoriteItem,
   MePatchPayload,
   MeResponse,
@@ -200,6 +202,37 @@ export async function getUserCandidateRegions(): Promise<UserCandidateRegionsRes
 
 export async function saveUserCandidateRegions(items: SavedCandidateRegion[]): Promise<UserCandidateRegionsResponse> {
   const { data } = await api.put<UserCandidateRegionsResponse>('/users/me/candidate-regions', { items });
+  return data;
+}
+
+export async function getNeighborhoodComparison(
+  items: Array<Pick<SavedCandidateRegion, 'regionLevel' | 'slug'>>,
+  universityId?: string,
+): Promise<NeighborhoodCompareResponse> {
+  const regions = items
+    .slice(0, 10)
+    .map((item) => `${item.regionLevel}:${item.slug}`)
+    .join(',');
+  const { data } = await api.get<NeighborhoodCompareResponse>('/compare/neighborhoods', {
+    params: { regions, university_id: universityId || undefined },
+    timeout: 20_000,
+  });
+  return data;
+}
+
+export async function getNeighborhoodCommuteTime(
+  regionType: SavedCandidateRegion['regionLevel'],
+  slug: string,
+  universityId: string,
+): Promise<NeighborhoodCommuteTimeResponse> {
+  const { data } = await api.get<NeighborhoodCommuteTimeResponse>('/compare/commute-time', {
+    params: {
+      region_type: regionType,
+      slug,
+      university_id: universityId,
+    },
+    timeout: 20_000,
+  });
   return data;
 }
 

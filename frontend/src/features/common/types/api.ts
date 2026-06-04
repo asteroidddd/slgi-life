@@ -429,6 +429,98 @@ export interface UserCandidateRegionsResponse {
   items: SavedCandidateRegion[];
 }
 
+export interface NeighborhoodCompareMetric {
+  key: string;
+  label: string;
+  value: string | number | null;
+  unit: string;
+  tone: 'good' | 'bad' | 'warn' | 'info' | string;
+  badge: string;
+  description: string;
+}
+
+export interface NeighborhoodCompareQuickTake {
+  label: string;
+  tone: 'good' | 'bad' | 'warn' | 'info' | string;
+}
+
+export interface NeighborhoodCompareSection {
+  headline: string;
+  summary: string;
+  quicktakes: NeighborhoodCompareQuickTake[];
+  metrics: NeighborhoodCompareMetric[];
+  station_items?: Array<{
+    name?: string;
+    distance_m?: number | null;
+    lines?: string[];
+  }>;
+  station_names?: string[];
+  category_items?: Array<Record<string, unknown>>;
+  grade_items?: Array<Record<string, unknown>>;
+}
+
+export interface NeighborhoodCompareItem {
+  key: string;
+  regionLevel: SavedCandidateRegionLevel;
+  code: string;
+  slug: string;
+  gu: string;
+  name: string;
+  lat: number | null;
+  lng: number | null;
+  area_km2: number | null;
+  intro: string;
+  computed_at: string;
+  commute: {
+    university: {
+      id: string;
+      name: string;
+    } | null;
+    travel_minutes: number | null;
+  };
+  scores: {
+    total: number | null;
+    rent: number | null;
+    transit: number | null;
+    amenity: number | null;
+    safety: number | null;
+    rank_total: number | null;
+    rank_rent: number | null;
+    rank_transit: number | null;
+    rank_amenity: number | null;
+    rank_safety: number | null;
+  };
+  sections: {
+    rent: NeighborhoodCompareSection;
+    transit: NeighborhoodCompareSection;
+    infra: NeighborhoodCompareSection;
+    safety: NeighborhoodCompareSection;
+  };
+}
+
+export interface NeighborhoodCompareResponse {
+  max_items: number;
+  items: NeighborhoodCompareItem[];
+  missing: Array<{
+    regionLevel: SavedCandidateRegionLevel;
+    slug: string;
+    reason: string;
+  }>;
+}
+
+export interface NeighborhoodCommuteTimeResponse {
+  regionLevel: SavedCandidateRegionLevel;
+  slug: string;
+  code: string;
+  gu: string;
+  name: string;
+  university: {
+    id: string;
+    name: string;
+  };
+  travel_minutes: number | null;
+}
+
 export type SavedRecommendationPriority = 'budget' | 'transport';
 
 export interface SavedRecommendationConditions {

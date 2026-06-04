@@ -36,6 +36,7 @@ urlpatterns = [
     # API 라우트
     path("api/", include("apps.service.map.urls")),
     path("api/", include("apps.service.rent_deal.urls")),
+    path("api/", include("apps.service.compare.urls")),
     path("api/dashboard/", include("apps.dashboard.cache.urls")),
     path("api/", include("apps.service.amenities.urls")),
     path("api/", include("apps.service.heatmap.urls")),

@@ -81,6 +81,7 @@ LOCAL_APPS = [
     "apps.accounts.favorites",
     "apps.service.map",
     "apps.service.rent_deal",
+    "apps.service.compare.apps.CompareConfig",
     "apps.dashboard.cache",
     "apps.caches.rent_deal.apps.RentDealGeocodeCacheConfig",
     "apps.caches.region_stats.apps.RegionStatsCacheConfig",

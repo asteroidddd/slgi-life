@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import {
@@ -7,6 +7,8 @@ import {
   candidateMapPath,
   useCandidateRegions,
 } from '@/features/candidates/lib/candidates';
+
+const NeighborhoodCompareDialog = lazy(() => import('@/features/neighborhood-compare/components/NeighborhoodCompareDialog'));
 
 const CANDIDATE_DRAWER_COLLAPSED_KEY = 'candidate.drawer.collapsed';
 
@@ -39,6 +41,7 @@ export default function CandidateDrawer() {
   const navigate = useNavigate();
   const { candidates, removeCandidate, clearCandidates, maxCandidates } = useCandidateRegions();
   const [collapsed, setCollapsed] = useState(readCollapsed);
+  const [compareOpen, setCompareOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -55,6 +58,7 @@ export default function CandidateDrawer() {
   };
 
   return (
+    <>
     <aside
       className={`fixed right-6 top-[126px] z-[1450] flex max-h-[calc(100vh-150px)] flex-col overflow-hidden rounded-card border border-border bg-surface/95 text-text shadow-floating backdrop-blur ${collapsed ? 'w-[190px]' : 'w-[292px]'}`}
       aria-label="담은 동네"
@@ -148,9 +152,26 @@ export default function CandidateDrawer() {
           </div>
         )}
       </div>
+      <footer className="border-t border-border p-3">
+        <button
+          type="button"
+          onClick={() => setCompareOpen(true)}
+          disabled={candidates.length < 2}
+          className="inline-flex h-9 w-full items-center justify-center rounded-[8px] border border-primary bg-primary px-3 text-[13px] font-bold text-surface transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-alt disabled:text-text-subtle"
+          title={candidates.length < 2 ? '담은 동네가 2개 이상일 때 비교할 수 있습니다.' : '담은 동네 비교'}
+        >
+          동네들 비교
+        </button>
+      </footer>
         </>
       )}
     </aside>
+    {compareOpen ? (
+      <Suspense fallback={null}>
+        <NeighborhoodCompareDialog candidates={candidates} onClose={() => setCompareOpen(false)} />
+      </Suspense>
+    ) : null}
+    </>
   );
 }
 

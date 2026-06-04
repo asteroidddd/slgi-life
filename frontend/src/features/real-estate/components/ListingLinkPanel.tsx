@@ -61,7 +61,7 @@ const HELPER_ACTIONS: Array<{
   description: string;
 }> = [
   { key: 'checklist', label: '부동산 계약 체크리스트', description: '계약 전 확인 항목' },
-  { key: 'analysis', label: '실거래 기반 매물 분석', description: '보증금·월세 비교' },
+  { key: 'analysis', label: '실거래 기반 매물 분석', description: '보증금·월세 진단' },
   { key: 'links', label: '부동산 외부 링크 모음', description: '시세·등기·보증 사이트' },
 ];
 
