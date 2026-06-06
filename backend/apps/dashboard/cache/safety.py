@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import socket
 from dataclasses import dataclass
@@ -7,6 +8,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from django.core.cache import cache
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -41,6 +43,9 @@ DEFAULT_SRS = "EPSG:4326"
 DEFAULT_FORMAT = "image/png"
 DEFAULT_TRANSPARENT = "TRUE"
 MAX_IMAGE_SIZE = 2048
+WMS_IMAGE_CACHE_TTL_SECONDS = 60 * 60 * 6
+WMS_ERROR_IMAGE_CACHE_TTL_SECONDS = 60 * 10
+WMS_PROXY_TIMEOUT_SECONDS = 8
 
 
 def _service_key() -> str:
@@ -172,18 +177,36 @@ def _proxy_wms(layer: SafetyWmsLayer, request: DRFRequest, bbox: tuple[float, fl
         "layers": layer.layers,
         "styles": layer.styles,
     }
+    cache_params = {key: value for key, value in params.items() if key != "serviceKey"}
+    cache_key = "safemap:wms:v1:" + hashlib.sha256(urlencode(cache_params, safe="%").encode("utf-8")).hexdigest()
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return HttpResponse(cached["body"], content_type=cached["content_type"], status=cached["status"])
+
     req = Request(
         f"{layer.url}?{urlencode(params, safe='%')}",
         headers={"User-Agent": "capston-dashboard-safety-wms/0.1"},
     )
     try:
-        with urlopen(req, timeout=20) as res:
+        with urlopen(req, timeout=WMS_PROXY_TIMEOUT_SECONDS) as res:
             content_type = res.headers.get("Content-Type") or image_format
-            return HttpResponse(res.read(), content_type=content_type, status=res.status)
+            body = res.read()
+            if res.status == 200 and "image/" in content_type:
+                cache.set(
+                    cache_key,
+                    {"body": body, "content_type": content_type, "status": res.status},
+                    timeout=WMS_IMAGE_CACHE_TTL_SECONDS,
+                )
+            return HttpResponse(body, content_type=content_type, status=res.status)
     except HTTPError as exc:
         content_type = exc.headers.get("Content-Type", "")
         body = exc.read()
         if "image/" in content_type:
+            cache.set(
+                cache_key,
+                {"body": body, "content_type": content_type, "status": exc.code},
+                timeout=WMS_ERROR_IMAGE_CACHE_TTL_SECONDS,
+            )
             return HttpResponse(body, content_type=content_type, status=exc.code)
         return _empty_svg(width=width, height=height)
     except (URLError, TimeoutError, socket.timeout):

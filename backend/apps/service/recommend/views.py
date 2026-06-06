@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from datetime import timedelta
 from typing import Any
 
-from django.db import connection
 from django.db.models import Count
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -14,9 +12,10 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.caches.region_stats.models import RegionAmenityCategoryCache
 from apps.public_data.regions.models import Adong, Ldong
 from apps.public_data.rent_deal.models import RentConversionRate
-from apps.service.amenities.models import AmenityAdong, AmenityLdong
+from apps.service.recommend.cache import load_rent_metrics
 from apps.service.recommend.models import AdongUnivTime, LdongUnivTime
 
 
@@ -48,19 +47,21 @@ class RecommendationRegionsView(APIView):
 
         conversion = _latest_conversion_rate()
         monthly_rate = conversion["monthly_rate"]
-        recent_from = timezone.localdate() - timedelta(days=365)
+        as_of_date = timezone.localdate()
 
         adong_items = _recommend_for_level(
             region_level="adong",
             conditions=conditions,
             monthly_rate=monthly_rate,
-            recent_from=recent_from,
+            conversion_period=conversion["period"],
+            as_of_date=as_of_date,
         )
         ldong_items = _recommend_for_level(
             region_level="ldong",
             conditions=conditions,
             monthly_rate=monthly_rate,
-            recent_from=recent_from,
+            conversion_period=conversion["period"],
+            as_of_date=as_of_date,
         )
 
         return Response(
@@ -135,9 +136,10 @@ def _recommend_for_level(
     region_level: str,
     conditions: dict[str, Any],
     monthly_rate: float,
-    recent_from,
+    conversion_period: str | None,
+    as_of_date,
 ) -> list[dict[str, Any]]:
-    rent_metrics = _rent_metrics(region_level, monthly_rate, recent_from)
+    rent_metrics = _rent_metrics(region_level, monthly_rate, conversion_period, as_of_date)
     budget_codes = _budget_matching_codes(rent_metrics, conditions, monthly_rate)
     facility_codes = _facility_matching_codes(region_level, conditions["facilities"])
     travel_times = _travel_times(region_level, conditions["university_id"])
@@ -157,30 +159,18 @@ def _recommend_for_level(
     return limited
 
 
-def _rent_metrics(region_level: str, monthly_rate: float, recent_from) -> dict[str, dict[str, float | None]]:
-    code_column = "adong_code" if region_level == "adong" else "ldong_code"
-    sql = f"""
-        SELECT
-            {code_column} AS region_code,
-            AVG((monthly_rent + deposit * %s) / NULLIF(area_m2, 0))
-                FILTER (WHERE area_m2 IS NOT NULL AND area_m2 > 0) AS avg_per_m2,
-            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY (monthly_rent + deposit * %s)) AS median_converted
-        FROM rent_deal
-        WHERE {code_column} IS NOT NULL
-          AND contract_date >= %s
-        GROUP BY {code_column}
-    """
-    with connection.cursor() as cursor:
-        cursor.execute(sql, [monthly_rate, monthly_rate, recent_from])
-        rows = cursor.fetchall()
-    return {
-        str(code): {
-            "avg_per_m2": _optional_float(avg_per_m2),
-            "median_converted": _optional_float(median_converted),
-        }
-        for code, avg_per_m2, median_converted in rows
-    }
-
+def _rent_metrics(
+    region_level: str,
+    monthly_rate: float,
+    conversion_period: str | None,
+    as_of_date,
+) -> dict[str, dict[str, float | None]]:
+    return load_rent_metrics(
+        region_level=region_level,
+        monthly_rate=monthly_rate,
+        conversion_rate_period=conversion_period,
+        as_of_date=as_of_date,
+    )
 
 def _budget_matching_codes(
     rent_metrics: dict[str, dict[str, float | None]],
@@ -205,20 +195,18 @@ def _budget_matching_codes(
 
 
 def _facility_matching_codes(region_level: str, facilities: list[str]) -> set[str] | None:
-    if not facilities:
+    unique_facilities = sorted(set(facilities))
+    if not unique_facilities:
         return None
-    link_model = AmenityAdong if region_level == "adong" else AmenityLdong
-    region_field = "adong_id" if region_level == "adong" else "ldong_id"
     rows = (
-        link_model.objects
-        .filter(amenity__category__in=facilities)
-        .values(region_field)
-        .annotate(matched_categories=Count("amenity__category", distinct=True))
-        .filter(matched_categories=len(set(facilities)))
-        .values_list(region_field, flat=True)
+        RegionAmenityCategoryCache.objects
+        .filter(region_type=region_level, category__in=unique_facilities, amenity_count__gt=0)
+        .values("region_code")
+        .annotate(matched_categories=Count("category", distinct=True))
+        .filter(matched_categories=len(unique_facilities))
+        .values_list("region_code", flat=True)
     )
     return {str(code) for code in rows}
-
 
 def _travel_times(region_level: str, university_id: str) -> dict[str, int]:
     if not university_id:

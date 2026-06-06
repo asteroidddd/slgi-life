@@ -657,21 +657,34 @@ html[data-theme='dark'] {
  * LEAFLET 오버라이드 — Leaflet이 자체 생성하는 DOM 엘리먼트 스타일
  * ========================================================================= */
 .leaflet-tooltip {
-  background: var(--tooltip-bg);
-  color: var(--tooltip-text);
-  border: 1px solid var(--tooltip-border);
-  border-radius: var(--tooltip-radius);
-  box-shadow: var(--tooltip-shadow);
-  padding: 8px 12px;
+  background: var(--tooltip-bg) !important;
+  color: var(--tooltip-text) !important;
+  border: 1px solid var(--tooltip-border) !important;
+  border-radius: var(--tooltip-radius) !important;
+  box-shadow: var(--tooltip-shadow) !important;
+  padding: 8px 12px !important;
   backdrop-filter: blur(var(--tooltip-blur));
 }
 
-.leaflet-tooltip-top::before,
-.leaflet-tooltip-bottom::before,
-.leaflet-tooltip-left::before,
+.leaflet-tooltip-top::before {
+  border-top-color: var(--tooltip-bg) !important;
+}
+
+.leaflet-tooltip-bottom::before {
+  border-bottom-color: var(--tooltip-bg) !important;
+}
+
+.leaflet-tooltip-left::before {
+  border-left-color: var(--tooltip-bg) !important;
+}
+
 .leaflet-tooltip-right::before {
-  border-top-color: var(--tooltip-border);
-  border-bottom-color: var(--tooltip-border);
+  border-right-color: var(--tooltip-bg) !important;
+}
+
+html[data-theme='dark'] .leaflet-tooltip {
+  background: var(--tooltip-bg) !important;
+  color: var(--tooltip-text) !important;
 }
 
 .leaflet-bar {
@@ -775,10 +788,16 @@ html[data-theme='dark'] {
 
 .map-redesign .leaflet-popup-content-wrapper,
 .map-redesign .leaflet-popup-tip {
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  box-shadow: var(--shadow-floating);
+  border: 1px solid var(--color-border) !important;
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+  box-shadow: var(--shadow-floating) !important;
+}
+
+.map-redesign .leaflet-tooltip {
+  background: var(--tooltip-bg) !important;
+  color: var(--tooltip-text) !important;
+  border-color: var(--tooltip-border) !important;
 }
 
 .map-redesign .leaflet-popup-content {
@@ -926,6 +945,39 @@ html[data-theme='dark'] {
   outline-offset: 2px;
 }
 
+.app-flow-button {
+  width: 136px;
+  min-width: 136px;
+  min-height: 44px;
+  padding-inline: 0;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.app-flow-button--primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.app-flow-button--primary:hover {
+  border-color: var(--color-primary-hover);
+  background: var(--color-primary-hover);
+  color: var(--color-surface);
+}
+
+.app-flow-button--saved {
+  border-color: var(--color-heatmap-2);
+  background: var(--color-heatmap-1);
+  color: var(--color-heatmap-5);
+}
+
+.app-flow-button--saved:hover {
+  background: var(--color-surface);
+  color: var(--color-heatmap-5);
+}
+
 .app-actions {
   pointer-events: none;
 }
@@ -955,6 +1007,12 @@ html[data-theme='dark'] {
   background: var(--color-heatmap-1);
   border-color: var(--color-heatmap-3);
   transform: translateY(-1px);
+}
+
+.app-action-button[aria-pressed="true"] {
+  background: var(--color-heatmap-1);
+  border-color: var(--color-heatmap-3);
+  color: var(--color-heatmap-5);
 }
 
 .app-action-button:focus-visible {

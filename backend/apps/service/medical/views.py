@@ -14,6 +14,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.caches.map_display.models import MapMedicalMarkerCache
 from apps.public_data.medical.models import (
     MedicalEmergency,
     MedicalFacility,
@@ -205,6 +206,73 @@ def _apply_specialty_group_filter(qs, groups: tuple[str, ...]):
     return qs.filter(Exists(matching_specialty))
 
 
+def _cache_category_filter(categories: tuple[str, ...]) -> Q:
+    query = Q()
+    for category in categories:
+        if category == "emergency":
+            query |= Q(is_emergency=True)
+        else:
+            query |= Q(category=category)
+    return query
+
+
+def _parse_cache_time(value) -> time | None:
+    if not value:
+        return None
+    if isinstance(value, time):
+        return value
+    try:
+        return time.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+
+def _is_cache_open_now(row: MapMedicalMarkerCache) -> bool:
+    if row.is_emergency:
+        return True
+    now = timezone.localtime()
+    day_type = DAY_NAME_TO_DAY_TYPE[now.strftime("%A")]
+    hours = (row.hours_summary or {}).get(day_type)
+    if not isinstance(hours, dict) or hours.get("is_closed"):
+        return False
+    open_time = _parse_cache_time(hours.get("open_time"))
+    close_time = _parse_cache_time(hours.get("close_time"))
+    if open_time is None or close_time is None:
+        return False
+    current_time = now.time().replace(microsecond=0)
+    return open_time <= current_time and (close_time >= current_time or close_time == time(0, 0))
+
+
+def _cache_matches_specialty_groups(row: MapMedicalMarkerCache, groups: tuple[str, ...]) -> bool:
+    if not groups:
+        return True
+    row_groups = {group for group in (row.specialty_groups or []) if group}
+    if SPECIALTY_GROUP_GENERAL in groups:
+        if any(group not in SPECIALTY_GROUP_GENERAL_EXCLUDED for group in row_groups):
+            return True
+    concrete_groups = {
+        group for group in groups
+        if group not in {SPECIALTY_GROUP_ALL, SPECIALTY_GROUP_GENERAL}
+    }
+    return bool(row_groups & concrete_groups)
+
+
+def _medical_cache_item(row: MapMedicalMarkerCache) -> dict:
+    distance = getattr(row, "distance", None)
+    return {
+        "hpid": row.hpid,
+        "category": row.category,
+        "type": row.type,
+        "name": row.name,
+        "address": row.address,
+        "tel1": row.tel1 or None,
+        "lat": row.location.y if row.location else None,
+        "lng": row.location.x if row.location else None,
+        "is_emergency": row.is_emergency,
+        "distance_m": round(float(distance.m), 1) if distance is not None else None,
+    }
+
+
 def category_for_facility(facility: MedicalFacility) -> str:
     if bool(getattr(facility, "has_emergency", False)):
         return "emergency"
@@ -233,6 +301,49 @@ class MedicalFacilityListView(APIView):
         point = _parse_point(request.query_params)
         radius = _parse_radius(request.query_params.get("radius"))
 
+        if specialties or (open_now and MedicalHolidayCare.objects.filter(care_date=timezone.localdate()).exists()):
+            return self._source_response(categories, specialties, specialty_groups, open_now, bbox, point, radius)
+
+        qs = MapMedicalMarkerCache.objects.filter(_cache_category_filter(categories)).filter(location__isnull=False)
+        if bbox:
+            qs = qs.filter(location__within=Polygon.from_bbox(bbox))
+        if point:
+            qs = qs.filter(location__distance_lte=(point, D(m=radius))).annotate(distance=Distance("location", point))
+            qs = qs.order_by("distance", "name", "hpid")
+        else:
+            qs = qs.order_by("category", "name", "hpid")
+
+        items = list(qs)
+        if specialty_groups:
+            items = [item for item in items if _cache_matches_specialty_groups(item, specialty_groups)]
+        if open_now:
+            items = [item for item in items if _is_cache_open_now(item)]
+
+        return Response(
+            {
+                "categories": categories,
+                "specialties": specialties,
+                "specialty_groups": specialty_groups,
+                "open_now": open_now,
+                "bbox": bbox,
+                "radius": radius if point else None,
+                "limit": None,
+                "count": len(items),
+                "items": [_medical_cache_item(item) for item in items],
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def _source_response(
+        self,
+        categories: tuple[str, ...],
+        specialties: tuple[str, ...],
+        specialty_groups: tuple[str, ...],
+        open_now: bool,
+        bbox: tuple[float, float, float, float] | None,
+        point: Point | None,
+        radius: int,
+    ) -> Response:
         qs = _base_queryset().filter(_category_filter(categories)).filter(location__isnull=False)
         if specialties:
             qs = qs.filter(hira_mapping__specialties__specialty_name__in=specialties)

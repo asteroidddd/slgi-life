@@ -1,42 +1,24 @@
-import { lazy, Suspense, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import { AppActions, BackButton, LegalFooter, shouldShowBackButton } from '@/features/common/components/AppChrome';
 import CandidateDrawer, { shouldShowCandidateDrawer } from '@/features/candidates/components/CandidateDrawer';
 import { PageTitleProvider } from '@/features/common/contexts/PageTitleContext';
-import { ADONG_GEOJSON_QUERY_KEY, fetchAdongGeoJson } from '@/features/map/hooks/useAdongGeoJson';
-import { SEOUL_MASK_GEOJSON_QUERY_KEY, fetchSeoulMaskGeoJson } from '@/features/map/hooks/useSeoulMaskGeoJson';
 import Login from '@/features/common/routes/Login';
 import MyPage from '@/features/common/routes/MyPage';
 import NotFound from '@/features/common/routes/NotFound';
 import Register from '@/features/common/routes/Register';
-import SelectPage from '@/features/common/routes/SelectPage';
 import RecommendationConditions from '@/features/recommendation/routes/RecommendationConditions';
 import RecommendationResults from '@/features/recommendation/routes/RecommendationResults';
 import LegalInfo from '@/features/legal/routes/LegalInfo';
-import MainMap from '@/features/map/routes/MainMap';
 
 const Dashboard = lazy(() => import('@/features/dashboard/routes/Dashboard'));
 const AiChatPage = lazy(() => import('@/features/ai-chat/routes/AiChatPage'));
 const RealEstatePage = lazy(() => import('@/features/real-estate/routes/RealEstatePage'));
+const MainMap = lazy(() => import('@/features/map/routes/MainMap'));
 
 function AppContent() {
-  const queryClient = useQueryClient();
   const location = useLocation();
-
-  useEffect(() => {
-    queryClient.prefetchQuery({
-      queryKey: ADONG_GEOJSON_QUERY_KEY,
-      queryFn: fetchAdongGeoJson,
-      staleTime: Infinity,
-    });
-    queryClient.prefetchQuery({
-      queryKey: SEOUL_MASK_GEOJSON_QUERY_KEY,
-      queryFn: fetchSeoulMaskGeoJson,
-      staleTime: Infinity,
-    });
-  }, [queryClient]);
 
   return (
     <div className="min-h-screen">
@@ -45,13 +27,21 @@ function AppContent() {
         <BackButton
           fallbackTo={location.pathname === '/recommend/results' ? '/recommend/conditions' : undefined}
           forceFallback={location.pathname === '/recommend/results'}
+          label={location.pathname === '/recommend/results' ? '조건 재입력' : undefined}
         />
       ) : null}
       {shouldShowCandidateDrawer(location.pathname) ? <CandidateDrawer /> : null}
       <Routes>
-        <Route path="/" element={<Navigate to="/select" replace />} />
-        <Route path="/select" element={<SelectPage />} />
-        <Route path="/map" element={<MainMap />} />
+        <Route path="/" element={<Navigate to="/recommend/conditions" replace />} />
+        <Route path="/select" element={<Navigate to="/recommend/conditions" replace />} />
+        <Route
+          path="/map"
+          element={
+            <Suspense fallback={<PageLoading />}>
+              <MainMap />
+            </Suspense>
+          }
+        />
         <Route
           path="/dashboard/:regionType"
           element={

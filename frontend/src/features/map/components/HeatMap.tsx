@@ -10,7 +10,7 @@
 //   - fallback 타일은 쓰지 않는다. 키가 없으면 V-World 요청이 실패하므로 환경값을 먼저 고친다.
 //   - 키 발급: https://www.vworld.kr/ (회원가입 → 인증키 신청 → localhost 도메인 등록)
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import L from 'leaflet';
 import type { Layer, LeafletMouseEvent } from 'leaflet';
@@ -125,13 +125,27 @@ export default function HeatMap({
   initialZoom,
 }: HeatMapProps) {
   const { theme } = useTheme();
-  const adongGeo = useAdongGeoJson();
-  const ldongGeo = useLdongGeoJson();
   const { data: seoulMaskGeojson, isLoading: maskLoading } = useSeoulMaskGeoJson();
+  const [backgroundGeoEnabled, setBackgroundGeoEnabled] = useState(false);
+
+  useEffect(() => {
+    if (!seoulMaskGeojson || backgroundGeoEnabled) return;
+    const timeoutId = window.setTimeout(() => setBackgroundGeoEnabled(true), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [backgroundGeoEnabled, seoulMaskGeojson]);
+
+  const shouldFetchAdongGeo = backgroundGeoEnabled && (
+    (heatmapVisible && regionLevel === 'adong')
+    || (selectedRegionSlug != null && selectedRegionLevel === 'adong')
+  );
+  const shouldFetchLdongGeo = backgroundGeoEnabled && (
+    (heatmapVisible && regionLevel === 'ldong')
+    || (selectedRegionSlug != null && selectedRegionLevel === 'ldong')
+  );
+  const adongGeo = useAdongGeoJson({ enabled: shouldFetchAdongGeo });
+  const ldongGeo = useLdongGeoJson({ enabled: shouldFetchLdongGeo });
   const geojson = regionLevel === 'ldong' ? ldongGeo.data : adongGeo.data;
-  const geoLoading = regionLevel === 'ldong' ? ldongGeo.isLoading : adongGeo.isLoading;
   const selectedGeojson = selectedRegionLevel === 'ldong' ? ldongGeo.data : adongGeo.data;
-  const selectedGeoLoading = selectedRegionLevel === 'ldong' ? ldongGeo.isLoading : adongGeo.isLoading;
 
   // GeoJSON 의 adm_cd2 (10자리 행정동 코드) 와 매칭하기 위해 code 키로 인덱싱.
   // (구버전은 adm_cd 7자리 ↔ slug 매칭이었으나 RDS 통합 후 한글 slug 라 깨짐.)
@@ -242,11 +256,8 @@ export default function HeatMap({
   };
 
   if (
-    geoLoading
-    || maskLoading
-    || !geojson
+    maskLoading
     || !seoulMaskGeojson
-    || (selectedRegionSlug != null && (selectedGeoLoading || !selectedGeojson))
   ) {
     return (
       <div className="relative flex h-full w-full items-center justify-center bg-primary-soft text-[14px] font-semibold text-text-muted">
@@ -287,7 +298,7 @@ export default function HeatMap({
           />
         ) : null}
 
-        {heatmapVisible ? (
+        {heatmapVisible && geojson ? (
           <GeoJSON
             key={layerKey}
             data={geojson}

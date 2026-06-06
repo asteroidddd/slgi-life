@@ -690,7 +690,7 @@ export default function MainMap() {
           ) : null}
         </div>
 
-        <div className="pointer-events-none grid max-h-[calc(100vh-150px)] grid-cols-[152px_152px] items-start justify-items-start gap-2 overflow-y-auto pr-1">
+        <div className="pointer-events-none grid max-h-[calc(100vh-150px)] grid-cols-[152px_152px] items-start justify-items-start gap-2 overflow-visible pr-1">
           <div className="pointer-events-auto grid w-[152px] self-start grid-cols-1 justify-items-start gap-1 overflow-visible rounded-card border border-border bg-surface/95 p-2 shadow-lg backdrop-blur" aria-label="생활시설">
             {FACILITY_ORDER.map((key) => (
               <FilterButton key={key} active={facilityKeys.has(key)} onClick={() => toggleFacility(key)} className="w-full">

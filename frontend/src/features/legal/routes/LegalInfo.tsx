@@ -426,7 +426,7 @@ export default function LegalInfo({ page }: { page: LegalPage }) {
 
   return (
     <main className="min-h-screen bg-primary-soft px-4 py-7 text-text sm:px-6 sm:py-8">
-      <BackButton fallbackTo="/select" />
+      <BackButton fallbackTo="/recommend/conditions" />
 
       <article className="mx-auto max-w-[1040px] rounded-card border border-border bg-surface p-6 shadow-sm sm:p-8">
         <header className="border-b border-divider pb-5">

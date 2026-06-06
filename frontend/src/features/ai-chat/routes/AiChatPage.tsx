@@ -7,5 +7,5 @@ export default function AiChatPage() {
   const next = new URLSearchParams({ ai: '1' });
   if (context) next.set('context', context);
 
-  return <Navigate to={`/select?${next.toString()}`} replace />;
+  return <Navigate to={`/recommend/conditions?${next.toString()}`} replace />;
 }

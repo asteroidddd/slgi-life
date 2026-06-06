@@ -14,6 +14,7 @@ from apps.public_data.regions.models import Adong, Ldong
 
 
 DATA_DIR = Path(__file__).resolve().parents[3] / "data"
+HEATMAP_SCORE_CACHE_TTL_SECONDS = 60 * 10
 
 
 def _current_payload(region, current) -> dict:
@@ -158,19 +159,29 @@ class HeatmapLdongGeoJsonView(APIView):
 
 class HeatmapAdongScoresView(APIView):
     def get(self, request):
+        cache_key = "heatmap:scores:adongs:v1"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached, status=status.HTTP_200_OK)
         rows = [
             _current_payload(row, getattr(row, "current_score", None))
             for row in Adong.objects.select_related("gu", "current_score").all()
         ]
         rows.sort(key=lambda item: item["score_total"], reverse=True)
+        cache.set(cache_key, rows, timeout=HEATMAP_SCORE_CACHE_TTL_SECONDS)
         return Response(rows, status=status.HTTP_200_OK)
 
 
 class HeatmapLdongScoresView(APIView):
     def get(self, request):
+        cache_key = "heatmap:scores:ldongs:v1"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached, status=status.HTTP_200_OK)
         rows = [
             _current_payload(row, getattr(row, "current_score", None))
             for row in Ldong.objects.select_related("gu", "current_score").all()
         ]
         rows.sort(key=lambda item: item["score_total"], reverse=True)
+        cache.set(cache_key, rows, timeout=HEATMAP_SCORE_CACHE_TTL_SECONDS)
         return Response(rows, status=status.HTTP_200_OK)

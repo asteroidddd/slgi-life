@@ -17,13 +17,13 @@ const AUTH_RETURN_PATH_KEY = 'jachwimap-auth-return-path';
 function cleanReturnPath(path: string) {
   try {
     const url = new URL(path, window.location.origin);
-    if (url.origin !== window.location.origin || url.pathname === '/login') return '/select';
+    if (url.origin !== window.location.origin || url.pathname === '/login') return '/recommend/conditions';
     url.searchParams.delete('auth');
     url.searchParams.delete('error');
     url.searchParams.delete('withdrawn');
     return `${url.pathname}${url.search}${url.hash}`;
   } catch {
-    return '/select';
+    return '/recommend/conditions';
   }
 }
 
@@ -37,11 +37,11 @@ function rememberAuthReturnPath(path: string) {
 
 function consumeAuthReturnPath() {
   try {
-    const path = window.sessionStorage.getItem(AUTH_RETURN_PATH_KEY) || '/select';
+    const path = window.sessionStorage.getItem(AUTH_RETURN_PATH_KEY) || '/recommend/conditions';
     window.sessionStorage.removeItem(AUTH_RETURN_PATH_KEY);
     return cleanReturnPath(path);
   } catch {
-    return '/select';
+    return '/recommend/conditions';
   }
 }
 
@@ -104,5 +104,5 @@ export default function Login() {
   next.set('auth', 'login');
   if (error) next.set('error', error);
   if (withdrawn) next.set('withdrawn', '1');
-  return <Navigate to={`/select?${next.toString()}`} replace />;
+  return <Navigate to={`/recommend/conditions?${next.toString()}`} replace />;
 }

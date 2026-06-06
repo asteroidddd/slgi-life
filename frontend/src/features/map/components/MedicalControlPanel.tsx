@@ -87,7 +87,7 @@ export default function MedicalControlPanel({
   };
 
   return (
-    <div className="pointer-events-auto relative z-[600] grid w-[152px] self-start gap-1.5 rounded-card border border-border bg-surface/95 p-2 shadow-lg backdrop-blur">
+    <div className="pointer-events-auto relative z-[900] grid w-[152px] self-start gap-1.5 rounded-card border border-border bg-surface/95 p-2 shadow-lg backdrop-blur">
       <button
         type="button"
         onClick={onToggleOpenNow}
@@ -151,7 +151,7 @@ export default function MedicalControlPanel({
                 </button>
               </div>
               {specialtyOpen ? (
-                <div className="absolute left-[calc(100%+8px)] top-0 z-[720] grid max-h-[calc(100vh-96px)] w-[196px] gap-1 overflow-y-auto rounded-card border border-border bg-surface/95 p-2 shadow-xl backdrop-blur">
+                <div className="absolute left-[calc(100%+8px)] top-0 z-[1500] grid max-h-[min(420px,calc(100vh-112px))] w-[240px] gap-1 overflow-y-auto overflow-x-hidden rounded-card border border-border bg-surface/95 p-2 shadow-xl backdrop-blur">
                   <p className="m-0 rounded-[6px] bg-surface-alt px-2 py-1.5 text-[11px] font-semibold leading-4 text-text-muted">
                     HIRA 진료과목 및 전문의 수 자료 기준입니다. 실제 진료 가능 여부와 다를 수 있어 참고용입니다.
                   </p>

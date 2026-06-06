@@ -45,8 +45,8 @@ PAGE_TASK_CHUNK_FACTOR = 3
 class FastBusCongestionOptions:
     dry_run: bool = True
     days: int = RETENTION_DAYS
-    workers: int = 8
-    rps: float = 3.0
+    workers: int = 2
+    rps: float = 1.0
     page_size: int = PAGE_SIZE
     lookback_days: int = DEFAULT_LOOKBACK_DAYS
     request_timeout_seconds: float = 40.0

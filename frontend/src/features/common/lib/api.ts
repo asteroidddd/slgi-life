@@ -5,10 +5,8 @@ import type { AxiosInstance } from 'axios';
 
 import type {
   AdongScore,
-  AIAPIKeyStatusResponse,
   AIContextPreferencePatch,
   AIContextPreferenceResponse,
-  AIProvider,
   AgentQueryRequest,
   AgentQueryResponse,
   DashboardRegionIntro,
@@ -259,30 +257,6 @@ export async function recommendRegions(
   return data;
 }
 
-export async function getAIAPIKeys(): Promise<AIAPIKeyStatusResponse> {
-  const { data } = await api.get<AIAPIKeyStatusResponse>('/agent/api-keys');
-  return data;
-}
-
-export async function saveAIAPIKey(payload: {
-  provider: AIProvider;
-  api_key: string;
-  passphrase: string;
-  priority: number;
-}): Promise<AIAPIKeyStatusResponse> {
-  const { data } = await api.post<AIAPIKeyStatusResponse>('/agent/api-keys', payload);
-  return data;
-}
-
-export async function unlockAIAPIKeys(passphrase: string): Promise<AIAPIKeyStatusResponse> {
-  const { data } = await api.post<AIAPIKeyStatusResponse>('/agent/api-keys/unlock', { passphrase });
-  return data;
-}
-
-export async function deleteAIAPIKey(provider: AIProvider): Promise<void> {
-  await api.delete(`/agent/api-keys/${provider}`);
-}
-
 export async function getAIContextPreference(): Promise<AIContextPreferenceResponse> {
   const { data } = await api.get<AIContextPreferenceResponse>('/agent/context-preferences');
   return data;
@@ -308,10 +282,8 @@ export type {
   UserCandidateRegionsResponse,
   UserRecommendationConditionsResponse,
   User,
-  AIAPIKeyStatusResponse,
   AIContextPreferencePatch,
   AIContextPreferenceResponse,
-  AIProvider,
 };
 
 

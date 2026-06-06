@@ -10,9 +10,10 @@ from rest_framework.permissions import BasePermission
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.ai_agent.byok.services import BYOKError, ProviderCredential, get_unlocked_credentials, purge_stale_user_keys
+from apps.ai_agent.byok.services import ProviderCredential
 from apps.ai_agent.models import UserAIAPIKey
 from apps.ai_agent.runtime.agent import run_agent
+from apps.accounts.favorites.models import CandidateRegion
 
 from .common import (
     CONVERSATION_TTL_SECONDS,
@@ -24,19 +25,13 @@ from .common import (
 from .context import build_user_context
 
 
-PUBLIC_AI_ENV = "AI_AGENT_PUBLIC_MODE"
-
-
 def public_ai_mode_enabled() -> bool:
-    value = os.environ.get(PUBLIC_AI_ENV, "").strip().lower()
-    return value in {"1", "true", "yes", "on"} and bool(os.environ.get("AI_AGENT_OPENAI_API_KEY"))
+    return bool(os.environ.get("AI_AGENT_OPENAI_API_KEY", "").strip())
 
 
 class AgentQueryPermission(BasePermission):
     def has_permission(self, request, view):  # type: ignore[no-untyped-def]
-        if public_ai_mode_enabled():
-            return True
-        return bool(request.user and request.user.is_authenticated)
+        return True
 
 
 def public_openai_credentials() -> list[ProviderCredential]:
@@ -49,6 +44,26 @@ def public_openai_credentials() -> list[ProviderCredential]:
             api_key=api_key,
             base_url=os.environ.get("AI_AGENT_OPENAI_BASE_URL") or None,
         )
+    ]
+
+def build_candidate_regions_context(user) -> list[dict]:
+    if not user or not user.is_authenticated:
+        return []
+
+    return [
+        {
+            "region_level": candidate.region_level,
+            "gu": candidate.gu,
+            "name": candidate.name,
+            "slug": candidate.slug,
+            "source": candidate.source,
+            "score": candidate.score,
+            "score_rent": candidate.score_rent,
+            "score_transit": candidate.score_transit,
+            "score_amenity": candidate.score_amenity,
+            "score_safety": candidate.score_safety,
+        }
+        for candidate in CandidateRegion.objects.filter(user=user)[:10]
     ]
 
 def build_memory_items(result: dict, visualizations: list) -> list[dict]:
@@ -173,7 +188,6 @@ def demo_agent_response() -> dict:
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([AgentQueryPermission])
 def agent_query(request):
-    purge_stale_user_keys()
     question = str(request.data.get("question") or "").strip()
     conversation_id = str(request.data.get("conversation_id") or "").strip()
     if not question:
@@ -183,23 +197,17 @@ def agent_query(request):
     if not conversation_id:
         conversation_id = str(uuid.uuid4())
 
-    public_mode = public_ai_mode_enabled()
     is_authenticated = bool(request.user and request.user.is_authenticated)
     conversation_owner = request.user.id if is_authenticated else "public"
     store_key = conversation_key(conversation_owner, conversation_id)
     history = list(cache.get(store_key) or [])
 
-    if public_mode:
-        credentials = public_openai_credentials()
-    else:
-        try:
-            credentials = get_unlocked_credentials(request.user)
-        except BYOKError as exc:
-            return error_response(exc.code, str(exc), status.HTTP_401_UNAUTHORIZED)
+    credentials = public_openai_credentials()
     if not credentials:
         return error_response("AI_PUBLIC_KEY_MISSING", "AI public API key is not configured.", status.HTTP_503_SERVICE_UNAVAILABLE)
 
     user_context = build_user_context(request.user) if is_authenticated else {}
+    candidate_regions = build_candidate_regions_context(request.user) if is_authenticated else []
 
     failures = []
     for credential in credentials:
@@ -213,6 +221,7 @@ def agent_query(request):
                     "base_url": credential.base_url,
                 },
                 user_context=user_context,
+                candidate_regions=candidate_regions,
             )
             visualizations = result.get("visualizations", [])
             if not visualizations:

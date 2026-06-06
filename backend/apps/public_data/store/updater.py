@@ -17,7 +17,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from django.contrib.gis.geos import Point
-from django.db import transaction
+from django.db import connection, transaction
 from openpyxl import load_workbook
 
 from apps.public_data.api_keys import env_key_ring, with_rate_limit_fallback
@@ -35,6 +35,8 @@ STORE_API_URL = "https://apis.data.go.kr/B553077/api/open/sdsc2/storeListInDong"
 DAISO_BASE_URL = "https://www.daiso.co.kr"
 DAISO_SEOUL = "서울"
 PAGE_SIZE = 1000
+STORE_WRITE_BATCH_SIZE = 500
+STORE_SEEN_TABLE_NAME = "tmp_store_seen_ids"
 MEDICAL_STORE_CATEGORY_CODES = {"G21501"}
 MEDICAL_STORE_MAIN_CATEGORY_CODES = {"Q1"}
 DAISO_REQUEST_DELAY_SECONDS = 0.15
@@ -558,7 +560,7 @@ def _upsert_store_records(records: list[dict[str, Any]]) -> dict[str, int]:
     existing_ids = set(Store.objects.filter(id__in=record_ids).values_list("id", flat=True))
     Store.objects.bulk_create(
         [Store(id=record["id"], **record["defaults"]) for record in records],
-        batch_size=2000,
+        batch_size=STORE_WRITE_BATCH_SIZE,
         update_conflicts=True,
         update_fields=[
             "name",
@@ -579,6 +581,52 @@ def _upsert_store_records(records: list[dict[str, Any]]) -> dict[str, int]:
     }
 
 
+def _create_store_seen_table() -> None:
+    with connection.cursor() as cursor:
+        cursor.execute(f"DROP TABLE IF EXISTS {STORE_SEEN_TABLE_NAME}")
+        cursor.execute(
+            f"""
+            CREATE TEMP TABLE {STORE_SEEN_TABLE_NAME} (
+                id varchar(50) PRIMARY KEY
+            ) ON COMMIT PRESERVE ROWS
+            """
+        )
+
+
+def _drop_store_seen_table() -> None:
+    with connection.cursor() as cursor:
+        cursor.execute(f"DROP TABLE IF EXISTS {STORE_SEEN_TABLE_NAME}")
+
+
+def _record_store_seen_ids(ids: list[str]) -> None:
+    if not ids:
+        return
+    with connection.cursor() as cursor:
+        cursor.executemany(
+            f"""
+            INSERT INTO {STORE_SEEN_TABLE_NAME} (id)
+            VALUES (%s)
+            ON CONFLICT (id) DO NOTHING
+            """,
+            [(item,) for item in ids],
+        )
+
+
+def _delete_missing_stores_from_seen() -> int:
+    with transaction.atomic(), connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            DELETE FROM store s
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM {STORE_SEEN_TABLE_NAME} seen
+                WHERE seen.id = s.id
+            )
+            """
+        )
+        return int(cursor.rowcount or 0)
+
+
 def _stream_and_write_stores(options: StoresUpdateOptions) -> dict[str, Any]:
     api_keys = env_key_ring("PUBLIC_DATA_API_KEY")
     gu_codes = list(Ldong.objects.values_list("gu_id", flat=True).distinct().order_by("gu_id"))
@@ -590,9 +638,9 @@ def _stream_and_write_stores(options: StoresUpdateOptions) -> dict[str, Any]:
         raise RuntimeError("business categories must be loaded before updating stores")
 
     checked = loaded = created = updated = skipped = deleted_missing = 0
-    source_ids: set[str] = set()
-    seen_ids: set[str] = set()
     batch: list[dict[str, Any]] = []
+    seen_id_batch: list[str] = []
+    seen_source_count = 0
     skip_reasons = {
         "missing_id": 0,
         "missing_location": 0,
@@ -615,46 +663,59 @@ def _stream_and_write_stores(options: StoresUpdateOptions) -> dict[str, Any]:
             updated += stats["updated"]
         batch = []
 
-    for gu_code in gu_codes:
-        for row in _iter_gu_rows_with_fallback(api_keys, gu_code, options):
-            if options.limit is not None and checked >= options.limit:
-                flush_batch()
-                return {
-                    "status": "partial",
-                    "completed": False,
-                    "checked": checked,
-                    "loaded": loaded,
-                    "created": created,
-                    "updated": updated,
-                    "skipped": skipped,
-                    "deleted_missing": 0,
-                    "dry_run": options.dry_run,
-                    "gu_count": len(gu_codes),
-                    "skip_reasons": skip_reasons,
-                    "delete_missing": False,
-                    "reason": "limit_reached",
-                }
-            checked += 1
-            record, source_id, reason = _build_store_record(row, category_ids=category_ids, ksci_ids=ksci_ids)
-            if options.delete_missing and source_id:
-                source_ids.add(source_id)
-            if not record:
-                skipped += 1
-                if reason:
-                    skip_reasons[reason] += 1
-                continue
-            if record["id"] in seen_ids:
-                continue
-            seen_ids.add(record["id"])
-            batch.append(record)
-            if len(batch) >= 2000:
-                flush_batch()
+    def flush_seen_ids() -> None:
+        nonlocal seen_id_batch
+        if not options.dry_run and options.delete_missing and seen_id_batch:
+            _record_store_seen_ids(seen_id_batch)
+        seen_id_batch = []
 
-    flush_batch()
     if not options.dry_run and options.delete_missing:
-        missing_qs = Store.objects.exclude(id__in=source_ids)
-        deleted_missing = missing_qs.count()
-        missing_qs.delete()
+        _create_store_seen_table()
+    try:
+        for gu_code in gu_codes:
+            for row in _iter_gu_rows_with_fallback(api_keys, gu_code, options):
+                if options.limit is not None and checked >= options.limit:
+                    flush_seen_ids()
+                    flush_batch()
+                    return {
+                        "status": "partial",
+                        "completed": False,
+                        "checked": checked,
+                        "loaded": loaded,
+                        "created": created,
+                        "updated": updated,
+                        "skipped": skipped,
+                        "deleted_missing": 0,
+                        "dry_run": options.dry_run,
+                        "gu_count": len(gu_codes),
+                        "skip_reasons": skip_reasons,
+                        "delete_missing": False,
+                        "seen_source_count": seen_source_count,
+                        "reason": "limit_reached",
+                    }
+                checked += 1
+                record, source_id, reason = _build_store_record(row, category_ids=category_ids, ksci_ids=ksci_ids)
+                if options.delete_missing and source_id:
+                    seen_source_count += 1
+                    seen_id_batch.append(source_id[:50])
+                    if len(seen_id_batch) >= STORE_WRITE_BATCH_SIZE:
+                        flush_seen_ids()
+                if not record:
+                    skipped += 1
+                    if reason:
+                        skip_reasons[reason] += 1
+                    continue
+                batch.append(record)
+                if len(batch) >= STORE_WRITE_BATCH_SIZE:
+                    flush_batch()
+
+        flush_seen_ids()
+        flush_batch()
+        if not options.dry_run and options.delete_missing:
+            deleted_missing = _delete_missing_stores_from_seen()
+    finally:
+        if not options.dry_run and options.delete_missing:
+            _drop_store_seen_table()
 
     return {
         "status": "success",
@@ -669,6 +730,7 @@ def _stream_and_write_stores(options: StoresUpdateOptions) -> dict[str, Any]:
         "gu_count": len(gu_codes),
         "skip_reasons": skip_reasons,
         "delete_missing": options.delete_missing,
+        "seen_source_count": seen_source_count,
     }
 
 

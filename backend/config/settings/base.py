@@ -85,6 +85,7 @@ LOCAL_APPS = [
     "apps.dashboard.cache",
     "apps.caches.rent_deal.apps.RentDealGeocodeCacheConfig",
     "apps.caches.region_stats.apps.RegionStatsCacheConfig",
+    "apps.caches.map_display.apps.MapDisplayCacheConfig",
     "apps.ai_agent",
     "apps.public_data.regions",
     "apps.public_data.metrics",
@@ -201,6 +202,7 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.AllowAny",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "URL_FORMAT_OVERRIDE": None,
 }
 
 # ---------------------------------------------------------------------------

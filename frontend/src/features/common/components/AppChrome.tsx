@@ -7,17 +7,26 @@ import { useAuth } from '@/features/common/contexts/AuthContext';
 import { LoginPanel } from '@/features/common/routes/Login';
 import { MyPagePanel } from '@/features/common/routes/MyPage';
 
-const PRIMARY_PATHS = new Set(['/', '/select', '/map']);
+const PRIMARY_PATHS = new Set(['/', '/recommend/conditions', '/map']);
 const AiChatPanel = lazy(() => import('@/features/ai-chat/components/AiChatPanel'));
 type AuthMode = 'login' | 'mypage';
+const MAP_RETURN_STORAGE_KEY = 'app.map.returnTo';
 
 function fallbackPath(pathname: string) {
   if (pathname.startsWith('/dashboard')) return '/map';
   if (pathname === '/recommend/results') return '/recommend/conditions';
-  return '/select';
+  return '/recommend/conditions';
 }
 
-export function BackButton({ fallbackTo, forceFallback = false }: { fallbackTo?: string; forceFallback?: boolean }) {
+export function BackButton({
+  fallbackTo,
+  forceFallback = false,
+  label = '뒤로가기',
+}: {
+  fallbackTo?: string;
+  forceFallback?: boolean;
+  label?: string;
+}) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -35,9 +44,9 @@ export function BackButton({ fallbackTo, forceFallback = false }: { fallbackTo?:
         }
         navigate(fallbackTo ?? fallbackPath(location.pathname));
       }}
-      className="app-floating-button app-back-button fixed left-6 top-6 z-[1600] no-underline"
+      className="app-floating-button app-flow-button app-back-button fixed left-6 top-6 z-[1600] no-underline"
     >
-      뒤로가기
+      {label}
     </button>
   );
 }
@@ -56,13 +65,6 @@ export function AppActions() {
   const requestedAuth = searchParams.get('auth');
   const requestedAi = searchParams.get('ai');
   const onMap = location.pathname === '/map';
-  const onRecommendation = location.pathname === '/recommend/conditions' || location.pathname === '/recommend/results';
-  const onDashboard = location.pathname.startsWith('/dashboard/');
-  const onRealEstate = location.pathname.startsWith('/real-estate');
-  const onLegal = location.pathname.startsWith('/legal/');
-  const showNeutralNavigation = onRealEstate || onLegal;
-  const showMapAction = !onMap && (onRecommendation || onDashboard || showNeutralNavigation);
-  const showConditionAction = !location.pathname.startsWith('/recommend/conditions') && (onMap || onDashboard || showNeutralNavigation);
 
   useEffect(() => {
     setAuthOpen(false);
@@ -115,6 +117,32 @@ export function AppActions() {
     setAiOpen(true);
   };
 
+  const toggleMapView = () => {
+    if (onMap) {
+      let returnTo = '';
+      try {
+        returnTo = window.sessionStorage.getItem(MAP_RETURN_STORAGE_KEY) ?? '';
+      } catch {
+        returnTo = '';
+      }
+      const safeReturnTo = returnTo.startsWith('/') && !returnTo.startsWith('/map')
+        ? returnTo
+        : '/recommend/conditions';
+      navigate(safeReturnTo);
+      return;
+    }
+
+    try {
+      window.sessionStorage.setItem(
+        MAP_RETURN_STORAGE_KEY,
+        `${location.pathname}${location.search}${location.hash}`,
+      );
+    } catch {
+      // If sessionStorage is blocked, the map button still opens the map.
+    }
+    navigate('/map');
+  };
+
   return (
     <>
       <nav className="app-actions fixed right-6 top-6 z-[1600] flex flex-col items-end gap-2" aria-label="주요 동작">
@@ -144,35 +172,29 @@ export function AppActions() {
               AI
             </button>
           </Tooltip>
+          <Tooltip label={onMap ? '지도 닫기' : '지도에서 보기'} placement="bottom">
+            <button
+              type="button"
+              className="app-action-button app-map-button"
+              aria-label={onMap ? '지도 닫기' : '지도에서 보기'}
+              aria-pressed={onMap}
+              onClick={toggleMapView}
+            >
+              {onMap ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M6 6l12 12" />
+                  <path d="M18 6 6 18" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M3 6.5 8 4l6 2.5 5-2.5v13.5l-5 2.5-6-2.5-5 2.5V6.5Z" />
+                  <path d="M8 4v13.5" />
+                  <path d="M14 6.5V20" />
+                </svg>
+              )}
+            </button>
+          </Tooltip>
         </div>
-        {showMapAction || showConditionAction ? (
-          <div className="flex items-center gap-2">
-            {showMapAction ? (
-              <Tooltip label="지도 탐색" placement="bottom">
-                <button
-                  type="button"
-                  className="app-action-button app-action-text-button"
-                  aria-label="지도 탐색으로 이동"
-                  onClick={() => navigate('/map')}
-                >
-                  지도 탐색
-                </button>
-              </Tooltip>
-            ) : null}
-            {showConditionAction ? (
-              <Tooltip label="조건 선택" placement="bottom">
-                <button
-                  type="button"
-                  className="app-action-button app-action-text-button"
-                  aria-label="조건 선택으로 이동"
-                  onClick={() => navigate('/recommend/conditions')}
-                >
-                  조건 선택
-                </button>
-              </Tooltip>
-            ) : null}
-          </div>
-        ) : null}
       </nav>
 
       {authOpen ? (

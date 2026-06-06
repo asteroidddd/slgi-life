@@ -46,6 +46,8 @@ HOLIDAY_API_URL = "https://apis.data.go.kr/B552657/HolidyEmgncClnicInsttInfoInqi
 HIRA_HOSPITAL_API_URL = "https://apis.data.go.kr/B551182/hospInfoServicev2/getHospBasisList"
 HIRA_SPECIALTY_API_URL = "https://apis.data.go.kr/B551182/MadmDtlInfoService2.8/getDgsbjtInfo2.8"
 PAGE_SIZE = 1000
+MEDICAL_WRITE_BATCH_SIZE = 500
+MEDICAL_ITERATOR_CHUNK_SIZE = 500
 SEOUL_Q0 = "\uc11c\uc6b8\ud2b9\ubcc4\uc2dc"
 HIRA_MATCH_EXCLUDED_TYPES = {
     "\uc57d\uad6d",
@@ -74,7 +76,7 @@ class MedicalUpdateOptions:
     dry_run: bool = True
     force: bool = False
     limit: int | None = None
-    request_interval_seconds: float = 0.2
+    request_interval_seconds: float = 0.3
     request_timeout_seconds: float = 40.0
     geocode_missing: bool = True
     update_hira_specialties: bool = False
@@ -252,6 +254,11 @@ def _hour_rows(row: dict[str, str], hpid: str) -> list[MedicalFacilityHours]:
     return rows
 
 
+def _chunks(items, size: int):
+    for index in range(0, len(items), size):
+        yield items[index : index + size]
+
+
 def _build_facility_rows(rows: list[dict[str, str]], *, source: str, options: MedicalUpdateOptions) -> dict[str, Any]:
     records: list[tuple[str, dict[str, Any]]] = []
     hour_rows: list[MedicalFacilityHours] = []
@@ -295,36 +302,40 @@ def _update_facilities(options: MedicalUpdateOptions) -> dict[str, Any]:
     else:
         records_by_hpid = {hpid: defaults for hpid, defaults in all_records}
         hpids = list(records_by_hpid)
-        existing_hpids = set(MedicalFacility.objects.filter(hpid__in=hpids).values_list("hpid", flat=True))
         with transaction.atomic():
-            MedicalFacility.objects.bulk_create(
-                [
-                    MedicalFacility(hpid=hpid, **defaults)
-                    for hpid, defaults in records_by_hpid.items()
-                ],
-                batch_size=2000,
-                update_conflicts=True,
-                update_fields=[
-                    "type",
-                    "name",
-                    "address",
-                    "location",
-                    "adong",
-                    "ldong",
-                    "tel1",
-                    "note",
-                ],
-                unique_fields=["hpid"],
-            )
+            for record_batch in _chunks(list(records_by_hpid.items()), MEDICAL_WRITE_BATCH_SIZE):
+                batch_hpids = [hpid for hpid, _defaults in record_batch]
+                existing_hpids = set(MedicalFacility.objects.filter(hpid__in=batch_hpids).values_list("hpid", flat=True))
+                MedicalFacility.objects.bulk_create(
+                    [
+                        MedicalFacility(hpid=hpid, **defaults)
+                        for hpid, defaults in record_batch
+                    ],
+                    batch_size=MEDICAL_WRITE_BATCH_SIZE,
+                    update_conflicts=True,
+                    update_fields=[
+                        "type",
+                        "name",
+                        "address",
+                        "location",
+                        "adong",
+                        "ldong",
+                        "tel1",
+                        "note",
+                    ],
+                    unique_fields=["hpid"],
+                )
+                created += len(set(batch_hpids) - existing_hpids)
+                updated += len(set(batch_hpids) & existing_hpids)
             loaded = len(records_by_hpid)
-            created = len(set(hpids) - existing_hpids)
-            updated = len(set(hpids) & existing_hpids)
             if options.limit is None:
                 stale_qs = MedicalFacility.objects.exclude(hpid__in=hpids)
                 deleted_missing = stale_qs.count()
                 stale_qs.delete()
-            MedicalFacilityHours.objects.filter(facility_id__in=hpids).delete()
-            MedicalFacilityHours.objects.bulk_create(all_hours, batch_size=2000)
+            for hpid_batch in _chunks(hpids, MEDICAL_WRITE_BATCH_SIZE):
+                MedicalFacilityHours.objects.filter(facility_id__in=hpid_batch).delete()
+            for hour_batch in _chunks(all_hours, MEDICAL_WRITE_BATCH_SIZE):
+                MedicalFacilityHours.objects.bulk_create(hour_batch, batch_size=MEDICAL_WRITE_BATCH_SIZE)
             hours_loaded = len(all_hours)
     return {
         "status": "success",
@@ -365,7 +376,7 @@ def _update_emergency(options: MedicalUpdateOptions) -> dict[str, Any]:
             )
         with transaction.atomic():
             MedicalEmergency.objects.all().delete()
-            MedicalEmergency.objects.bulk_create(emergency_rows, batch_size=2000)
+            MedicalEmergency.objects.bulk_create(emergency_rows, batch_size=MEDICAL_WRITE_BATCH_SIZE)
             loaded = len(emergency_rows)
     else:
         for row in rows:
@@ -441,7 +452,7 @@ def _update_holiday(options: MedicalUpdateOptions) -> dict[str, Any]:
     if not options.dry_run:
         with transaction.atomic():
             MedicalHolidayCare.objects.all().delete()
-            MedicalHolidayCare.objects.bulk_create(care_rows, batch_size=2000, ignore_conflicts=True)
+            MedicalHolidayCare.objects.bulk_create(care_rows, batch_size=MEDICAL_WRITE_BATCH_SIZE, ignore_conflicts=True)
     return {
         "status": "success",
         "completed": True,
@@ -699,7 +710,7 @@ def _build_hira_matches(hira_rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
     method_counts: dict[str, int] = {}
 
-    for facility_obj in facilities.iterator(chunk_size=2000):
+    for facility_obj in facilities.iterator(chunk_size=MEDICAL_ITERATOR_CHUNK_SIZE):
         stats["checked"] += 1
         facility = _facility_match_item(facility_obj)
         candidates = _safe_hira_candidates(facility, hira_by_name.get(facility["name_norm"], []))
@@ -743,7 +754,7 @@ def _build_hira_matches(hira_rows: list[dict[str, Any]]) -> dict[str, Any]:
 def _hira_specialty_max_calls(options: MedicalUpdateOptions) -> int | None:
     if options.dry_run:
         return min(options.limit or 20, 100)
-    raw = os.environ.get("MEDICAL_HIRA_SPECIALTY_MAX_CALLS", "9000").strip()
+    raw = os.environ.get("MEDICAL_HIRA_SPECIALTY_MAX_CALLS", "800").strip()
     if raw.lower() in ("", "0", "none", "all"):
         return None
     try:
@@ -866,7 +877,7 @@ def _update_hira_mapping(options: MedicalUpdateOptions) -> dict[str, Any]:
                     MedicalHiraMapping(facility_id=hpid, hira_ykiho=ykiho)
                     for hpid, (ykiho, _score, _method) in matches.items()
                 ],
-                batch_size=2000,
+                batch_size=MEDICAL_WRITE_BATCH_SIZE,
                 ignore_conflicts=True,
             )
 
@@ -931,7 +942,7 @@ def _update_hira_specialties(options: MedicalUpdateOptions) -> dict[str, Any]:
     if not options.dry_run and fetched_ykihos:
         with transaction.atomic():
             MedicalFacilitySpecialty.objects.filter(mapping_id__in=fetched_ykihos).delete()
-            MedicalFacilitySpecialty.objects.bulk_create(specialty_rows, batch_size=2000, ignore_conflicts=True)
+            MedicalFacilitySpecialty.objects.bulk_create(specialty_rows, batch_size=MEDICAL_WRITE_BATCH_SIZE, ignore_conflicts=True)
 
     return {
         "status": "success" if options.dry_run or specialty_completed else "partial",

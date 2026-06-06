@@ -28,6 +28,10 @@ export const LDONG_GEOJSON_QUERY_KEY = ['api', 'geojson', 'ldongs'] as const;
 const GEOJSON_URL = '/api/heatmap/geojson/adongs';
 const LDONG_GEOJSON_URL = '/api/heatmap/geojson/ldongs';
 
+interface GeoJsonQueryOptions {
+  enabled?: boolean;
+}
+
 export async function fetchAdongGeoJson(): Promise<AdongFeatureCollection> {
   const res = await fetch(GEOJSON_URL);
   if (!res.ok) {
@@ -36,13 +40,14 @@ export async function fetchAdongGeoJson(): Promise<AdongFeatureCollection> {
   return (await res.json()) as AdongFeatureCollection;
 }
 
-export function useAdongGeoJson() {
+export function useAdongGeoJson(options: GeoJsonQueryOptions = {}) {
   return useQuery({
     queryKey: ADONG_GEOJSON_QUERY_KEY,
     queryFn: fetchAdongGeoJson,
     staleTime: Infinity,           // 정적 파일이라 캐시 무한
     gcTime: Infinity,
     refetchOnWindowFocus: false,
+    enabled: options.enabled ?? true,
   });
 }
 
@@ -54,12 +59,13 @@ export async function fetchLdongGeoJson(): Promise<AdongFeatureCollection> {
   return (await res.json()) as AdongFeatureCollection;
 }
 
-export function useLdongGeoJson() {
+export function useLdongGeoJson(options: GeoJsonQueryOptions = {}) {
   return useQuery({
     queryKey: LDONG_GEOJSON_QUERY_KEY,
     queryFn: fetchLdongGeoJson,
     staleTime: Infinity,
     gcTime: Infinity,
     refetchOnWindowFocus: false,
+    enabled: options.enabled ?? true,
   });
 }

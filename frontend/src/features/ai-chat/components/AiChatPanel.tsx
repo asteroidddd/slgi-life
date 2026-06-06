@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { FormEvent, ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import {
@@ -14,14 +14,12 @@ import {
   YAxis,
 } from 'recharts';
 
-import { useAuth } from '@/features/common/contexts/AuthContext';
-import { getAIAPIKeys, getAgentDemoVisualization, postAgentQuery, unlockAIAPIKeys } from '@/features/common/lib/api';
+import { getAgentDemoVisualization, postAgentQuery } from '@/features/common/lib/api';
 import { loadCandidateRegions } from '@/features/candidates/lib/candidates';
 import type {
   AgentQueryResponse,
   AgentVisualization,
   AgentVisualizationDatum,
-  AIAPIKeyStatusResponse,
 } from '@/features/common/types/api';
 
 interface ChatMessage {
@@ -41,7 +39,6 @@ interface AiChatPanelProps {
 
 let nextMessageId = 1;
 
-const AI_AGENT_PUBLIC_MODE = import.meta.env.VITE_AI_AGENT_PUBLIC_MODE === 'true';
 
 function formatCandidateScore(value: number | null | undefined) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '-';
@@ -63,8 +60,6 @@ export default function AiChatPanel({
   compareCandidates = false,
   onClose,
 }: AiChatPanelProps) {
-  const { user, isLoading: authLoading } = useAuth();
-
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -85,7 +80,7 @@ export default function AiChatPanel({
         onClick={onClose}
       />
       <aside
-        className="absolute right-0 top-0 flex h-screen w-[520px] max-w-[calc(100vw-48px)] pointer-events-auto flex-col border-l border-border bg-surface text-text shadow-2xl"
+        className="absolute right-0 top-0 flex h-screen w-[720px] max-w-[calc(100vw-48px)] pointer-events-auto flex-col border-l border-border bg-surface text-text shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-label={compareCandidates ? 'AI와 담은 동네 비교하기' : 'AI와 대화로 동네 찾기'}
@@ -106,179 +101,17 @@ export default function AiChatPanel({
             ×
           </button>
         </header>
-        <AiChatDialog
-          publicMode={AI_AGENT_PUBLIC_MODE}
-          authLoading={authLoading}
-          isAuthenticated={Boolean(user)}
-          compareCandidates={compareCandidates}
-        />
+        <AiChatDialog compareCandidates={compareCandidates} />
       </aside>
     </div>
   );
 }
 
-function AiChatDialog({
-  publicMode,
-  authLoading,
-  isAuthenticated,
-  compareCandidates,
-}: {
-  publicMode: boolean;
-  authLoading: boolean;
-  isAuthenticated: boolean;
-  compareCandidates: boolean;
-}) {
-  const [keyStatus, setKeyStatus] = useState<AIAPIKeyStatusResponse | null>(null);
-  const [keyStatusLoading, setKeyStatusLoading] = useState(false);
-  const [keyStatusError, setKeyStatusError] = useState<string | null>(null);
-
-  const refreshKeyStatus = useCallback(async () => {
-    if (publicMode) return;
-    if (!isAuthenticated) return;
-    setKeyStatusLoading(true);
-    setKeyStatusError(null);
-    try {
-      setKeyStatus(await getAIAPIKeys());
-    } catch (err) {
-      setKeyStatusError(getErrorMessage(err, 'AI KEY 상태를 불러오지 못했습니다.'));
-    } finally {
-      setKeyStatusLoading(false);
-    }
-  }, [isAuthenticated, publicMode]);
-
-  useEffect(() => {
-    void refreshKeyStatus();
-  }, [refreshKeyStatus]);
-
-  const hasConfiguredKey = publicMode || (keyStatus?.keys.some((key) => key.configured) ?? false);
-  const hasUnlockedKey =
-    publicMode || (keyStatus?.keys.some((key) => key.configured && key.unlocked) ?? false);
-
+function AiChatDialog({ compareCandidates }: { compareCandidates: boolean }) {
   return (
     <section className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface text-text">
-      {!publicMode && (authLoading || keyStatusLoading) ? (
-        <GateMessage title="확인 중" message="AI 사용 가능 상태를 확인하고 있습니다." />
-      ) : null}
-      {!publicMode && !authLoading && !isAuthenticated ? (
-        <GateMessage
-          title="로그인이 필요합니다"
-          message="AI 질의는 로그인 후 사용할 수 있습니다."
-          action={<Link className="app-floating-button h-10 min-h-10 no-underline" to="/select?auth=login">로그인하기</Link>}
-        />
-      ) : null}
-      {!publicMode && !authLoading && isAuthenticated && keyStatusError ? (
-        <GateMessage title="상태 확인 실패" message={keyStatusError} action={<GateButton onClick={refreshKeyStatus}>다시 시도</GateButton>} />
-      ) : null}
-      {!publicMode && !authLoading && isAuthenticated && keyStatus && !hasConfiguredKey ? (
-        <GateMessage
-          title="API KEY가 필요합니다"
-          message="마이페이지에서 AI API KEY를 먼저 등록해주세요."
-          action={<Link className="app-floating-button h-10 min-h-10 no-underline" to="/select?auth=mypage">마이페이지로 이동</Link>}
-        />
-      ) : null}
-      {!publicMode && !authLoading && isAuthenticated && keyStatus && hasConfiguredKey && !hasUnlockedKey ? (
-        <UnlockGate onUnlocked={refreshKeyStatus} />
-      ) : null}
-      {publicMode || (!authLoading && isAuthenticated && keyStatus && hasUnlockedKey) ? (
-        <ChatWorkspace canUseDemo={!publicMode && Boolean(keyStatus?.can_use_demo)} compareCandidates={compareCandidates} />
-      ) : null}
+      <ChatWorkspace canUseDemo={false} compareCandidates={compareCandidates} />
     </section>
-  );
-}
-
-function GateMessage({
-  title,
-  message,
-  action,
-}: {
-  title: string;
-  message: string;
-  action?: ReactNode;
-}) {
-  return (
-    <div className="flex flex-1 items-center justify-center p-6">
-      <div className="grid max-w-[360px] gap-4 text-center">
-        <div>
-          <h3 className="m-0 text-card-heading font-semibold">{title}</h3>
-          <p className="m-0 mt-2 text-[13px] leading-6 text-text-muted">{message}</p>
-        </div>
-        {action ? <div className="flex justify-center">{action}</div> : null}
-      </div>
-    </div>
-  );
-}
-
-function GateButton({
-  children,
-  onClick,
-}: {
-  children: ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className="h-10 rounded-sm bg-primary px-4 text-[13px] font-semibold text-surface transition hover:bg-primary-hover"
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
-}
-
-function UnlockGate({ onUnlocked }: { onUnlocked: () => Promise<void> }) {
-  const [passphrase, setPassphrase] = useState('');
-  const [isUnlocking, setIsUnlocking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleUnlock = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!passphrase || isUnlocking) return;
-    setIsUnlocking(true);
-    setError(null);
-    try {
-      await unlockAIAPIKeys(passphrase);
-      setPassphrase('');
-      await onUnlocked();
-    } catch (err) {
-      setError(getErrorMessage(err, '복호화 문구가 맞지 않습니다.'));
-    } finally {
-      setIsUnlocking(false);
-    }
-  };
-
-  return (
-    <form className="flex flex-1 items-center justify-center p-6" onSubmit={handleUnlock}>
-      <div className="grid w-full max-w-[360px] gap-4">
-        <div className="text-center">
-          <h3 className="m-0 text-card-heading font-semibold">API KEY 열기</h3>
-          <p className="m-0 mt-2 text-[13px] leading-6 text-text-muted">
-            저장된 AI API KEY를 사용하려면 복호화 문구를 입력해주세요.
-          </p>
-        </div>
-        <label className="grid gap-2 text-caption text-text">
-          복호화 문구
-          <input
-            type="password"
-            value={passphrase}
-            onChange={(event) => setPassphrase(event.target.value)}
-            autoComplete="current-password"
-            className="h-11 rounded-sm border border-border bg-surface-alt px-3 text-[15px] outline-none transition focus:border-primary"
-          />
-        </label>
-        {error ? <p className="m-0 text-caption text-danger">{error}</p> : null}
-        <button
-          type="submit"
-          disabled={!passphrase || isUnlocking}
-          className="h-10 rounded-sm bg-primary px-4 text-[13px] font-semibold text-surface transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isUnlocking ? '여는 중...' : '30분 동안 열기'}
-        </button>
-        <Link className="text-center text-[12px] font-semibold text-primary hover:text-primary-hover" to="/select?auth=mypage">
-          API KEY 등록은 마이페이지에서 하기
-        </Link>
-      </div>
-    </form>
   );
 }
 
@@ -651,7 +484,7 @@ function AgentMapList({ visualization }: { visualization: AgentVisualization }) 
             <div className="min-w-0">
               <div className="truncate font-semibold">{point.label}</div>
               <div className="text-[11px] text-text-subtle">
-                {point.lat?.toFixed(5)}, {point.lng?.toFixed(5)}
+                {getMapPointDescription(point)}
               </div>
             </div>
             <Link
@@ -665,6 +498,21 @@ function AgentMapList({ visualization }: { visualization: AgentVisualization }) 
       </div>
     </AgentChartFrame>
   );
+}
+
+function getMapPointDescription(point: AgentVisualizationDatum) {
+  const columns = point.columns ?? {};
+  const description =
+    columns['위치 설명']
+    ?? columns['주소/소속 동네']
+    ?? columns['소속 동네']
+    ?? columns['주소'];
+
+  if (description != null && String(description).trim()) {
+    return String(description);
+  }
+
+  return '지도에서 위치 확인';
 }
 
 function chartData(data: AgentVisualizationDatum[]) {

@@ -10,7 +10,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.dashboard.cache.models import DashboardAdongCache, DashboardLdongCache
-from apps.dashboard.cache.bulk import CONFIGS, build_transit_parts
 from apps.public_data.regions.models import Adong, Ldong
 
 
@@ -35,23 +34,7 @@ def _intro_payload(cache) -> dict:
 
 
 def _dashboard_payload(cache, region_type: str) -> dict:
-    payload = deepcopy(cache.dashboard_payload or {})
-    _refresh_congestion_payload(payload, region_type)
-    return payload
-
-
-def _refresh_congestion_payload(payload: dict, region_type: str) -> None:
-    region = payload.get("region") or {}
-    code = region.get("code")
-    if not code or region_type not in CONFIGS:
-        return
-    fresh = build_transit_parts(CONFIGS[region_type], {code: {"region": region, "scores": {}}})
-    congestion = (fresh.get(code) or {}).get("congestion")
-    if not congestion:
-        return
-    transit_summary = payload.setdefault("transit_summary", {})
-    transit_summary["congestion"] = congestion
-
+    return deepcopy(cache.dashboard_payload or {})
 
 def _parse_coordinate(value: str | None, *, field: str, minimum: float, maximum: float) -> float:
     if value in (None, ""):

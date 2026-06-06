@@ -25,7 +25,7 @@ def choose_sql_model_key(needed_tables: list[str], sql_plans: list | None = None
     table_count = len(set(needed_tables or []))
     plan_count = len(sql_plans or [])
 
-    if table_count <= 2 and plan_count <= 1:
+    if table_count <= 3 and plan_count <= 1:
         return "fast"
 
     return get_stage_model("sql_generation")

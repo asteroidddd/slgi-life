@@ -1,28 +1,20 @@
 import { useEffect, useState } from 'react';
-import type { ClipboardEvent, FormEvent, ReactNode } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate, useNavigate } from 'react-router-dom';
 
 import { Button, Input, Select } from '@/features/common/components/ui';
 import { useAuth } from '@/features/common/contexts/AuthContext';
 import {
-  deleteAIAPIKey,
   deleteMe,
-  getAIAPIKeys,
   getAIContextPreference,
   getUniversityOptions,
   patchMe,
-  saveAIAPIKey,
   updateAIContextPreference,
 } from '@/features/common/lib/api';
-import type { AIProvider, MeResponse } from '@/features/common/types/api';
+import type { MeResponse } from '@/features/common/types/api';
 
-const PROVIDER_LABELS: Record<AIProvider, string> = {
-  mindlogic: 'Mindlogic',
-  openai: 'OpenAI',
-};
-
-type MyPageMode = 'view' | 'profile' | 'ai-key';
+type MyPageMode = 'view' | 'profile';
 const WITHDRAW_CONFIRM_TEXT = '자취맵 탈퇴';
 
 export function MyPagePanel({ onClose }: { onClose?: () => void } = {}) {
@@ -46,7 +38,7 @@ export function MyPagePanel({ onClose }: { onClose?: () => void } = {}) {
     return <section className="p-8 text-center text-text-muted">불러오는 중...</section>;
   }
   if (!user) {
-    return <Navigate to="/select?auth=login" replace />;
+    return <Navigate to="/recommend/conditions?auth=login" replace />;
   }
 
   const handleLogout = async () => {
@@ -55,7 +47,7 @@ export function MyPagePanel({ onClose }: { onClose?: () => void } = {}) {
       onClose();
       return;
     }
-    navigate('/select', { replace: true });
+    navigate('/recommend/conditions', { replace: true });
   };
   const requiresEmail = !user.email?.trim();
 
@@ -69,11 +61,7 @@ export function MyPagePanel({ onClose }: { onClose?: () => void } = {}) {
           <>
             <ProfileSummary user={user} />
             <Divider />
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-              <Button type="button" variant="secondary" size="sm" onClick={() => setMode('ai-key')}>
-                AI API KEY 설정
-              </Button>
-              <span className="text-[13px] font-semibold text-text-subtle" aria-hidden="true">|</span>
+            <div className="flex">
               <Button type="button" variant="secondary" size="sm" onClick={() => setMode('profile')}>
                 프로필 편집
               </Button>
@@ -96,9 +84,6 @@ export function MyPagePanel({ onClose }: { onClose?: () => void } = {}) {
           <ProfileEditForm user={user} onCancel={() => setMode('view')} onSaved={() => setMode('view')} />
         ) : null}
 
-        {!requiresEmail && mode === 'ai-key' ? (
-          <AIKeyEditor onBack={() => setMode('view')} />
-        ) : null}
       {withdrawOpen ? (
         <WithdrawModal
           onClose={() => setWithdrawOpen(false)}
@@ -107,7 +92,7 @@ export function MyPagePanel({ onClose }: { onClose?: () => void } = {}) {
               onClose();
               return;
             }
-            navigate('/select?auth=login&withdrawn=1', { replace: true });
+            navigate('/recommend/conditions?auth=login&withdrawn=1', { replace: true });
           }}
         />
       ) : null}
@@ -116,7 +101,7 @@ export function MyPagePanel({ onClose }: { onClose?: () => void } = {}) {
 }
 
 export default function MyPage() {
-  return <Navigate to="/select?auth=mypage" replace />;
+  return <Navigate to="/recommend/conditions?auth=mypage" replace />;
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -215,7 +200,7 @@ function WithdrawModal({ onClose, onDone }: { onClose: () => void; onDone: () =>
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="m-0 text-card-heading font-semibold">회원탈퇴</h2>
-            <p className="m-0 mt-2 text-[13px] leading-6 text-text-muted">계정, 프로필, 집 주소/좌표, 저장된 AI API KEY가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</p>
+            <p className="m-0 mt-2 text-[13px] leading-6 text-text-muted">계정, 프로필, 집 주소/좌표가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</p>
           </div>
           <button type="button" onClick={onClose} className="h-8 w-8 rounded-[6px] bg-surface-alt text-[18px] text-text-muted" aria-label="닫기">×</button>
         </div>
@@ -406,230 +391,5 @@ function ProfileEditForm({ user, onCancel, onSaved }: { user: MeResponse; onCanc
         <Button type="button" variant="secondary" size="sm" onClick={onCancel} disabled={saving}>취소</Button>
       </div>
     </form>
-  );
-}
-
-function AIKeyEditor({ onBack }: { onBack: () => void }) {
-  const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ['ai-api-keys'], queryFn: getAIAPIKeys });
-  const [provider, setProvider] = useState<AIProvider>('mindlogic');
-  const [priority, setPriority] = useState(1);
-  const [apiKey, setApiKey] = useState('');
-  const [passphrase, setPassphrase] = useState('');
-  const [passphraseConfirm, setPassphraseConfirm] = useState('');
-  const [message, setMessage] = useState<string | null>(null);
-  const [guideOpen, setGuideOpen] = useState(false);
-
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['ai-api-keys'] });
-  const saveMutation = useMutation({
-    mutationFn: saveAIAPIKey,
-    onSuccess: () => {
-      setApiKey('');
-      setPassphrase('');
-      setPassphraseConfirm('');
-      setMessage('API KEY를 저장했습니다. 30분 동안 사용할 수 있습니다.');
-      invalidate();
-    },
-    onError: () => setMessage('API KEY 저장에 실패했습니다.'),
-  });
-  const deleteMutation = useMutation({
-    mutationFn: deleteAIAPIKey,
-    onSuccess: () => {
-      setMessage('API KEY를 삭제했습니다.');
-      invalidate();
-    },
-  });
-
-  const handleSave = (event: FormEvent) => {
-    event.preventDefault();
-    if (!apiKey.trim() || !passphrase) {
-      setMessage('API KEY와 복호화 문구를 입력해주세요.');
-      return;
-    }
-    if (passphrase !== passphraseConfirm) {
-      setMessage('복호화 문구가 서로 다릅니다.');
-      return;
-    }
-    saveMutation.mutate({ provider, api_key: apiKey.trim(), passphrase, priority });
-  };
-
-  return (
-    <section className="grid gap-4" aria-labelledby="ai-key-heading">
-      <div className="pr-10">
-        <div className="grid gap-2">
-          <div className="flex items-center gap-2">
-            <h1 id="ai-key-heading" className="m-0 text-section-display font-semibold leading-none text-text">AI API KEY 설정</h1>
-            <button
-              type="button"
-              className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface-alt text-[13px] font-bold text-text-muted transition hover:border-primary hover:text-primary"
-              onClick={() => setGuideOpen((open) => !open)}
-              aria-label="API KEY 발급 안내"
-              aria-expanded={guideOpen}
-            >
-              i
-            </button>
-          </div>
-          <p className="m-0 mt-2 text-[13px] leading-5 text-text-muted">저장된 키는 복호화 문구로 30분 동안 열어 사용할 수 있습니다.</p>
-        </div>
-      </div>
-
-      {guideOpen ? <AIKeyGuide /> : null}
-
-      <div className="grid gap-2 rounded-card border border-border bg-surface-alt p-3">
-        {isLoading ? <p className="m-0 text-caption text-text-muted">키 상태를 불러오는 중...</p> : null}
-        {(data?.keys ?? []).map((item) => (
-          <div key={item.provider} className="flex items-center justify-between gap-3 border-b border-divider py-2 last:border-b-0">
-            <div>
-              <strong className="block text-[13px] text-text">{PROVIDER_LABELS[item.provider]}</strong>
-              <span className="text-[12px] text-text-muted">
-                {item.configured ? `${item.masked_key} · 우선순위 ${item.priority ?? '-'}` : '미설정'}
-                {item.unlocked ? ' · 사용 가능' : ''}
-              </span>
-            </div>
-            {item.configured ? (
-              <button type="button" className="text-[12px] font-semibold text-danger" onClick={() => deleteMutation.mutate(item.provider)}>삭제</button>
-            ) : null}
-          </div>
-        ))}
-      </div>
-
-      <form className="grid gap-3" onSubmit={handleSave}>
-        <div className="grid grid-cols-2 gap-2">
-          <label className="grid gap-2 text-caption text-text">
-            제공자
-            <Select value={provider} onChange={(e) => setProvider(e.target.value as AIProvider)}>
-              <option value="mindlogic">Mindlogic</option>
-              <option value="openai">OpenAI</option>
-            </Select>
-          </label>
-          <label className="grid gap-2 text-caption text-text">
-            우선순위
-            <Select value={String(priority)} onChange={(e) => setPriority(Number(e.target.value))}>
-              <option value="1">1순위</option>
-              <option value="2">2순위</option>
-            </Select>
-          </label>
-        </div>
-        <MaskedSecretInput label="API KEY" value={apiKey} onChange={setApiKey} placeholder="붙여넣거나 입력하면 가운데가 가려집니다" />
-        <Input
-          label="복호화 문구"
-          type="password"
-          name="jachwimap-ai-passphrase"
-          autoComplete="new-password"
-          value={passphrase}
-          onChange={(e) => setPassphrase(e.target.value)}
-          placeholder="키를 사용할 때 필요한 문구"
-        />
-        <Input
-          label="복호화 문구 확인"
-          type="password"
-          name="jachwimap-ai-passphrase-confirm"
-          autoComplete="new-password"
-          value={passphraseConfirm}
-          onChange={(e) => setPassphraseConfirm(e.target.value)}
-          placeholder="같은 문구를 한 번 더 입력"
-        />
-        <div className="grid grid-cols-2 gap-2">
-          <Button type="submit" variant="primary" size="sm" loading={saveMutation.isPending}>저장</Button>
-          <Button type="button" variant="secondary" size="sm" onClick={onBack} disabled={saveMutation.isPending}>취소</Button>
-        </div>
-      </form>
-      {message ? <p className="m-0 text-caption text-text-muted">{message}</p> : null}
-    </section>
-  );
-}
-
-function AIKeyGuide() {
-  return (
-    <aside className="grid gap-3 rounded-card border border-border bg-surface-alt p-4 text-[13px] leading-6 text-text-muted">
-      <div>
-        <h2 className="m-0 text-[14px] font-semibold text-text">Mindlogic API KEY</h2>
-        <ol className="m-0 mt-2 grid gap-1 pl-5">
-          <li>
-            <a
-              href="https://aichat.dongguk.edu/"
-              target="_blank"
-              rel="noreferrer"
-              className="font-semibold text-primary hover:text-primary-hover"
-            >
-              동국대 AI Chat
-            </a>
-            에 접속합니다.
-          </li>
-          <li>우측 하단의 API Gateway를 클릭합니다.</li>
-          <li>+ API KEY 생성을 클릭합니다.</li>
-          <li>생성된 키 값을 복사해 이 화면의 API KEY 입력칸에 붙여넣습니다.</li>
-        </ol>
-      </div>
-      <div>
-        <h2 className="m-0 text-[14px] font-semibold text-text">OpenAI API KEY</h2>
-        <ol className="m-0 mt-2 grid gap-1 pl-5">
-          <li>
-            <a
-              href="https://platform.openai.com/api-keys"
-              target="_blank"
-              rel="noreferrer"
-              className="font-semibold text-primary hover:text-primary-hover"
-            >
-              OpenAI API keys
-            </a>
-            페이지에 로그인합니다.
-          </li>
-          <li>Create new secret key를 눌러 새 키를 생성합니다.</li>
-          <li>생성 직후 한 번만 보이는 키 값을 복사해 이 화면의 API KEY 입력칸에 붙여넣습니다.</li>
-          <li>OpenAI API 사용에는 별도 결제 설정 또는 크레딧이 필요할 수 있습니다.</li>
-        </ol>
-      </div>
-    </aside>
-  );
-}
-
-function maskSecret(value: string): string {
-  if (!value) return '';
-  if (value.length <= 4) return '*'.repeat(value.length);
-  return `${value.slice(0, 2)}${'*'.repeat(Math.max(3, value.length - 4))}${value.slice(-2)}`;
-}
-
-function MaskedSecretInput({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}) {
-  const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
-    event.preventDefault();
-    const pasted = event.clipboardData.getData('text');
-    onChange(pasted);
-  };
-
-  return (
-    <label className="grid gap-2 text-caption text-text">
-      {label}
-      <input
-        type="text"
-        name="jachwimap-ai-key"
-        autoComplete="off"
-        autoCorrect="off"
-        spellCheck={false}
-        inputMode="text"
-        value={maskSecret(value)}
-        onPaste={handlePaste}
-        onChange={(event) => {
-          const next = event.target.value;
-          if (next.includes('*')) return;
-          onChange(next);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Backspace' || event.key === 'Delete') onChange('');
-        }}
-        placeholder={placeholder}
-        className="h-11 rounded-sm border border-border bg-surface px-3 text-[15px] font-medium text-text outline-none transition placeholder:text-text-subtle focus:border-primary"
-      />
-    </label>
   );
 }

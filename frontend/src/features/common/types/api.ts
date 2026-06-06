@@ -639,20 +639,6 @@ export interface AgentQueryResponse {
 
 export type AIProvider = 'mindlogic' | 'openai';
 
-export interface AIAPIKeyStatus {
-  provider: AIProvider;
-  configured: boolean;
-  priority: number | null;
-  masked_key: string;
-  unlocked: boolean;
-}
-
-export interface AIAPIKeyStatusResponse {
-  keys: AIAPIKeyStatus[];
-  unlock_ttl_seconds: number;
-  can_use_demo?: boolean;
-}
-
 export interface AIContextPreferenceResponse {
   share_school_with_ai: boolean;
   share_home_location_with_ai: boolean;

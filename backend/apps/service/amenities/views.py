@@ -7,11 +7,12 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import CATEGORY_CHOICES, Amenity
-from .serializers import AmenityBboxSerializer
+from apps.caches.map_display.models import MapAmenityMarkerCache
+
+from .models import CATEGORY_CHOICES
 
 
-ALLOWED_CATEGORIES = tuple(key for key, _label in CATEGORY_CHOICES)
+ALLOWED_CATEGORIES = tuple(key for key, _label in CATEGORY_CHOICES if key != "etc")
 CATEGORY_LIMIT = 1000
 
 
@@ -33,6 +34,7 @@ def _parse_categories(raw: str | None) -> tuple[str, ...]:
     if not raw:
         return ()
     items = tuple(dict.fromkeys(part.strip() for part in raw.split(",") if part.strip()))
+    items = tuple(item for item in items if item != "etc")
     invalid = [item for item in items if item not in ALLOWED_CATEGORIES]
     if invalid:
         raise ValidationError({"categories": f"unknown categories: {invalid}"})
@@ -46,15 +48,28 @@ class AmenityBboxView(APIView):
         selected_categories = categories or ALLOWED_CATEGORIES
 
         bbox = Polygon.from_bbox((min_lng, min_lat, max_lng, max_lat))
-        base_qs = Amenity.objects.filter(location__within=bbox)
+        base_qs = MapAmenityMarkerCache.objects.filter(location__within=bbox)
 
-        items: list[Amenity] = []
+        items: list[dict] = []
         for category in selected_categories:
-            items.extend(
+            rows = (
                 base_qs
                 .filter(category=category)
                 .order_by("name", "id")[:CATEGORY_LIMIT]
             )
+            items.extend(
+                {
+                    "id": row.id,
+                    "category": row.category,
+                    "name": row.name,
+                    "lat": row.location.y if row.location else None,
+                    "lng": row.location.x if row.location else None,
+                    "source_table": "",
+                    "source_id": "",
+                }
+                for row in rows
+            )
+
         return Response(
             {
                 "bbox": [min_lng, min_lat, max_lng, max_lat],
@@ -62,7 +77,7 @@ class AmenityBboxView(APIView):
                 "limit": CATEGORY_LIMIT,
                 "limit_scope": "category",
                 "count": len(items),
-                "items": AmenityBboxSerializer(items, many=True).data,
+                "items": items,
             },
             status=status.HTTP_200_OK,
         )

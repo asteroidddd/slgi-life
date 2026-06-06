@@ -35,6 +35,7 @@ from .schemas import ClassificationOutput, SelectionOutput, InfoOutput
 from .sql_runner import run_text_to_sql
 from ..helpers.sql_guard import validate_read_only_sql
 from .prompts import CLASSIFICATION_PROMPT, SELECTION_PROMPT, INFO_ANSWER_PROMPT
+from .dashboard_cache import try_dashboard_cache_answer
 
 def _format_memory_item(item: dict) -> str:
     label = str(item.get("label", "")).strip()
@@ -153,12 +154,49 @@ def _format_user_context(user_context: dict | None) -> str:
 
     return "\n".join(lines) if lines else "없음"
 
+def _format_candidate_regions(candidate_regions: list | None) -> str:
+    if not candidate_regions:
+        return "없음"
+
+    lines = []
+    for index, region in enumerate(candidate_regions[:10], start=1):
+        if not isinstance(region, dict):
+            continue
+
+        gu = str(region.get("gu") or "").strip()
+        name = str(region.get("name") or "").strip()
+        region_level = str(region.get("region_level") or "").strip()
+
+        if not name:
+            continue
+
+        region_type = "행정동" if region_level == "adong" else "법정동" if region_level == "ldong" else region_level
+        label = " ".join(part for part in [gu, name] if part)
+
+        scores = []
+        if region.get("score") is not None:
+            scores.append(f"종합점수 {region.get('score')}")
+        if region.get("score_rent") is not None:
+            scores.append(f"월세점수 {region.get('score_rent')}")
+        if region.get("score_transit") is not None:
+            scores.append(f"교통점수 {region.get('score_transit')}")
+        if region.get("score_amenity") is not None:
+            scores.append(f"생활시설점수 {region.get('score_amenity')}")
+        if region.get("score_safety") is not None:
+            scores.append(f"안전점수 {region.get('score_safety')}")
+
+        score_text = f" / {', '.join(scores)}" if scores else ""
+        type_text = f" ({region_type})" if region_type else ""
+        lines.append(f"{index}. {label}{type_text}{score_text}")
+
+    return "\n".join(lines) if lines else "없음"
 
 def run_agent(
     question: str,
     history: list | None = None,
     llm_credentials: dict | None = None,
     user_context: dict | None = None,
+    candidate_regions: list | None = None,
 ) -> dict:
     """
     파이프라인:
@@ -172,6 +210,10 @@ def run_agent(
     """
     history = history or []
     start = time.time()
+    dashboard_result = try_dashboard_cache_answer(question, start)
+    if dashboard_result:
+        return dashboard_result
+
     cfg = get_config()
     pipeline_cfg = cfg.get("pipeline", {})
     max_neighborhoods = pipeline_cfg.get("max_neighborhoods", 2)
@@ -184,6 +226,12 @@ def run_agent(
     conversation_history = _format_history(history)
     enriched_question = _enrich_question(question, history)
     formatted_user_context = _format_user_context(user_context)
+    candidate_regions_context = _format_candidate_regions(candidate_regions) 
+    if candidate_regions_context != "없음":
+        enriched_question = (
+            f"[사용자가 담은 동네 목록]\n{candidate_regions_context}\n\n"
+            f"{enriched_question}"
+        )
 
     # ── 1단계: 질문 분류 ──────────────────────────────────────────────────────
     print("\n[1단계] 질문 분류 중...")
@@ -197,6 +245,7 @@ def run_agent(
             domain_dictionary=get_domain_dictionary_context(),
             conversation_history=conversation_history,
             user_context=formatted_user_context,
+            candidate_regions_context=candidate_regions_context,
         )),
         HumanMessage(content=question),
     ])

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
 import {
@@ -311,8 +312,8 @@ export default function NeighborhoodCompareDialog({
                 onChange={setSelectedKeys}
               />
               <div className="grid grid-cols-2 gap-4">
-                <RegionHeaderCard item={left} />
-                <RegionHeaderCard item={right} />
+                <RegionHeaderCard item={left} onDetailClick={onClose} />
+                <RegionHeaderCard item={right} onDetailClick={onClose} />
               </div>
               <ScoreComparison left={left} right={right} />
               {SECTION_ROWS.map((section) => (
@@ -517,7 +518,13 @@ function RegionSelect({
   );
 }
 
-function RegionHeaderCard({ item }: { item: NeighborhoodCompareItem }) {
+function RegionHeaderCard({
+  item,
+  onDetailClick,
+}: {
+  item: NeighborhoodCompareItem;
+  onDetailClick: () => void;
+}) {
   const quicktakes = [
     ...item.sections.rent.quicktakes,
     ...item.sections.transit.quicktakes,
@@ -526,7 +533,7 @@ function RegionHeaderCard({ item }: { item: NeighborhoodCompareItem }) {
   ].slice(0, 5);
 
   return (
-    <article className="rounded-card border border-border bg-surface-alt p-4">
+    <article className="flex min-h-[238px] flex-col rounded-card border border-border bg-surface-alt p-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="m-0 text-[12px] font-bold text-primary">
@@ -542,14 +549,23 @@ function RegionHeaderCard({ item }: { item: NeighborhoodCompareItem }) {
       <p className="m-0 mt-3 line-clamp-3 min-h-[72px] text-[14px] leading-6 text-text-muted">
         {item.intro || `${item.gu} ${item.name}의 생활 여건을 비교합니다.`}
       </p>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {quicktakes.length > 0 ? quicktakes.map((quicktake) => (
-          <span key={`${quicktake.label}:${quicktake.tone}`} className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${toneClass(quicktake.tone)}`}>
-            {quicktake.label}
-          </span>
-        )) : (
-          <span className="text-[12px] font-semibold text-text-muted">요약 정보 없음</span>
-        )}
+      <div className="mt-auto flex items-end justify-between gap-3 pt-3">
+        <div className="flex min-w-0 flex-wrap gap-1.5">
+          {quicktakes.length > 0 ? quicktakes.map((quicktake) => (
+            <span key={`${quicktake.label}:${quicktake.tone}`} className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${toneClass(quicktake.tone)}`}>
+              {quicktake.label}
+            </span>
+          )) : (
+            <span className="text-[12px] font-semibold text-text-muted">요약 정보 없음</span>
+          )}
+        </div>
+        <Link
+          to={`/dashboard/${item.regionLevel}/${encodeURIComponent(item.slug)}`}
+          onClick={onDetailClick}
+          className="inline-flex h-9 shrink-0 items-center justify-center rounded-[8px] bg-primary px-3 text-[12px] font-bold text-surface no-underline transition hover:bg-primary-hover hover:text-surface"
+        >
+          자세히 보기
+        </Link>
       </div>
     </article>
   );

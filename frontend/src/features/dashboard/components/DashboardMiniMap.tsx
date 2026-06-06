@@ -21,6 +21,7 @@ import 'leaflet/dist/leaflet.css';
 
 const SEOUL_CENTER: [number, number] = [37.5665, 126.978];
 export const DASHBOARD_MINI_MAP_ZOOM = 13;
+const DASHBOARD_MINI_MAP_MAX_FIT_ZOOM = 16;
 
 type DongFeature = Feature<Geometry, AdongFeatureProps>;
 type RegionMaskFeature = Feature<Polygon, { name: string }>;
@@ -256,6 +257,14 @@ export default function DashboardMiniMap({
           maxNativeZoom={maxZoom}
         />
         <MiniMapThemeRefresh tileLayerKey={tileLayerKey} />
+        <MiniMapResizeRefresh
+          center={center}
+          zoom={DASHBOARD_MINI_MAP_ZOOM}
+          bounds={selectedBounds}
+          maxZoom={maxZoom}
+          onViewportChange={onViewportChange}
+          viewKey={`${selectedMaskKey}-${tileLayerKey}`}
+        />
         <MiniMapViewport
           center={center}
           zoom={DASHBOARD_MINI_MAP_ZOOM}
@@ -308,6 +317,101 @@ function MiniMapThemeRefresh({ tileLayerKey }: { tileLayerKey: string }) {
   return null;
 }
 
+function applyMiniMapViewport({
+  map,
+  center,
+  zoom,
+  bounds,
+  maxZoom,
+  onViewportChange,
+  animate,
+}: {
+  map: L.Map;
+  center: [number, number];
+  zoom: number;
+  bounds: LatLngBounds | null;
+  maxZoom: number;
+  onViewportChange?: (view: DashboardMiniMapView) => void;
+  animate: boolean;
+}) {
+  map.invalidateSize(false);
+
+  if (bounds?.isValid()) {
+    map.fitBounds(bounds, {
+      animate,
+      maxZoom: Math.min(maxZoom, DASHBOARD_MINI_MAP_MAX_FIT_ZOOM),
+      padding: L.point(24, 24),
+    });
+    const nextCenter = map.getCenter();
+    onViewportChange?.({ lat: nextCenter.lat, lng: nextCenter.lng, zoom: map.getZoom() });
+    return;
+  }
+
+  const nextZoom = Math.min(zoom, maxZoom);
+  map.setView(center, nextZoom, { animate });
+  onViewportChange?.({ lat: center[0], lng: center[1], zoom: nextZoom });
+}
+
+function MiniMapResizeRefresh({
+  center,
+  zoom,
+  bounds,
+  maxZoom,
+  onViewportChange,
+  viewKey,
+}: {
+  center: [number, number];
+  zoom: number;
+  bounds: LatLngBounds | null;
+  maxZoom: number;
+  onViewportChange?: (view: DashboardMiniMapView) => void;
+  viewKey: string;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    let frame = 0;
+    let timer = 0;
+    const refresh = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        applyMiniMapViewport({
+          map,
+          center,
+          zoom,
+          bounds,
+          maxZoom,
+          onViewportChange,
+          animate: false,
+        });
+      });
+    };
+
+    refresh();
+    timer = window.setTimeout(refresh, 220);
+
+    const target = map.getContainer().parentElement ?? map.getContainer();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', refresh);
+      return () => {
+        window.cancelAnimationFrame(frame);
+        window.clearTimeout(timer);
+        window.removeEventListener('resize', refresh);
+      };
+    }
+
+    const observer = new ResizeObserver(refresh);
+    observer.observe(target);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [bounds, center, map, maxZoom, onViewportChange, viewKey, zoom]);
+
+  return null;
+}
+
 function MiniMapViewport({
   center,
   zoom,
@@ -323,27 +427,15 @@ function MiniMapViewport({
 }) {
   const map = useMap();
   useEffect(() => {
-    if (bounds) {
-      const size = map.getSize();
-      const boundsCenter = bounds.getCenter();
-      const crs = map.options.crs ?? L.CRS.EPSG3857;
-      const north = crs.latLngToPoint(L.latLng(bounds.getNorth(), boundsCenter.lng), 0);
-      const south = crs.latLngToPoint(L.latLng(bounds.getSouth(), boundsCenter.lng), 0);
-      const yDistance = Math.abs(south.y - north.y);
-      if (size.y > 0 && yDistance > 0) {
-        const verticalZoom = Math.min(maxZoom, Math.log2(size.y / yDistance));
-        map.setView(boundsCenter, verticalZoom, { animate: true });
-        onViewportChange?.({ lat: boundsCenter.lat, lng: boundsCenter.lng, zoom: verticalZoom });
-      } else {
-        const fittedZoom = Math.min(maxZoom, map.getBoundsZoom(bounds, false, L.point(0, 0)));
-        map.setView(boundsCenter, fittedZoom, { animate: true });
-        onViewportChange?.({ lat: boundsCenter.lat, lng: boundsCenter.lng, zoom: fittedZoom });
-      }
-      return;
-    }
-    const nextZoom = Math.min(zoom, maxZoom);
-    map.setView(center, nextZoom, { animate: true });
-    onViewportChange?.({ lat: center[0], lng: center[1], zoom: nextZoom });
+    applyMiniMapViewport({
+      map,
+      center,
+      zoom,
+      bounds,
+      maxZoom,
+      onViewportChange,
+      animate: true,
+    });
   }, [bounds, center, map, maxZoom, onViewportChange, zoom]);
   return null;
 }

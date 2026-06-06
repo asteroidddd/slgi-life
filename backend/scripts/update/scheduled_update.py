@@ -25,6 +25,16 @@ from _django import setup  # noqa: E402
 setup()
 
 from apps.ai_agent.byok.services import purge_stale_user_keys  # noqa: E402
+from apps.caches.map_display.updater import (  # noqa: E402
+    rebuild_map_amenity_marker_cache,
+    rebuild_map_medical_marker_cache,
+)
+from apps.caches.region_stats.updater import (  # noqa: E402
+    rebuild_region_amenity_category_cache,
+    rebuild_region_park_area_cache,
+)
+from apps.caches.rent_deal.updater import rebuild_rent_deal_geocode_cache  # noqa: E402
+from apps.public_data.rent_deal.models import RentConversionRate  # noqa: E402
 from scripts.update.bus_congestion_fast import (  # noqa: E402
     FastBusCongestionOptions,
     update_bus_congestion_fast,
@@ -32,6 +42,7 @@ from scripts.update.bus_congestion_fast import (  # noqa: E402
 from scripts.update.update_dashboard_data import _run_target as run_dashboard_target  # noqa: E402
 from scripts.update.update_public_data import _run_dataset as run_public_dataset  # noqa: E402
 from scripts.update.update_service_data import _run_target as run_service_target  # noqa: E402
+from apps.service.recommend.cache import rebuild_recommend_rent_cache  # noqa: E402
 
 
 KST = ZoneInfo("Asia/Seoul")
@@ -39,8 +50,8 @@ STATE_DIR = Path(__file__).resolve().parent / ".state"
 RUN_STATE_PATH = STATE_DIR / "scheduled_update_latest.json"
 PERSISTENT_FAILURES_PATH = STATE_DIR / "persistent_failures.md"
 LOCK_PATH = STATE_DIR / "scheduled_update.lock"
-DEFAULT_MAX_HOURS = 6.0
-FAILED_STATUSES = {"failed", "partial", "rate_limited", "timeout"}
+DEFAULT_MAX_HOURS = 10.0
+FAILED_STATUSES = {"failed", "partial", "rate_limited", "timeout", "interrupted"}
 NON_RETRY_REASONS = {"deadline_reached"}
 
 
@@ -251,6 +262,69 @@ def run_dashboard(_args: argparse.Namespace, dry_run: bool) -> dict[str, Any]:
     return run_dashboard_target("dashboard_cache", dry_run=dry_run, strict=False)
 
 
+def run_recommend_rent_cache(_args: argparse.Namespace, dry_run: bool) -> dict[str, Any]:
+    row = RentConversionRate.objects.order_by("-period_ym").first()
+    monthly_rate = row.monthly_rate if row else 0.005
+    period = row.period_ym if row else ""
+    if dry_run:
+        return {
+            "target": "recommend_rent_cache",
+            "dry_run": True,
+            "status": "success",
+            "completed": True,
+            "conversion_rate_period": period,
+            "monthly_rate": monthly_rate,
+        }
+    counts = rebuild_recommend_rent_cache(monthly_rate=monthly_rate, conversion_rate_period=period)
+    return {
+        "target": "recommend_rent_cache",
+        "dry_run": False,
+        "status": "success",
+        "completed": True,
+        "counts": counts,
+        "conversion_rate_period": period,
+        "monthly_rate": monthly_rate,
+    }
+
+
+def run_rent_deal_geocode_cache(args: argparse.Namespace, dry_run: bool) -> dict[str, Any]:
+    return rebuild_rent_deal_geocode_cache(dry_run=dry_run, limit=args.limit)
+
+
+def run_region_park_area_cache(_args: argparse.Namespace, dry_run: bool) -> dict[str, Any]:
+    return rebuild_region_park_area_cache(dry_run=dry_run)
+
+
+def run_region_amenity_category_cache(_args: argparse.Namespace, dry_run: bool) -> dict[str, Any]:
+    return rebuild_region_amenity_category_cache(dry_run=dry_run)
+
+
+def run_map_medical_marker_cache(_args: argparse.Namespace, dry_run: bool) -> dict[str, Any]:
+    if dry_run:
+        return {"target": "map_medical_marker_cache", "dry_run": True, "status": "success", "completed": True}
+    rows = rebuild_map_medical_marker_cache()
+    return {
+        "target": "map_medical_marker_cache",
+        "dry_run": False,
+        "status": "success",
+        "completed": True,
+        "rows": rows,
+    }
+
+
+def run_map_amenity_marker_cache(_args: argparse.Namespace, dry_run: bool) -> dict[str, Any]:
+    if dry_run:
+        return {"target": "map_amenity_marker_cache", "dry_run": True, "status": "success", "completed": True}
+    rows = rebuild_map_amenity_marker_cache()
+    return {
+        "target": "map_amenity_marker_cache",
+        "dry_run": False,
+        "status": "success",
+        "completed": True,
+        "rows": rows,
+    }
+
+
 def run_bus_congestion(args: argparse.Namespace, dry_run: bool) -> dict[str, Any]:
     return update_bus_congestion_fast(
         FastBusCongestionOptions(
@@ -306,6 +380,24 @@ TASKS: tuple[Task, ...] = (
         extra={"allow_partial": True},
     ),
     Task("rent_deals", "public_data", "P04", "daily", run_public("rent_deals"), deps=("regions",), heavy=True, extra={"signal_on_success": True}),
+    Task(
+        "rent_deal_geocode_cache",
+        "cache",
+        "C01",
+        "on_change",
+        run_rent_deal_geocode_cache,
+        deps=("rent_deals",),
+        run_on_dependency_change=True,
+    ),
+    Task(
+        "recommend_rent_cache",
+        "cache",
+        "C02",
+        "on_change",
+        run_recommend_rent_cache,
+        deps=("rent_deals",),
+        run_on_dependency_change=True,
+    ),
     Task("univ", "public_data", "P05", "file_change", run_public("univ"), deps=("regions",), file_paths=("data/university_boundaries.geojson",)),
     Task("bus_stop", "public_data", "P06A", "daily", run_public("bus", skip_congestion=True), deps=("regions",)),
     Task("bus_congestion", "public_data", "P06B", "daily", run_bus_congestion, deps=("bus_stop",), heavy=True),
@@ -334,7 +426,25 @@ TASKS: tuple[Task, ...] = (
         heavy=True,
         extra={"signal_on_success": True},
     ),
+    Task(
+        "map_medical_marker_cache",
+        "cache",
+        "C03",
+        "on_change",
+        run_map_medical_marker_cache,
+        deps=("medical",),
+        run_on_dependency_change=True,
+    ),
     Task("parks", "public_data", "P11", "file_change", run_public("parks"), deps=("regions",), file_paths=("data/park_boundaries.geojson",)),
+    Task(
+        "region_park_area_cache",
+        "cache",
+        "C04",
+        "on_change",
+        run_region_park_area_cache,
+        deps=("parks",),
+        run_on_dependency_change=True,
+    ),
     Task("library", "public_data", "P12", "weekly", run_public("library"), deps=("regions",), weekly_day=0, extra={"signal_on_success": True}),
     Task(
         "amenity",
@@ -343,6 +453,24 @@ TASKS: tuple[Task, ...] = (
         "on_change",
         run_service("amenity"),
         deps=("stores", "daiso", "medical", "library", "subway", "bus_stop"),
+        run_on_dependency_change=True,
+    ),
+    Task(
+        "region_amenity_category_cache",
+        "cache",
+        "C05",
+        "on_change",
+        run_region_amenity_category_cache,
+        deps=("amenity",),
+        run_on_dependency_change=True,
+    ),
+    Task(
+        "map_amenity_marker_cache",
+        "cache",
+        "C06",
+        "on_change",
+        run_map_amenity_marker_cache,
+        deps=("amenity",),
         run_on_dependency_change=True,
     ),
     Task(
@@ -656,6 +784,17 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         write_json(RUN_STATE_PATH, result)
         return result
 
+    previous_run = read_json(RUN_STATE_PATH)
+    previous_interrupted_run = None
+    if previous_run.get("status") == "running":
+        previous_interrupted_run = {
+            "started_at": previous_run.get("started_at"),
+            "started_local": previous_run.get("started_local"),
+            "interrupted_at": utc_now(),
+            "reason": "previous_running_state_replaced",
+            "task_count": len(previous_run.get("tasks") or []),
+        }
+
     started = time.monotonic()
     args.deadline_monotonic = started + args.max_hours * 3600
     run_results: dict[str, dict[str, Any]] = {}
@@ -669,9 +808,24 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "max_hours": args.max_hours,
         "tasks": [],
     }
+    if previous_interrupted_run:
+        run_payload["previous_interrupted_run"] = previous_interrupted_run
     write_json(RUN_STATE_PATH, run_payload)
 
-    for task in TASKS:
+    def block_remaining_tasks(start_index: int, failed_task_id: str) -> None:
+        for blocked_task in TASKS[start_index:]:
+            blocked_state = save_task_result(
+                blocked_task,
+                status="skipped",
+                reason=f"blocked_by_failed_task:{failed_task_id}",
+                source_hash=stable_hash(blocked_task.file_paths),
+                changed=False,
+                attempts=0,
+            )
+            run_results[blocked_task.task_id] = blocked_state
+            run_payload["tasks"].append(blocked_state)
+
+    for task_index, task in enumerate(TASKS):
         if time.monotonic() >= args.deadline_monotonic:
             state = save_task_result(
                 task,
@@ -683,6 +837,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             )
             run_results[task.task_id] = state
             run_payload["tasks"].append(state)
+            block_remaining_tasks(task_index + 1, task.task_id)
             break
 
         blocked, dep = dependency_failed_without_previous_success(task, run_results)
@@ -710,6 +865,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         run_results[task.task_id] = state
         run_payload["tasks"].append(state)
         write_json(RUN_STATE_PATH, run_payload)
+        if state.get("status") in FAILED_STATUSES:
+            block_remaining_tasks(task_index + 1, task.task_id)
+            write_json(RUN_STATE_PATH, run_payload)
+            break
 
     failed = [item for item in run_payload["tasks"] if item.get("status") in FAILED_STATUSES]
     run_payload["status"] = "partial" if failed else "success"
@@ -731,8 +890,8 @@ def main() -> int:
     parser.add_argument("--retry-attempts", type=int, default=5)
     parser.add_argument("--retry-wait-seconds", type=float, default=300.0)
     parser.add_argument("--bus-days", type=int, default=14)
-    parser.add_argument("--bus-workers", type=int, default=8)
-    parser.add_argument("--bus-rps", type=float, default=3.0)
+    parser.add_argument("--bus-workers", type=int, default=2)
+    parser.add_argument("--bus-rps", type=float, default=1.0)
     parser.add_argument("--bus-max-api-calls", type=int, default=90000)
     parser.add_argument("--bus-anchor-ymd", default=None)
     parser.add_argument("--not-before-local-date", default=None, help="YYYY-MM-DD KST guard.")

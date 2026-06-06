@@ -256,21 +256,28 @@ export default function Dashboard() {
         </div>
       </div>
       <ListingLinkPanel region={selectedRegion} zoom={DASHBOARD_MINI_MAP_ZOOM} mapView={listingMapView} />
-      {selectedRegion ? (
-        <>
+      <div className="fixed bottom-6 left-6 z-[1500] flex flex-col items-start gap-2">
+        <button
+          type="button"
+          onClick={() => navigate('/recommend/conditions')}
+          className="app-floating-button app-flow-button"
+        >
+          조건 재입력
+        </button>
+        {selectedRegion ? (
           <button
             type="button"
             onClick={handleCandidateToggle}
-            className={`fixed bottom-6 left-6 z-[1500] inline-flex h-11 items-center justify-center rounded-card border px-5 text-[14px] font-bold shadow-floating backdrop-blur transition ${
+            className={`app-floating-button app-flow-button ${
               selectedSaved
-                ? 'border-[var(--color-heatmap-2)] bg-[var(--color-heatmap-1)] text-[var(--color-heatmap-5)] hover:bg-surface'
-                : 'border-primary bg-primary text-surface hover:bg-primary-hover'
+                ? 'app-flow-button--saved'
+                : 'app-flow-button--primary'
             }`}
           >
             {selectedSaved ? '후보에서 빼기' : '후보에 담기'}
           </button>
-        </>
-      ) : null}
+        ) : null}
+      </div>
     </main>
   );
 }
