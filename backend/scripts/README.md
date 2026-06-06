@@ -15,7 +15,7 @@
 
 | 파일 | 역할 |
 |---|---|
-| `update/scheduled_update.py` | systemd timer가 호출하는 운영용 스케줄러. 상태 JSON, 실행 조건, 재시도, 부분 실패 기록을 관리 |
+| `update/scheduled_update.py` | systemd timer가 호출하는 운영용 스케줄러. 상태 JSON, 실행 조건, 재시도, 부분 실패 기록, 변경 기반 캐시 재생성을 관리 |
 | `update/update_all.py` | 공공데이터, 서비스 파생 데이터, 대시보드 캐시, 유지보수 작업을 전체 순서대로 실행 |
 | `update/update_public_data.py` | 공공데이터 도메인을 하나씩 또는 전체 순서대로 업데이트 |
 | `update/update_service_data.py` | 서비스 파생 데이터를 하나씩 또는 전체 순서대로 업데이트 |
@@ -52,6 +52,7 @@ python scripts/update/update_cache_data.py --target all --write
    - `current`
 3. 대시보드 데이터 업데이트
    - `dashboard_cache`
+   - `region_intro`는 `dashboard_cache`의 호환 alias
 4. 유지보수 작업
    - `ai_stale_keys`
 
@@ -63,10 +64,20 @@ python scripts/update/update_cache_data.py --target all --write
 - `region_park_area_cache`
 - `region_amenity_category_cache`
 
+예약 업데이터 `scheduled_update.py`는 원천 데이터 변경에 따라 다음 캐시도 재생성합니다.
+
+- `recommend_rent_cache` -> `recommend_rent_region_cache`
+- `map_amenity_marker_cache`
+- `map_medical_marker_cache`
+- `rent_deal_geocode_cache`
+- `region_park_area_cache`
+- `region_amenity_category_cache`
+
 업데이트 상태 JSON은 `backend/scripts/update/.state` 아래에 저장됩니다. 운영에서는 이 경로를 Docker bind mount/volume으로 보존해야 컨테이너 재생성 후에도 업데이트 이력이 유지됩니다.
 
 ## 운영 메모
 
 - 매일 자정 운영 실행은 systemd `capston-scheduled-update.timer`가 `scheduled_update.py --write`를 호출합니다.
+- 예약 업데이터는 버스 혼잡도, 스토어, 의료처럼 무거운 작업을 task 단위로 기록하고 실패 task를 재시도합니다.
 - API 호출 제한, 네트워크 오류, 부분 실패가 반복되면 실패 상태를 기록하고 가능한 다음 작업은 계속 진행합니다.
 - 스크립트 실행 전 `backend/.env`와 DB migration 상태를 확인합니다.

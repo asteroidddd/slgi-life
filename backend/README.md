@@ -65,7 +65,8 @@ docker compose ps
 | `apps.accounts.profile` | 내 정보, 주소, 대학 선택지 |
 | `apps.accounts.social` | Kakao 로그인 |
 | `apps.accounts.favorites` | 담은 동네, 저장된 추천 조건, 호환용 즐겨찾기 API |
-| `apps.ai_agent` | 자연어 질의, SQL guard, BYOK API KEY, 대시보드 캐시/원천 테이블 안내 metadata |
+| `apps.ai_agent` | 내부 `.env` OpenAI 키 기반 자연어 질의, SQL guard, 대시보드 캐시/원천 테이블 안내 metadata |
+| `apps.caches.*` | 전월세 지오코딩, 지역 통계, 지도 마커 표시용 운영 캐시 |
 | `apps.dashboard.cache` | 동네 정보 화면 캐시, AI 간단 동네 요약용 JSON, 지역 소개, 안전 WMS 프록시 |
 | `apps.public_data.*` | 공공데이터 원천 모델과 업데이터 |
 | `apps.service.map` | 검색, 서울 마스크, 교통 경로 |
@@ -89,6 +90,8 @@ docker compose ps
 | `GET /api/heatmap/adongs/scores` | `service.heatmap` | 행정동 점수 |
 | `GET /api/heatmap/ldongs/scores` | `service.heatmap` | 법정동 점수 |
 | `POST /api/recommend/regions` | `service.recommend` | 조건 기반 행정동/법정동 추천 |
+| `GET /api/compare/neighborhoods` | `service.compare` | 후보 동네 비교 |
+| `GET /api/compare/commute-time` | `service.compare` | 후보 동네 통학 시간 비교 |
 | `GET /api/amenities/bbox` | `service.amenities` | 지도 영역 내 편의시설 |
 | `GET /api/medical/facilities` | `service.medical` | 의료시설 목록 |
 | `GET /api/medical/facilities/<hpid>` | `service.medical` | 의료시설 상세 |
@@ -105,10 +108,8 @@ docker compose ps
 | `POST /api/agent/query` | `ai_agent` | AI Agent 질의 |
 | `GET /api/agent/demo/visualization` | `ai_agent` | staff용 AI 시각화 테스트 |
 | `DELETE /api/agent/conversation/<conversation_id>` | `ai_agent` | 대화 초기화 |
-| `GET/POST /api/agent/api-keys` | `ai_agent` | AI API KEY 상태 조회/저장 |
-| `POST /api/agent/api-keys/unlock` | `ai_agent` | 저장된 AI API KEY 잠금 해제 |
-| `DELETE /api/agent/api-keys/<provider>` | `ai_agent` | AI API KEY 삭제 |
 | `GET/PATCH /api/agent/context-preferences` | `ai_agent` | AI 맥락 공유 설정 |
+| `POST /api/auth/register` | `accounts` | 회원가입 |
 | `POST /api/auth/login` | `accounts` | 로그인 |
 | `POST /api/auth/logout` | `accounts` | 로그아웃 |
 | `GET /api/auth/kakao/start` | `accounts.social` | Kakao 로그인 시작 |
@@ -164,6 +165,8 @@ python scripts/update/update_cache_data.py --target all --write
 ```
 
 운영 자동 업데이트는 systemd timer `capston-scheduled-update.timer`가 backend 컨테이너 안에서 `scripts/update/scheduled_update.py`를 실행합니다. 상태 JSON은 `backend/scripts/update/.state` 아래에 저장됩니다.
+
+예약 업데이터는 원천 데이터 변경 후 `recommend_rent_region_cache`, `map_amenity_marker_cache`, `map_medical_marker_cache`, 지역 통계 캐시도 필요한 경우 재생성합니다.
 
 ## 주의
 

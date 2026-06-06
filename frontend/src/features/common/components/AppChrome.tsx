@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import ThemeToggle from '@/features/common/components/ThemeToggle';
@@ -6,11 +6,17 @@ import Tooltip from '@/features/common/components/ui/Tooltip';
 import { useAuth } from '@/features/common/contexts/AuthContext';
 import { LoginPanel } from '@/features/common/routes/Login';
 import { MyPagePanel } from '@/features/common/routes/MyPage';
+import {
+  MAP_RETURN_STORAGE_KEY,
+  applyDashboardMapTransitionRect,
+  buildDashboardMapUrl,
+  readDashboardMapOpenPayload,
+  writeDashboardMapOpenPayload,
+} from '@/features/map/lib/dashboardMapNavigation';
 
 const PRIMARY_PATHS = new Set(['/', '/recommend/conditions', '/map']);
 const AiChatPanel = lazy(() => import('@/features/ai-chat/components/AiChatPanel'));
 type AuthMode = 'login' | 'mypage';
-const MAP_RETURN_STORAGE_KEY = 'app.map.returnTo';
 
 function fallbackPath(pathname: string) {
   if (pathname.startsWith('/dashboard')) return '/map';
@@ -62,9 +68,15 @@ export function AppActions() {
   const [aiMounted, setAiMounted] = useState(false);
   const [aiCompareCandidates, setAiCompareCandidates] = useState(false);
   const [loginNotice, setLoginNotice] = useState({ error: '', withdrawn: false });
+  const [mapTransitioning, setMapTransitioning] = useState(false);
+  const mapTransitionTimerRef = useRef<number | null>(null);
   const requestedAuth = searchParams.get('auth');
   const requestedAi = searchParams.get('ai');
   const onMap = location.pathname === '/map';
+
+  useEffect(() => () => {
+    if (mapTransitionTimerRef.current != null) window.clearTimeout(mapTransitionTimerRef.current);
+  }, []);
 
   useEffect(() => {
     setAuthOpen(false);
@@ -132,14 +144,36 @@ export function AppActions() {
       return;
     }
 
+    const returnTo = `${location.pathname}${location.search}${location.hash}`;
     try {
-      window.sessionStorage.setItem(
-        MAP_RETURN_STORAGE_KEY,
-        `${location.pathname}${location.search}${location.hash}`,
-      );
+      window.sessionStorage.setItem(MAP_RETURN_STORAGE_KEY, returnTo);
     } catch {
       // If sessionStorage is blocked, the map button still opens the map.
     }
+
+    if (location.pathname.startsWith('/dashboard')) {
+      const payload = readDashboardMapOpenPayload();
+      if (payload?.view) {
+        const nextPayload = {
+          ...payload,
+          returnTo,
+          updatedAt: Date.now(),
+        };
+        writeDashboardMapOpenPayload(nextPayload);
+        applyDashboardMapTransitionRect(nextPayload.rect);
+        setMapTransitioning(true);
+        if (mapTransitionTimerRef.current != null) window.clearTimeout(mapTransitionTimerRef.current);
+        mapTransitionTimerRef.current = window.setTimeout(() => {
+          mapTransitionTimerRef.current = null;
+          setMapTransitioning(false);
+          navigate(buildDashboardMapUrl(nextPayload), {
+            state: { dashboardMapView: nextPayload.view },
+          });
+        }, 360);
+        return;
+      }
+    }
+
     navigate('/map');
   };
 
@@ -213,6 +247,11 @@ export function AppActions() {
             onClose={() => setAiOpen(false)}
           />
         </Suspense>
+      ) : null}
+      {mapTransitioning ? (
+        <div className="map-route-transition map-route-transition--in" aria-hidden="true">
+          <div className="map-route-transition__frame" />
+        </div>
       ) : null}
     </>
   );

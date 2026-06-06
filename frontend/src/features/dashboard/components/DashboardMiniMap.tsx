@@ -14,6 +14,13 @@ import { useTheme } from '@/features/common/contexts/ThemeContext';
 import { useAdongGeoJson, useLdongGeoJson } from '@/features/map/hooks/useAdongGeoJson';
 import type { AdongFeatureProps } from '@/features/map/hooks/useAdongGeoJson';
 import { MAP_POLYGON_STROKE } from '@/features/common/lib/colors';
+import {
+  applyDashboardMapTransitionRect,
+  buildDashboardMapUrl,
+  writeDashboardMapOpenPayload,
+  type DashboardMapOpenPayload,
+  type DashboardMapTransitionRect,
+} from '@/features/map/lib/dashboardMapNavigation';
 import { VWORLD_ATTRIBUTION, getVWorldMaxNativeZoom, getVWorldTileUrl } from '@/features/map/lib/vworld';
 import type { AdongScore } from '@/features/common/types/api';
 
@@ -110,6 +117,7 @@ export default function DashboardMiniMap({
   const { theme } = useTheme();
   const [expanding, setExpanding] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const currentViewRef = useRef<DashboardMiniMapView | null>(null);
   const adongGeo = useAdongGeoJson();
   const ldongGeo = useLdongGeoJson();
   const geojson = regionLevel === 'ldong' ? ldongGeo.data : adongGeo.data;
@@ -163,6 +171,45 @@ export default function DashboardMiniMap({
   const tileLayerKey = useMemo(() => `vworld-${theme}-${maxZoom}-${tileUrl}`, [maxZoom, theme, tileUrl]);
   const mapContainerKey = useMemo(() => `dashboard-mini-map-${theme}-${tileUrl}`, [theme, tileUrl]);
 
+  const getTransitionRect = useCallback((): DashboardMapTransitionRect | null => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    return {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  }, []);
+
+  const rememberMapOpenPayload = useCallback((view?: DashboardMiniMapView | null): DashboardMapOpenPayload => {
+    const fallbackView = {
+      lat: center[0],
+      lng: center[1],
+      zoom: Math.min(DASHBOARD_MINI_MAP_ZOOM, maxZoom),
+    };
+    const payload: DashboardMapOpenPayload = {
+      returnTo: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+      regionLevel,
+      regionSlug: selectedSlug,
+      view: view ?? currentViewRef.current ?? fallbackView,
+      rect: getTransitionRect(),
+      updatedAt: Date.now(),
+    };
+    writeDashboardMapOpenPayload(payload);
+    return payload;
+  }, [center, getTransitionRect, maxZoom, regionLevel, selectedSlug]);
+
+  const handleViewportChange = useCallback((view: DashboardMiniMapView) => {
+    currentViewRef.current = view;
+    onViewportChange?.(view);
+    rememberMapOpenPayload(view);
+  }, [onViewportChange, rememberMapOpenPayload]);
+
+  useEffect(() => {
+    rememberMapOpenPayload(currentViewRef.current);
+  }, [rememberMapOpenPayload]);
+
   const styleFn = useCallback(
     (feature?: Feature<Geometry, AdongFeatureProps>) => {
       const code = featureCode(feature as DongFeature);
@@ -213,18 +260,15 @@ export default function DashboardMiniMap({
   );
 
   const handleMapOpen = useCallback(() => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (rect) {
-      document.documentElement.style.setProperty('--map-transition-left', `${rect.left}px`);
-      document.documentElement.style.setProperty('--map-transition-top', `${rect.top}px`);
-      document.documentElement.style.setProperty('--map-transition-width', `${rect.width}px`);
-      document.documentElement.style.setProperty('--map-transition-height', `${rect.height}px`);
-    }
+    const payload = rememberMapOpenPayload();
+    applyDashboardMapTransitionRect(payload.rect);
     setExpanding(true);
     window.setTimeout(() => {
-      navigate('/map');
+      navigate(buildDashboardMapUrl(payload), {
+        state: { dashboardMapView: payload.view },
+      });
     }, 360);
-  }, [navigate]);
+  }, [navigate, rememberMapOpenPayload]);
 
   if (geoLoading || !geojson) {
     return (
@@ -262,7 +306,7 @@ export default function DashboardMiniMap({
           zoom={DASHBOARD_MINI_MAP_ZOOM}
           bounds={selectedBounds}
           maxZoom={maxZoom}
-          onViewportChange={onViewportChange}
+          onViewportChange={handleViewportChange}
           viewKey={`${selectedMaskKey}-${tileLayerKey}`}
         />
         <MiniMapViewport
@@ -270,7 +314,7 @@ export default function DashboardMiniMap({
           zoom={DASHBOARD_MINI_MAP_ZOOM}
           bounds={selectedBounds}
           maxZoom={maxZoom}
-          onViewportChange={onViewportChange}
+          onViewportChange={handleViewportChange}
         />
         {false ? <GeoJSON key={selectedMaskKey} data={selectedMask as RegionMaskFeature} style={REGION_MASK_STYLE} interactive={false} /> : null}
         <GeoJSON

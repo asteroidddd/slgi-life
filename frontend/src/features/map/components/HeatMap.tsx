@@ -61,6 +61,7 @@ export interface HeatMapProps {
   selectedRegionLevel?: 'adong' | 'ldong';
   selectedRegionAdongs?: AdongScore[];
   selectedRegionFocusKey?: string | null;
+  selectedRegionAutoFit?: boolean;
   initialCenter?: [number, number];
   initialZoom?: number;
 }
@@ -121,6 +122,7 @@ export default function HeatMap({
   selectedRegionLevel = regionLevel,
   selectedRegionAdongs,
   selectedRegionFocusKey = null,
+  selectedRegionAutoFit = true,
   initialCenter,
   initialZoom,
 }: HeatMapProps) {
@@ -289,7 +291,7 @@ export default function HeatMap({
           interactive={false}
         />
 
-        {selectedRegionSlug && selectedGeojson ? (
+        {selectedRegionAutoFit && selectedRegionSlug && selectedGeojson ? (
           <SelectedRegionBounds
             geojson={selectedGeojson}
             dongByCode={selectedDongByCode}

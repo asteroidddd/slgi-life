@@ -78,6 +78,11 @@ const SEOUL_AI_TARGET_BOUNDS = {
 
 const HOME_MARKER_VISIBILITY_STORAGE_KEY = 'map.homeMarker.visible';
 
+interface InitialMapView {
+  center: [number, number];
+  zoom: number;
+}
+
 const HEAT_LAYERS: Array<{ key: ScoreLayerKey; label: string; title: string }> = [
   { key: 'composite', label: '종합 점수', title: '부동산, 교통, 편의시설 점수를 합산한 값입니다.' },
   { key: 'rent', label: '부동산 점수', title: '최근 실거래 기반 환산월세 지표입니다.' },
@@ -147,6 +152,19 @@ function isValidAiMapCoordinate(lat: number, lng: number) {
     && lng <= SEOUL_AI_TARGET_BOUNDS.maxLng;
 }
 
+function readInitialMapView(searchParams: URLSearchParams): InitialMapView | null {
+  if (!searchParams.has('lat') || !searchParams.has('lng') || !searchParams.has('zoom')) return null;
+  const lat = Number(searchParams.get('lat'));
+  const lng = Number(searchParams.get('lng'));
+  const zoom = Number(searchParams.get('zoom'));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(zoom)) return null;
+  if (lat < 33 || lat > 39.5 || lng < 124 || lng > 130.5) return null;
+  return {
+    center: [lat, lng],
+    zoom: Math.max(3, Math.min(19, zoom)),
+  };
+}
+
 export default function MainMap() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -162,7 +180,9 @@ export default function MainMap() {
   const [medicalSpecialtyGroups, setMedicalSpecialtyGroups] = useState<Set<string>>(() => new Set());
   const [medicalOpenNow, setMedicalOpenNow] = useState(false);
   const [mapState, setMapState] = useState<MapState | null>(null);
+  const requestedInitialMapView = useMemo(() => readInitialMapView(searchParams), [searchParams]);
   const savedMapView = useMemo(() => getSavedMapView(), []);
+  const initialMapView = requestedInitialMapView ?? savedMapView;
   const [popup, setPopup] = useState<SelectedPopup>(null);
   const [searchText, setSearchText] = useState('');
   const [searchResults, setSearchResults] = useState<MapSearchItem[]>([]);
@@ -548,8 +568,9 @@ export default function MainMap() {
         selectedRegionLevel={selectedMapRegionLevel}
         selectedRegionAdongs={selectedBoundaryScores}
         selectedRegionFocusKey={searchParams.get('focus')}
-        initialCenter={savedMapView?.center}
-        initialZoom={savedMapView?.zoom}
+        selectedRegionAutoFit={requestedInitialMapView == null}
+        initialCenter={initialMapView?.center}
+        initialZoom={initialMapView?.zoom}
         onAdongClick={heatmapEnabled ? (adong) => setPopup({ type: 'adong', adong }) : undefined}
       >
         <CurrentLocationLayer

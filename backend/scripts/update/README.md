@@ -6,11 +6,11 @@
 
 | 파일 | 역할 |
 |---|---|
-| `scheduled_update.py` | 운영 systemd timer가 호출하는 일일 스케줄러. 상태 JSON, 실행 조건, 재시도, 부분 실패 기록을 관리 |
+| `scheduled_update.py` | 운영 systemd timer가 호출하는 일일 스케줄러. 상태 JSON, 실행 조건, 재시도, 부분 실패 기록, 변경 기반 캐시 재생성을 관리 |
 | `update_all.py` | 공공데이터, 서비스 파생 데이터, 대시보드 캐시, 유지보수 작업을 정해진 순서로 실행 |
 | `update_public_data.py` | 공공데이터 원천 테이블 업데이트 |
 | `update_service_data.py` | `Amenity`, 추천/점수 계산용 전월세 파생 데이터, `Current*` 같은 서비스 파생 테이블 업데이트 |
-| `update_dashboard_data.py` | 대시보드 화면 전용 캐시 업데이트 |
+| `update_dashboard_data.py` | 대시보드 화면 전용 캐시 업데이트. `region_intro` target은 `dashboard_cache` alias |
 | `update_cache_data.py` | `update_all.py`에 포함되지 않는 선택 운영 캐시 업데이트 |
 
 ## 실행 예시
@@ -47,6 +47,8 @@ python scripts/update/update_cache_data.py --target all --write
 4. `update_all.py`가 세 단계 이후 오래된 AI API 키 정리(`ai_stale_keys`)를 실행합니다.
 
 `update_cache_data.py`는 전체 흐름과 별도입니다. 지원 target은 `rent_deal_geocode_cache`, `region_park_area_cache`, `region_amenity_category_cache`입니다.
+
+`scheduled_update.py`는 운영용으로 더 세분화된 task를 사용합니다. 버스는 `bus_stop`과 `bus_congestion`으로 분리하고, 원천 데이터 변경 시 `recommend_rent_cache`, `map_amenity_marker_cache`, `map_medical_marker_cache`, 지역 통계 캐시를 재생성합니다.
 
 ## 주의
 
