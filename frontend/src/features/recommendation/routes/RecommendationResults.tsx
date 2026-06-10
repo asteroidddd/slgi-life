@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
@@ -5,6 +6,7 @@ import {
   candidateFromScore,
   useCandidateRegions,
 } from '@/features/candidates/lib/candidates';
+import { useAuth } from '@/features/common/contexts/AuthContext';
 import { recommendRegions } from '@/features/common/lib/api';
 import type { RecommendationRegionCandidate } from '@/features/common/types/api';
 import {
@@ -16,10 +18,15 @@ import type { RecommendationPriority } from '@/features/recommendation/lib/recom
 
 type RegionLevel = 'adong' | 'ldong';
 
+const REGION_LEVEL_NOTICE_STORAGE_KEY = 'recommendation.region-level-notice.dismissedAt';
+const REGION_LEVEL_NOTICE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 export default function RecommendationResults() {
   const conditions = loadRecommendationConditions();
   const cachedResults = loadRecommendationResults(conditions);
   const { addCandidate, hasCandidate } = useCandidateRegions();
+  const { user, isLoading: authLoading } = useAuth();
+  const [showRegionLevelNotice, setShowRegionLevelNotice] = useState(false);
 
   const resultsQuery = useQuery({
     queryKey: ['recommend', 'regions', conditions],
@@ -39,8 +46,41 @@ export default function RecommendationResults() {
   const adongs = results?.adongs ?? [];
   const ldongs = results?.ldongs ?? [];
 
+  useEffect(() => {
+    if (authLoading || user) {
+      setShowRegionLevelNotice(false);
+      return;
+    }
+
+    try {
+      const dismissedAt = Number(window.localStorage.getItem(REGION_LEVEL_NOTICE_STORAGE_KEY) || 0);
+      setShowRegionLevelNotice(!dismissedAt || Date.now() - dismissedAt >= REGION_LEVEL_NOTICE_TTL_MS);
+    } catch {
+      setShowRegionLevelNotice(true);
+    }
+  }, [authLoading, user]);
+
+  const closeRegionLevelNotice = () => {
+    setShowRegionLevelNotice(false);
+  };
+
+  const dismissRegionLevelNoticeForWeek = () => {
+    try {
+      window.localStorage.setItem(REGION_LEVEL_NOTICE_STORAGE_KEY, String(Date.now()));
+    } catch {
+      // Storage may be blocked. Closing still works for this screen.
+    }
+    setShowRegionLevelNotice(false);
+  };
+
   return (
     <main className="min-h-screen bg-primary-soft text-text">
+      {showRegionLevelNotice ? (
+        <RegionLevelNotice
+          onClose={closeRegionLevelNotice}
+          onDismissForWeek={dismissRegionLevelNoticeForWeek}
+        />
+      ) : null}
       <section className="mx-auto grid w-full max-w-[1120px] gap-5 px-5 py-24 sm:px-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -111,6 +151,59 @@ function Condition({ label, value }: { label: string; value: string }) {
     <div>
       <p className="m-0 font-semibold text-text">{label}</p>
       <p className="m-0 mt-1">{value}</p>
+    </div>
+  );
+}
+
+function RegionLevelNotice({
+  onClose,
+  onDismissForWeek,
+}: {
+  onClose: () => void;
+  onDismissForWeek: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[1700] flex items-center justify-center bg-black/35 px-5" role="dialog" aria-modal="true" aria-labelledby="region-level-notice-title">
+      <section className="w-full max-w-[560px] rounded-card border border-border bg-surface px-7 py-6 text-text shadow-2xl sm:px-8 sm:py-7">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="m-0 text-[12px] font-bold text-primary">추천 기준 안내</p>
+            <h2 id="region-level-notice-title" className="m-0 mt-1 text-[20px] font-semibold leading-snug">
+              행정동과 법정동을 함께 보여드려요
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-8 w-8 shrink-0 rounded-[8px] bg-surface-alt text-[18px] font-bold leading-none text-text-muted transition hover:text-text"
+            aria-label="안내 닫기"
+          >
+            ×
+          </button>
+        </div>
+        <p className="m-0 mt-6 text-[14px] leading-7 text-text-muted">
+          행정동은 행정 서비스를 위한 생활권 단위라 크기가 비교적 고르고, 시설·교통·생활 여건을 비교하기 좋습니다. 법정동은 크기가 제각각이라 생활권 비교에는 불리할 수 있지만, 부동산 거래내역이 법정동 기준으로 기록되기 때문에 월세와 거래 흐름을 더 정확히 반영할 수 있습니다.
+        </p>
+        <p className="m-0 mt-4 text-[14px] leading-7 text-text-muted">
+          그래서 추천 결과는 생활 여건을 보기 좋은 행정동과 부동산 정보를 보기 좋은 법정동을 나눠 보여드립니다.
+        </p>
+        <div className="mt-7 flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            onClick={onDismissForWeek}
+            className="h-10 rounded-sm border border-border bg-surface px-4 text-[13px] font-semibold text-text-muted transition hover:border-primary hover:text-primary"
+          >
+            일주일 동안 보지 않기
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-10 rounded-sm bg-primary px-4 text-[13px] font-semibold text-surface transition hover:bg-primary-hover"
+          >
+            확인
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

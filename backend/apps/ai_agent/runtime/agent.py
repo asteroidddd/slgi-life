@@ -191,6 +191,22 @@ def _format_candidate_regions(candidate_regions: list | None) -> str:
 
     return "\n".join(lines) if lines else "없음"
 
+def _mentions_candidate_regions(question: str) -> bool:
+    keywords = (
+        "담은 동네",
+        "담아둔 동네",
+        "후보 동네",
+        "저장한 동네",
+        "내가 고른 동네",
+        "고른 동네",
+        "찜한 동네",
+        "관심 동네",
+        "후보지",
+        "저장한 후보",
+        "담은 후보",
+    )
+    return any(keyword in question for keyword in keywords)
+
 def run_agent(
     question: str,
     history: list | None = None,
@@ -226,12 +242,16 @@ def run_agent(
     conversation_history = _format_history(history)
     enriched_question = _enrich_question(question, history)
     formatted_user_context = _format_user_context(user_context)
-    candidate_regions_context = _format_candidate_regions(candidate_regions) 
-    if candidate_regions_context != "없음":
+    candidate_regions_context = _format_candidate_regions(candidate_regions)
+    use_candidate_regions = _mentions_candidate_regions(question)
+
+    if use_candidate_regions and candidate_regions_context != "없음":
         enriched_question = (
             f"[사용자가 담은 동네 목록]\n{candidate_regions_context}\n\n"
             f"{enriched_question}"
         )
+    else:
+        candidate_regions_context = "없음"
 
     # ── 1단계: 질문 분류 ──────────────────────────────────────────────────────
     print("\n[1단계] 질문 분류 중...")

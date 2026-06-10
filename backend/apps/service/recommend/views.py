@@ -33,6 +33,7 @@ FACILITY_KEYS = {
 DEFAULT_LIMIT = 5
 MAX_LIMIT = 10
 FALLBACK_MONTHLY_RATE = 0.005
+MIN_RECOMMEND_RENT_DEAL_COUNT = 10
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -164,7 +165,7 @@ def _rent_metrics(
     monthly_rate: float,
     conversion_period: str | None,
     as_of_date,
-) -> dict[str, dict[str, float | None]]:
+) -> dict[str, dict[str, float | int | None]]:
     return load_rent_metrics(
         region_level=region_level,
         monthly_rate=monthly_rate,
@@ -173,7 +174,7 @@ def _rent_metrics(
     )
 
 def _budget_matching_codes(
-    rent_metrics: dict[str, dict[str, float | None]],
+    rent_metrics: dict[str, dict[str, float | int | None]],
     conditions: dict[str, Any],
     monthly_rate: float,
 ) -> set[str]:
@@ -181,6 +182,8 @@ def _budget_matching_codes(
     area_m2 = conditions["area_m2"]
     result: set[str] = set()
     for code, metric in rent_metrics.items():
+        if int(metric.get("deal_count") or 0) < MIN_RECOMMEND_RENT_DEAL_COUNT:
+            continue
         if area_m2:
             region_value = metric["avg_per_m2"]
             user_value = user_converted / area_m2
@@ -189,7 +192,7 @@ def _budget_matching_codes(
             user_value = user_converted
         if region_value is None:
             continue
-        if region_value * 1.1 <= user_value:
+        if region_value <= user_value * 1.2:
             result.add(code)
     return result
 
@@ -222,7 +225,7 @@ def _travel_times(region_level: str, university_id: str) -> dict[str, int]:
 def _region_payloads(
     region_level: str,
     codes: set[str],
-    rent_metrics: dict[str, dict[str, float | None]],
+    rent_metrics: dict[str, dict[str, float | int | None]],
     travel_times: dict[str, int],
     conditions: dict[str, Any],
 ) -> list[dict[str, Any]]:

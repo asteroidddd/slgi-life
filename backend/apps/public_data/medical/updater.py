@@ -531,19 +531,7 @@ def _request_json_or_xml(url: str, params: dict[str, str], options: MedicalUpdat
 
         try:
             payload = json.loads(body.decode("utf-8"))
-            response_body = payload.get("response", {}).get("body", {})
-            items_container = response_body.get("items", {})
-            total = response_body.get("totalCount")
-            if items_container in (None, ""):
-                items = []
-            elif isinstance(items_container, dict):
-                items = items_container.get("item", [])
-            else:
-                items = []
-            if isinstance(items, dict):
-                items = [items]
-            return int(total) if total not in (None, "") else None, list(items or [])
-        except (json.JSONDecodeError, UnicodeDecodeError, AttributeError, ValueError):
+        except (json.JSONDecodeError, UnicodeDecodeError):
             root = ET.fromstring(body)
             result_code = root.findtext(".//resultCode", "")
             result_msg = root.findtext(".//resultMsg", "")
@@ -552,6 +540,21 @@ def _request_json_or_xml(url: str, params: dict[str, str], options: MedicalUpdat
             total_text = root.findtext(".//totalCount")
             rows = [{child.tag: child.text for child in item} for item in root.findall(".//item")]
             return int(total_text) if total_text else None, rows
+
+        response_body = payload.get("response", {}).get("body", {})
+        items_container = response_body.get("items", {})
+        total = response_body.get("totalCount")
+        if items_container in (None, ""):
+            items = []
+        elif isinstance(items_container, dict):
+            items = items_container.get("item", [])
+        elif isinstance(items_container, list):
+            items = items_container
+        else:
+            items = []
+        if isinstance(items, dict):
+            items = [items]
+        return int(total) if total not in (None, "") else None, list(items or [])
     if last_error:
         raise last_error
     return None, []
@@ -761,7 +764,7 @@ def _build_hira_matches(hira_rows: list[dict[str, Any]]) -> dict[str, Any]:
 def _hira_specialty_max_calls(options: MedicalUpdateOptions) -> int | None:
     if options.dry_run:
         return min(options.limit or 20, 100)
-    raw = os.environ.get("MEDICAL_HIRA_SPECIALTY_MAX_CALLS", "800").strip()
+    raw = os.environ.get("MEDICAL_HIRA_SPECIALTY_MAX_CALLS", "all").strip()
     if raw.lower() in ("", "0", "none", "all"):
         return None
     try:
@@ -940,6 +943,12 @@ def _update_hira_specialties(options: MedicalUpdateOptions) -> dict[str, Any]:
         if hpid in matches_for_specialty
     }
 
+    attempted_specialty_count = (
+        min(len(matches_for_specialty), specialty_limit)
+        if specialty_limit is not None
+        else len(matches_for_specialty)
+    )
+    remaining_hira_count = max(0, len(matches_for_specialty) - len(fetched_facility_ids))
     specialty_completed = (
         len(matches_for_specialty) == len(fetched_facility_ids)
         and not specialty_stats["failed"]
@@ -959,7 +968,9 @@ def _update_hira_specialties(options: MedicalUpdateOptions) -> dict[str, Any]:
             **specialty_stats,
             "existing_hira_count": len(existing_specialty_ykihos) if not options.dry_run else None,
             "pending_hira_count": len(matches_for_specialty),
+            "attempted_hira_count": attempted_specialty_count,
             "fetched_hira_count": len(fetched_ykihos),
+            "remaining_hira_count": remaining_hira_count,
             "max_calls": specialty_limit,
             "rows": len(specialty_rows),
             "sample": [

@@ -743,8 +743,17 @@ class FileLock:
         try:
             payload = json.loads(self.path.read_text(encoding="utf-8"))
             created = datetime.fromisoformat(str(payload.get("created_at")).replace("Z", "+00:00"))
+            pid = int(payload.get("pid") or 0)
         except Exception:
             return False
+        if pid > 0:
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                self.path.unlink()
+                return True
+            except PermissionError:
+                pass
         if (datetime.now(timezone.utc) - created).total_seconds() <= self.stale_after_seconds:
             return False
         self.path.unlink()

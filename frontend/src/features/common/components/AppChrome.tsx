@@ -17,6 +17,7 @@ import {
 const PRIMARY_PATHS = new Set(['/', '/recommend/conditions', '/map']);
 const AiChatPanel = lazy(() => import('@/features/ai-chat/components/AiChatPanel'));
 type AuthMode = 'login' | 'mypage';
+const DASHBOARD_MINI_MAP_OPEN_EVENT = 'dashboard-mini-map:open-main-map';
 
 function fallbackPath(pathname: string) {
   if (pathname.startsWith('/dashboard')) return '/map';
@@ -69,6 +70,7 @@ export function AppActions() {
   const [aiCompareCandidates, setAiCompareCandidates] = useState(false);
   const [loginNotice, setLoginNotice] = useState({ error: '', withdrawn: false });
   const [mapTransitioning, setMapTransitioning] = useState(false);
+  const [mapTransitionDirection, setMapTransitionDirection] = useState<'in' | 'out'>('in');
   const mapTransitionTimerRef = useRef<number | null>(null);
   const requestedAuth = searchParams.get('auth');
   const requestedAi = searchParams.get('ai');
@@ -140,6 +142,19 @@ export function AppActions() {
       const safeReturnTo = returnTo.startsWith('/') && !returnTo.startsWith('/map')
         ? returnTo
         : '/recommend/conditions';
+      const payload = readDashboardMapOpenPayload();
+      if (payload?.rect && safeReturnTo.startsWith('/dashboard')) {
+        applyDashboardMapTransitionRect(payload.rect);
+        setMapTransitionDirection('out');
+        setMapTransitioning(true);
+        if (mapTransitionTimerRef.current != null) window.clearTimeout(mapTransitionTimerRef.current);
+        mapTransitionTimerRef.current = window.setTimeout(() => {
+          mapTransitionTimerRef.current = null;
+          setMapTransitioning(false);
+          navigate(safeReturnTo);
+        }, 420);
+        return;
+      }
       navigate(safeReturnTo);
       return;
     }
@@ -152,6 +167,9 @@ export function AppActions() {
     }
 
     if (location.pathname.startsWith('/dashboard')) {
+      const event = new Event(DASHBOARD_MINI_MAP_OPEN_EVENT, { cancelable: true });
+      if (!window.dispatchEvent(event)) return;
+
       const payload = readDashboardMapOpenPayload();
       if (payload?.view) {
         const nextPayload = {
@@ -161,6 +179,7 @@ export function AppActions() {
         };
         writeDashboardMapOpenPayload(nextPayload);
         applyDashboardMapTransitionRect(nextPayload.rect);
+        setMapTransitionDirection('in');
         setMapTransitioning(true);
         if (mapTransitionTimerRef.current != null) window.clearTimeout(mapTransitionTimerRef.current);
         mapTransitionTimerRef.current = window.setTimeout(() => {
@@ -249,7 +268,7 @@ export function AppActions() {
         </Suspense>
       ) : null}
       {mapTransitioning ? (
-        <div className="map-route-transition map-route-transition--in" aria-hidden="true">
+        <div className={`map-route-transition map-route-transition--${mapTransitionDirection}`} aria-hidden="true">
           <div className="map-route-transition__frame" />
         </div>
       ) : null}

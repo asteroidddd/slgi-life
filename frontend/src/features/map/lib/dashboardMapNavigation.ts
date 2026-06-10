@@ -26,6 +26,7 @@ export const DASHBOARD_MAP_OPEN_STORAGE_KEY = 'dashboard.map.openPayload';
 export const MAP_RETURN_STORAGE_KEY = 'app.map.returnTo';
 
 const MAX_PAYLOAD_AGE_MS = 10 * 60 * 1000;
+const DASHBOARD_MAP_OPEN_ZOOM_OFFSET = 2;
 
 function finiteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -78,7 +79,7 @@ export function buildDashboardMapUrl(payload: DashboardMapOpenPayload) {
   if (view) {
     params.set('lat', view.lat.toFixed(6));
     params.set('lng', view.lng.toFixed(6));
-    params.set('zoom', view.zoom.toFixed(2));
+    params.set('zoom', Math.min(19, view.zoom + DASHBOARD_MAP_OPEN_ZOOM_OFFSET).toFixed(2));
   }
 
   return `/map?${params.toString()}`;

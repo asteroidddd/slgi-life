@@ -125,7 +125,7 @@ def load_rent_metrics(
     monthly_rate: float,
     conversion_rate_period: Any,
     as_of_date: date | None = None,
-) -> dict[str, dict[str, float | None]]:
+) -> dict[str, dict[str, float | int | None]]:
     as_of = as_of_date or timezone.localdate()
     period_key = _period_key(conversion_rate_period)
     queryset = RecommendRentRegionCache.objects.filter(
@@ -152,6 +152,7 @@ def load_rent_metrics(
 
     return {
         str(row.region_code): {
+            "deal_count": row.deal_count,
             "avg_per_m2": row.avg_per_m2,
             "median_converted": row.median_converted,
         }

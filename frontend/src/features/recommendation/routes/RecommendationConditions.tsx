@@ -16,6 +16,7 @@ import {
   type RecommendationFacilityKey,
   type RecommendationPriority,
   type RecommendationConditions as RecommendationConditionsState,
+  loadRecommendationConditions,
   saveRecommendationConditions,
   saveRecommendationResults,
 } from '@/features/recommendation/lib/recommendation';
@@ -48,12 +49,30 @@ export default function RecommendationConditions() {
     [universityId, universitiesQuery.data?.schools],
   );
 
+  const applyConditions = (conditions: RecommendationConditionsState) => {
+    setDeposit(String(conditions.deposit || 0));
+    setMonthlyRent(String(conditions.monthlyRent || 0));
+    setAreaAny(conditions.areaM2 == null);
+    setAreaM2(String(conditions.areaM2 ?? 20));
+    setFacilities(new Set(
+      conditions.facilities.filter((item): item is RecommendationFacilityKey =>
+        RECOMMENDATION_FACILITIES.some((facility) => facility.key === item),
+      ),
+    ));
+    setUniversityId(conditions.universityId || '');
+    setUserSchoolDefaultApplied(Boolean(conditions.universityId));
+    setMaxCommuteMinutes(String(conditions.maxCommuteMinutes || 30));
+    setPriority(conditions.priority === 'transport' ? 'transport' : 'budget');
+  };
+
   useEffect(() => {
     setUserSchoolDefaultApplied(false);
   }, [user?.id]);
 
   useEffect(() => {
     if (!user) {
+      const localConditions = loadRecommendationConditions();
+      if (localConditions) applyConditions(localConditions);
       setConditionsLoaded(true);
       return;
     }
@@ -62,24 +81,13 @@ export default function RecommendationConditions() {
     getUserRecommendationConditions()
       .then((data) => {
         if (cancelled || !data.conditions) return;
-        const conditions = data.conditions;
-        setDeposit(String(conditions.deposit || 0));
-        setMonthlyRent(String(conditions.monthlyRent || 0));
-        setAreaAny(conditions.areaM2 == null);
-        setAreaM2(String(conditions.areaM2 ?? 20));
-        setFacilities(new Set(
-          conditions.facilities.filter((item): item is RecommendationFacilityKey =>
-            RECOMMENDATION_FACILITIES.some((facility) => facility.key === item),
-          ),
-        ));
-        setUniversityId(conditions.universityId || '');
-        setUserSchoolDefaultApplied(Boolean(conditions.universityId));
-        setMaxCommuteMinutes(String(conditions.maxCommuteMinutes || 30));
-        setPriority(conditions.priority === 'transport' ? 'transport' : 'budget');
+        const conditions = data.conditions as RecommendationConditionsState;
+        applyConditions(conditions);
         saveRecommendationConditions(conditions as RecommendationConditionsState);
       })
       .catch(() => {
-        // Local session conditions still work for guests or failed network.
+        const localConditions = loadRecommendationConditions();
+        if (!cancelled && localConditions) applyConditions(localConditions);
       })
       .finally(() => {
         if (!cancelled) setConditionsLoaded(true);

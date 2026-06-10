@@ -156,6 +156,7 @@ function ChatWorkspace({ canUseDemo, compareCandidates }: { canUseDemo: boolean;
     if (!question || isSending) return;
 
     const pendingId = nextMessageId++;
+    let slowNoticeTimer: number | null = null;
     setMessages((prev) => [
       ...prev,
       { id: nextMessageId++, role: 'user', text: question },
@@ -163,6 +164,15 @@ function ChatWorkspace({ canUseDemo, compareCandidates }: { canUseDemo: boolean;
     ]);
     setInput('');
     setIsSending(true);
+    slowNoticeTimer = window.setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === pendingId && message.isLoading
+            ? { ...message, text: '데이터를 직접 살펴보는 중입니다. 조금 더 걸릴 수 있습니다.' }
+            : message,
+        ),
+      );
+    }, 2000);
 
     try {
       const data = await postAgentQuery(question, conversationId);
@@ -188,6 +198,7 @@ function ChatWorkspace({ canUseDemo, compareCandidates }: { canUseDemo: boolean;
         ),
       );
     } finally {
+      if (slowNoticeTimer != null) window.clearTimeout(slowNoticeTimer);
       setIsSending(false);
     }
   };
@@ -321,9 +332,13 @@ function ChatBubble({ message }: { message: ChatMessage }) {
         }`}
       >
         {message.isLoading ? (
-          <span className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-r-transparent align-[-2px]" />
-        ) : null}
-        <div className="whitespace-pre-wrap break-words">{message.text}</div>
+          <div className="flex items-start gap-2">
+            <span className="mt-[6px] h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent" />
+            <div className="min-w-0 whitespace-pre-wrap break-words">{message.text}</div>
+          </div>
+        ) : (
+          <div className="whitespace-pre-wrap break-words">{message.text}</div>
+        )}
         {message.data ? <AgentResponseDetails data={message.data} /> : null}
       </div>
     </div>

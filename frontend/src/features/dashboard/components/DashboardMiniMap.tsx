@@ -29,6 +29,7 @@ import 'leaflet/dist/leaflet.css';
 const SEOUL_CENTER: [number, number] = [37.5665, 126.978];
 export const DASHBOARD_MINI_MAP_ZOOM = 13;
 const DASHBOARD_MINI_MAP_MAX_FIT_ZOOM = 16;
+export const DASHBOARD_MINI_MAP_OPEN_EVENT = 'dashboard-mini-map:open-main-map';
 
 type DongFeature = Feature<Geometry, AdongFeatureProps>;
 type RegionMaskFeature = Feature<Polygon, { name: string }>;
@@ -269,6 +270,15 @@ export default function DashboardMiniMap({
       });
     }, 360);
   }, [navigate, rememberMapOpenPayload]);
+
+  useEffect(() => {
+    const handleGlobalMapOpen = (event: Event) => {
+      event.preventDefault();
+      handleMapOpen();
+    };
+    window.addEventListener(DASHBOARD_MINI_MAP_OPEN_EVENT, handleGlobalMapOpen);
+    return () => window.removeEventListener(DASHBOARD_MINI_MAP_OPEN_EVENT, handleGlobalMapOpen);
+  }, [handleMapOpen]);
 
   if (geoLoading || !geojson) {
     return (

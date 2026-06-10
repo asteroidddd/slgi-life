@@ -88,7 +88,7 @@ class InfoOutput(BaseModel):
 
 # ── 3단계 (recommendation): 동네 선정 출력 ──────────────────────────────────
 class NeighborhoodItem(BaseModel):
-    rank: int = Field(description="추천 순위 (1 또는 2)")
+    rank: int = Field(description="추천 순위")
     ldong_name: str = Field(description="법정동 또는 행정동 이름. 예: 장충동2가")
     gu_name: str = Field(description="자치구 이름. 예: 중구")
     one_liner: str = Field(description="수치 데이터 기반 동네 고유 특징. 두 동네에 동일 표현 금지")
@@ -97,7 +97,7 @@ class NeighborhoodItem(BaseModel):
 
 class SelectionOutput(BaseModel):
     neighborhoods: list[NeighborhoodItem] = Field(
-        description="조건을 만족하는 상위 동네 최대 2곳"
+        description="조건을 만족하는 상위 추천 동네 목록"
     )
     additional_sql: Optional[str] = Field(
         default=None,
@@ -105,6 +105,6 @@ class SelectionOutput(BaseModel):
     )
     visualizations: list[VisualizationChart] = Field(
         default_factory=list,
-        description="조건마다 별도 차트. 수치화 가능한 조건만 포함. 최대 3개. 시각화 불필요시 빈 배열"
+        description="조건마다 별도 차트. 수치화 가능한 조건만 포함. 최대 10개. 시각화 불필요시 빈 배열"
     )
     answer: str = Field(description="사용자에게 보여줄 최종 자연어 답변. 한국어로 작성")

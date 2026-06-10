@@ -1,4 +1,9 @@
-import { readSessionStorage, writeSessionStorage } from '@/features/common/lib/browserStorage';
+import {
+  readLocalStorage,
+  readSessionStorage,
+  writeLocalStorage,
+  writeSessionStorage,
+} from '@/features/common/lib/browserStorage';
 import type { RecommendationRegionsResponse } from '@/features/common/types/api';
 
 export type RecommendationPriority = 'budget' | 'transport';
@@ -69,7 +74,7 @@ export const RECOMMENDATION_FACILITY_GROUPS: Array<{
 export const RECOMMENDATION_FACILITIES = RECOMMENDATION_FACILITY_GROUPS.flatMap((group) => group.items);
 
 export function saveRecommendationConditions(conditions: RecommendationConditions) {
-  writeSessionStorage(
+  writeLocalStorage(
     RECOMMENDATION_CONDITIONS_STORAGE_KEY,
     JSON.stringify(conditions),
   );
@@ -121,7 +126,8 @@ export function loadRecommendationResults(
 }
 
 export function loadRecommendationConditions(): RecommendationConditions | null {
-  const raw = readSessionStorage(RECOMMENDATION_CONDITIONS_STORAGE_KEY);
+  const raw = readLocalStorage(RECOMMENDATION_CONDITIONS_STORAGE_KEY)
+    ?? readSessionStorage(RECOMMENDATION_CONDITIONS_STORAGE_KEY);
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as Partial<RecommendationConditions>;
