@@ -531,8 +531,15 @@ def _request_json_or_xml(url: str, params: dict[str, str], options: MedicalUpdat
 
         try:
             payload = json.loads(body.decode("utf-8"))
-            items = payload.get("response", {}).get("body", {}).get("items", {}).get("item", [])
-            total = payload.get("response", {}).get("body", {}).get("totalCount")
+            response_body = payload.get("response", {}).get("body", {})
+            items_container = response_body.get("items", {})
+            total = response_body.get("totalCount")
+            if items_container in (None, ""):
+                items = []
+            elif isinstance(items_container, dict):
+                items = items_container.get("item", [])
+            else:
+                items = []
             if isinstance(items, dict):
                 items = [items]
             return int(total) if total not in (None, "") else None, list(items or [])
